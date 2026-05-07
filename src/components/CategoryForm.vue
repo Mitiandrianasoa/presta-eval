@@ -29,8 +29,8 @@ onMounted(() => {
       <option :value="false">Inactif</option>
     </select>
     <div class="actions">
-      <button type="submit" class="btn-save">💾 Sauvegarder</button>
-      <button type="button" @click="$emit('cancel')" class="btn-cancel">❌ Annuler</button>
+      <button type="submit" class="btn-save">Sauvegarder</button>
+      <button type="button" @click="$emit('cancel')" class="btn-cancel">Annuler</button>
     </div>
   </form>
 </template>
