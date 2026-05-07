@@ -2,8 +2,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
-import ProductList from '../components/productList.vue';
-import CategoryList from '../components/CategoryList.vue';
+import ProductList from '../components/product/productList.vue';
+import CategoryList from '../components/category/CategoryList.vue';
 
 const currentView = ref<'products' | 'categories'>('products');
 const selectedCategory = ref<number | null>(null);

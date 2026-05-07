@@ -1,12 +1,8 @@
 <!-- components/Sidebar.vue -->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useCategoryStore } from '../stores/CategoryStore';
-import { useResetStore } from '../stores/resetStore';
-import { useProductStore } from '../stores/productStore';
+import { ref } from 'vue';
+import { useResetStore } from '../stores/reset/resetStore';
 
-const categoryStore = useCategoryStore();
-const productStore = useProductStore();
 const resetStore = useResetStore();
 
 const emit = defineEmits(['select-category', 'show-categories', 'show-products']);
@@ -14,13 +10,10 @@ const emit = defineEmits(['select-category', 'show-categories', 'show-products']
 const showConfirm = ref(false);
 const showConfig = ref(false);
 
-onMounted(() => categoryStore.fetchAll());
-
 async function confirmReset() {
   showConfirm.value = false;
   try {
     await resetStore.resetAll();
-    await Promise.all([productStore.fetchAll(), categoryStore.fetchAll()]);
     emit('show-products');
   } catch (e) {
     console.error('Erreur lors de la réinitialisation', e);

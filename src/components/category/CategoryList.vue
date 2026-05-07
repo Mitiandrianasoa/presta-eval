@@ -1,7 +1,7 @@
 <!-- components/CategoryList.vue -->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { useCategoryStore } from '../stores/categoryStore';
+import { useCategoryStore } from '../../stores/category/CategoryStore';
 import CategoryForm from './CategoryForm.vue';
 
 const store = useCategoryStore();
