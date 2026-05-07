@@ -5,7 +5,7 @@ import { useResetStore } from '../stores/reset/resetStore';
 
 const resetStore = useResetStore();
 
-const emit = defineEmits(['select-category', 'show-categories', 'show-products']);
+const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-stock']);
 
 const showConfirm = ref(false);
 const showConfig = ref(false);
@@ -42,7 +42,7 @@ async function confirmReset() {
           <line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 01-8 0"/>
         </svg>
-        <span>Tous les produits</span>
+        <span>Produits</span>
       </button>
 
       <!-- Gérer les catégories -->
@@ -53,7 +53,21 @@ async function confirmReset() {
           <rect x="3" y="14" width="7" height="7" rx="1"/>
           <rect x="14" y="14" width="7" height="7" rx="1"/>
         </svg>
-        <span>Gérer les catégories</span>
+        <span>Catégories</span>
+      </button>
+
+      <!-- Gérer le stock -->
+      <button @click="$emit('show-stock')" class="menu-item main-item stock-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          <path d="M12 3v18"/>
+          <line x1="8" y1="11" x2="16" y2="11"/>
+          <line x1="8" y1="15" x2="16" y2="15"/>
+          <line x1="8" y1="7" x2="8" y2="7.01"/>
+          <line x1="16" y1="7" x2="16" y2="7.01"/>
+        </svg>
+        <span>Stock</span>
       </button>
     </div>
 
@@ -134,7 +148,7 @@ async function confirmReset() {
         </div>
       </div>
     </Teleport>
-  </div>
+    </div>
 </template>
 
 <style scoped>
@@ -224,6 +238,25 @@ async function confirmReset() {
 
 .main-item {
   font-weight: 500;
+}
+
+/* Style spécifique pour l'élément Stock */
+.stock-item {
+  position: relative;
+}
+
+.badge {
+  display: inline-block;
+  background: #e67e22;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 5px;
+  flex: none;
 }
 
 /* Section toggle (Configuration) */

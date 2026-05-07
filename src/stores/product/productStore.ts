@@ -65,9 +65,23 @@ export const useProductStore = defineStore('product', {
 <prestashop><product>
   ${id ? `<id>${id}</id>` : ''}
   <name><language id="1">${name}</language></name>
+  <description><language id="1">${data.description || ''}</language></description>
+  <description_short><language id="1">${data.description_short || ''}</language></description_short>
   <price>${data.price || 0}</price>
+  <wholesale_price>${data.wholesale_price || 0}</wholesale_price>
+  <unit_price_ratio>${data.unit_price_ratio || 0}</unit_price_ratio>
   <reference>${data.reference || ''}</reference>
   <id_category_default>${data.id_category_default || 2}</id_category_default>
+  <quantity>${data.quantity || 0}</quantity>
+  <minimal_quantity>${data.minimal_quantity || 0}</minimal_quantity>
+  <weight>${data.weight || 0}</weight>
+  <width>${data.width || 0}</width>
+  <height>${data.height || 0}</height>
+  <depth>${data.depth || 0}</depth>
+  <additional_shipping_cost>${data.additional_shipping_cost || 0}</additional_shipping_cost>
+  <available_for_order>${data.available_for_order || '1'}</available_for_order>
+  <online_only>${data.online_only || '0'}</online_only>
+  <visibility>${data.visibility || 'both'}</visibility>
   <active>${data.active || '1'}</active>
 </product></prestashop>`;
 
