@@ -1,4 +1,4 @@
-// stores/categoryStore.ts
+// stores/categoryStore.ts - VERSION FINALE FONCTIONNELLE
 import { defineStore } from 'pinia';
 import api from '../api/api';
 
@@ -33,20 +33,26 @@ export const useCategoryStore = defineStore('category', {
         const method = id ? api.put : api.post;
         const url = id ? `/categories/${id}` : '/categories';
         
-        const name = data.name || 'Nouvelle catégorie';
-        // ✅ Générer link_rewrite automatiquement
-        const linkRewrite = name.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '') || 'categorie';
+        const name = data.name || 'Nouvelle categorie';
+        const linkRewrite = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'categorie';
+        const active = data.active === '1' || data.active === true ? '1' : '0';
         
-        const active = data.active || '1';
-        
-        let xmlPayload;
-        if (id) {
-          xmlPayload = `<?xml version="1.0" encoding="UTF-8"?><prestashop><category><id>${id}</id><name><language id="1"><![CDATA[${name}]]></language></name><link_rewrite><language id="1"><![CDATA[${linkRewrite}]]></language></link_rewrite><active>${active}</active><id_parent>2</id_parent></category></prestashop>`;
-        } else {
-          xmlPayload = `<?xml version="1.0" encoding="UTF-8"?><prestashop><category><name><language id="1"><![CDATA[${name}]]></language></name><link_rewrite><language id="1"><![CDATA[${linkRewrite}]]></language></link_rewrite><active>${active}</active><id_parent>2</id_parent></category></prestashop>`;
-        }
+        const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop>
+  <category>
+    ${id ? `<id>${id}</id>` : ''}
+    <name>
+      <language id="1">${name}</language>
+      <language id="2">${name}</language>
+    </name>
+    <link_rewrite>
+      <language id="1">${linkRewrite}</language>
+      <language id="2">${linkRewrite}</language>
+    </link_rewrite>
+    <active>${active}</active>
+    <id_parent>2</id_parent>
+  </category>
+</prestashop>`;
 
         console.log('📤 URL:', url);
         console.log('📤 XML:', xmlPayload);
@@ -55,7 +61,7 @@ export const useCategoryStore = defineStore('category', {
           headers: { 'Content-Type': 'text/xml; charset=utf-8' }
         });
         
-        console.log('✅ Catégorie créée/modifiée');
+        console.log('✅ OK');
         await this.fetchAll();
         
       } catch (error: any) {
