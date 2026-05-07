@@ -9,12 +9,13 @@ export const useProductStore = defineStore('product', {
   }),
   
   actions: {
-    t(field: any, langId = 1): string {
+    t(field: any, langId = 2): string {
       return Array.isArray(field) 
         ? (field.find((f: any) => f.id == langId)?.value || field[0]?.value || '')
         : (field || '');
     },
 
+    // ✅ GET = JSON (pas de problème)
     async fetchAll(categoryId?: number) {
       this.loading = true;
       try {
@@ -46,13 +47,40 @@ export const useProductStore = defineStore('product', {
       finally { this.loading = false; }
     },
 
-    async save(data: any, id?: number) {
-      const method = id ? api.put : api.post;
-      const url = id ? `/products/${id}` : '/products';
-      await method(`${url}?output_format=JSON`, { product: data });
-      await this.fetchAll();
-    },
+  // stores/productStore.ts - save()
+async save(data: any, id?: number) {
+  try {
+    const method = id ? api.put : api.post;
+    const url = id ? `/products/${id}` : '/products';
+    const name = data.name?.[0]?.value || data.name || '';
+    
+    let xmlPayload;
+    
+    if (id) {
+      // ✅ MODIFICATION : ajouter <id> dans le XML
+      xmlPayload = `<?xml version="1.0" encoding="UTF-8"?><prestashop><product><id>${id}</id><name><language id="1">${name}</language></name><price>${data.price || 0}</price><reference>${data.reference || ''}</reference><id_category_default>${data.id_category_default || 2}</id_category_default><active>${data.active || '1'}</active></product></prestashop>`;
+    } else {
+      // ✅ CRÉATION : pas d'id
+      xmlPayload = `<?xml version="1.0" encoding="UTF-8"?><prestashop><product><name><language id="1">${name}</language></name><price>${data.price || 0}</price><reference>${data.reference || ''}</reference><id_category_default>${data.id_category_default || 2}</id_category_default><active>${data.active || '1'}</active></product></prestashop>`;
+    }
 
+    console.log('📤 URL:', url);
+    console.log('📤 XML:', xmlPayload);
+
+    const response = await method(url, xmlPayload, {
+      headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+    });
+    
+    console.log('✅ Succès:', response.data);
+    await this.fetchAll();
+    
+  } catch (error: any) {
+    console.error('❌ Status:', error.response?.status);
+    console.error('❌ Data:', error.response?.data);
+    throw error;
+  }
+},
+    // ✅ DELETE = pas besoin de body
     async remove(id: number) {
       await api.delete(`/products/${id}?output_format=JSON`);
       await this.fetchAll();
