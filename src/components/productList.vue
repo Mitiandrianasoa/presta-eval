@@ -25,7 +25,6 @@ const remove = async (id: number) => {
   if (confirm('Supprimer ?')) await store.remove(id);
 };
 
-
 </script>
 
 <template>

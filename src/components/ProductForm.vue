@@ -1,11 +1,17 @@
-<!-- components/ProductForm.vue -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 
 const props = defineProps<{ product: any }>();
 const emit = defineEmits(['save', 'cancel']);
 
-const form = ref({ name: '', price: '', reference: '', categoryId: '', quantity: 0, active: true });
+const form = ref({
+  name: '',
+  price: '',
+  reference: '',
+  categoryId: '',
+  quantity: 0,
+  active: true
+});
 
 onMounted(() => {
   if (props.product) {
@@ -20,7 +26,17 @@ onMounted(() => {
   }
 });
 
-const submit = () => emit('save', { ...form.value });
+const submit = () => {
+  // ✅ Envoyer directement les données du formulaire
+  emit('save', {
+    name: form.value.name,
+    price: form.value.price,
+    reference: form.value.reference,
+    id_category_default: form.value.categoryId,
+    quantity: form.value.quantity,
+    active: form.value.active ? '1' : '0'
+  });
+};
 </script>
 
 <template>
