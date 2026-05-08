@@ -95,10 +95,10 @@
           </td>
           <td>
             <!-- ✅ BOUTON MODIFIER -->
-            <button @click="openEditForm(product)" title="Modifier">✏️</button>
+            <button @click="openEditForm(product)" title="Modifier">Modifier</button>
             
             <!-- ✅ BOUTON SUPPRIMER -->
-            <button @click="deleteProduct(product.id)" title="Supprimer">🗑️</button>
+            <button @click="deleteProduct(product.id)" title="Supprimer">Delete</button>
           </td>
         </tr>
       </tbody>

@@ -100,36 +100,55 @@ class SimpleApi {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<${rootElement}>\n`;
     xml += this.objectToXml(data, 1);
     xml += `</${rootElement}>`;
+    console.log('📤 XML construit :', xml.substring(0, 500));
     return xml;
   }
 
-  private objectToXml(obj: any, indent: number): string {
-    let xml = '';
-    const spaces = '  '.repeat(indent);
-    
-    for (const [key, value] of Object.entries(obj)) {
-      if (value === null || value === undefined) continue;
-      
-      if (typeof value === 'object' && !Array.isArray(value)) {
-        xml += `${spaces}<${key}>\n`;
-        xml += this.objectToXml(value, indent + 1);
-        xml += `${spaces}</${key}>\n`;
-      } else if (Array.isArray(value)) {
-        value.forEach(item => {
-          if (typeof item === 'object') {
+ // ✅ Convertir un objet en XML récursivement (CORRIGÉ)
+    private objectToXml(obj: any, indent: number): string {
+        let xml = '';
+        const spaces = '  '.repeat(indent);
+        
+        for (const [key, value] of Object.entries(obj)) {
+            if (value === null || value === undefined) continue;
+            
+            // ✅ CAS SPÉCIAL : Objet "language" pour les champs multilingues
+            if (key === 'language' && typeof value === 'object' && !Array.isArray(value)) {
+            // Traiter les langues : { '1': 'texte', '2': 'texte' } → <language id="1">...</language>
+            for (const [langId, langValue] of Object.entries(value)) {
+                const safeValue = this.escapeXml(String(langValue || ''));
+                xml += `${spaces}<language id="${langId}"><![CDATA[${safeValue}]]></language>\n`;
+            }
+            continue;
+            }
+            
+            // ✅ CAS : Objet imbriqué normal
+            if (typeof value === 'object' && !Array.isArray(value)) {
             xml += `${spaces}<${key}>\n`;
-            xml += this.objectToXml(item, indent + 1);
+            xml += this.objectToXml(value, indent + 1);
             xml += `${spaces}</${key}>\n`;
-          } else {
-            xml += `${spaces}<${key}><![CDATA[${this.escapeXml(String(item))}]]></${key}>\n`;
-          }
-        });
-      } else {
-        xml += `${spaces}<${key}><![CDATA[${this.escapeXml(String(value))}]]></${key}>\n`;
-      }
-    }
-    
-    return xml;
+            }
+            // ✅ CAS : Tableau
+            else if (Array.isArray(value)) {
+            value.forEach(item => {
+                if (typeof item === 'object') {
+                xml += `${spaces}<${key}>\n`;
+                xml += this.objectToXml(item, indent + 1);
+                xml += `${spaces}</${key}>\n`;
+                } else {
+                const safeValue = this.escapeXml(String(item));
+                xml += `${spaces}<${key}><![CDATA[${safeValue}]]></${key}>\n`;
+                }
+            });
+            }
+            // ✅ CAS : Valeur simple
+            else {
+            const safeValue = this.escapeXml(String(value));
+            xml += `${spaces}<${key}><![CDATA[${safeValue}]]></${key}>\n`;
+            }
+        }
+        
+        return xml;
   }
 
   private escapeXml(str: string): string {
