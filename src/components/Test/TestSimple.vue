@@ -1,14 +1,14 @@
 <!-- components/ProductTable.vue -->
 <template>
   <div>
-    <h2>📦 Produits</h2>
+    <h2> Produits</h2>
     
     <!-- Barre de recherche -->
     <div class="toolbar">
       <input 
         v-model="searchQuery" 
         @input="doSearch" 
-        placeholder="🔍 Rechercher un produit..."
+        placeholder="Rechercher un produit..."
       />
       <select v-model="filterCategory" @change="doFilter">
         <option value="">Toutes les catégories</option>
@@ -26,7 +26,7 @@
     <!-- Formulaire de création/modification -->
     <div v-if="showCreateForm || showEditForm" class="form-overlay">
       <div class="form-container">
-        <h3>{{ showEditForm ? '✏️ Modifier' : '➕ Nouveau' }} produit</h3>
+        <h3>{{ showEditForm ? ' Modifier' : '+ Nouveau' }} produit</h3>
         
         <form @submit.prevent="saveProduct">
           <label>Nom :</label>
@@ -48,13 +48,13 @@
           
           <label>Actif :</label>
           <select v-model="form.active">
-            <option value="1">✅ Oui</option>
-            <option value="0">❌ Non</option>
+            <option value="1"> Oui</option>
+            <option value="0"> Non</option>
           </select>
           
           <div class="form-actions">
             <button type="submit" class="btn-save" :disabled="saving">
-              {{ saving ? '⏳...' : '💾 Sauvegarder' }}
+              {{ saving ? '...' : ' Sauvegarder' }}
             </button>
             <button type="button" @click="closeForm" class="btn-cancel">Annuler</button>
           </div>
