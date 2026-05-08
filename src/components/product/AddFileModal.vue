@@ -3,37 +3,42 @@ import { ref } from 'vue';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits(['close', 'add']);
- 
+
 const form = ref({
   name: '',
   description: '',
   file: null as File | null
 });
 
-const handleFileSelect = (event: Event) => {
-  const input = event.target as HTMLInputElement;
-  if (input.files?.[0]) {
-    form.value.file = input.files[0];
-  }
-};
-
 const submit = () => {
-  if (!form.value.file || !form.value.name.trim()) {
-    alert('Veuillez remplir tous les champs');
+  if (!form.value.name.trim() || !form.value.file) {
+    alert('Veuillez renseigner le nom et sélectionner un fichier.');
     return;
   }
   emit('add', {
     name: form.value.name,
     description: form.value.description,
-    file: form.value.file
+    file: form.value.file,
+    filename: form.value.file.name,
+    size: form.value.file.size,
+    type: form.value.file.type
   });
-  form.value = { name: '', description: '', file: null };
+  form.value.name = '';
+  form.value.description = '';
+  form.value.file = null;
   emit('close');
 };
 
 const close = () => {
-  form.value = { name: '', description: '', file: null };
+  form.value.name = '';
+  form.value.description = '';
+  form.value.file = null;
   emit('close');
+};
+
+const onFileChange = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  form.value.file = input.files?.[0] || null;
 };
 </script>
 
@@ -42,24 +47,21 @@ const close = () => {
     <div class="modal">
       <div class="modal-header">
         <h3>Ajouter un fichier joint</h3>
-        <button class="close-btn" @click="close">✕</button>
+        <button class="close-btn" type="button" @click="close">✕</button>
       </div>
       <div class="modal-body">
         <label>Nom du fichier</label>
-        <input v-model="form.name" placeholder="Nom du fichier" />
-        
+        <input v-model="form.name" placeholder="Nom du document" />
+
         <label>Description</label>
-        <textarea v-model="form.description" placeholder="Description du fichier"></textarea>
-        
+        <textarea v-model="form.description" placeholder="Description du document"></textarea>
+
         <label>Fichier</label>
-        <input type="file" @change="handleFileSelect" />
-        <p v-if="form.file" class="file-info">
-          ✓ {{ form.file.name }}
-        </p>
+        <input type="file" @change="onFileChange" />
       </div>
       <div class="modal-footer">
-        <button class="btn-cancel" @click="close">Annuler</button>
-        <button class="btn-save" @click="submit">Ajouter</button>
+        <button type="button" class="btn-cancel" @click="close">Annuler</button>
+        <button type="button" class="btn-save" @click="submit">Ajouter</button>
       </div>
     </div>
   </div>
@@ -68,96 +70,67 @@ const close = () => {
 <style scoped>
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0,0,0,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
 }
-
 .modal {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  min-width: 400px;
-  max-width: 500px;
+  width: min(520px, 100%);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.12);
 }
-
-.modal-header {
+.modal-header,
+.modal-footer {
+  padding: 16px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 18px;
-  border-bottom: 1px solid #ddd;
+  justify-content: space-between;
+  border-bottom: 1px solid #eee;
 }
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
+.modal-footer {
+  border-top: 1px solid #eee;
+  border-bottom: none;
 }
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #999;
-}
-
 .modal-body {
-  padding: 18px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-
 .modal-body label {
   font-weight: 600;
 }
-
 .modal-body input,
 .modal-body textarea {
+  width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: inherit;
+  border-radius: 5px;
 }
-
-.file-info {
-  margin: 0;
-  padding: 8px 12px;
-  background: #e8f5e9;
-  border-radius: 4px;
-  color: #2e7d32;
-  font-size: 13px;
+.modal-body textarea {
+  min-height: 100px;
 }
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 18px;
-  border-top: 1px solid #ddd;
-}
-
+.close-btn,
 .btn-save,
 .btn-cancel {
-  padding: 10px 20px;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  border-radius: 6px;
+  padding: 10px 16px;
 }
-
+.close-btn {
+  background: transparent;
+  font-size: 18px;
+}
 .btn-save {
-  background: #4CAF50;
+  background: #4caf50;
   color: white;
 }
-
 .btn-cancel {
   background: #999;
   color: white;

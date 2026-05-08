@@ -17,8 +17,8 @@ export const useManufacturerStore = defineStore('manufacturer', {
       try {
         const res = await api.get('/manufacturers?output_format=XML&display=full&limit=1000');
         this.manufacturers = Array.from(parse(res.data).querySelectorAll('manufacturer')).map(el => ({
-          id:   text(el, 'id'),
-          name: lang(el, 'name'),
+          id:     text(el, 'id'),
+          name:   text(el, 'name'),
           active: text(el, 'active'),
         }));
       } catch (e) { console.error(e); }
