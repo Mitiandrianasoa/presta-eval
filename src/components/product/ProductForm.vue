@@ -5,9 +5,12 @@ import { useManufacturerStore } from '../../stores/brand/manufacturerStore';
 import { useProductStore } from '../../stores/product/productStore';
 import { useFeatureStore } from '../../stores/feature/featureStore';
 import { useLanguageStore } from '../../stores/language/languageStore';
+import { useStockStore } from '../../stores/stock/stockStore';
+import { useCarrierStore } from '../../stores/carrier/carrierStore';
 import AddCategoryModal from './AddCategoryModal.vue';
 import AddFileModal from './AddFileModal.vue';
 import ProductSearch from './ProductSearch.vue';
+import api from '../../api/api';
 
 // Props & Emits
 const props = defineProps<{ product: any }>();
@@ -19,6 +22,8 @@ const manufacturerStore = useManufacturerStore();
 const productStore      = useProductStore();
 const featureStore      = useFeatureStore();
 const languageStore     = useLanguageStore();
+const stockStore        = useStockStore();
+const carrierStore      = useCarrierStore();
 
 // UI State
 const tabs = ['Description', 'Detail', 'Stock', 'Livraison', 'Prix', 'Option'];
@@ -34,88 +39,118 @@ const documents       = ref<Array<any>>([]);
 const characteristics = ref<Array<any>>([]);
 
 // Images
-const imageFiles = ref<File[]>([]);
+const imageFiles    = ref<File[]>([]);
 const imagePreviews = ref<string[]>([]);
-const fileInput = ref<HTMLInputElement | null>(null);
+const fileInput     = ref<HTMLInputElement | null>(null);
 
-// Form Data - Correspond aux colonnes ps_product
+// Stock
+const stockDelta = ref<number>(0);
+
+// Form Data
 const form = ref({
   // Informations de base
   name: '',
   description: '',
   descriptionShort: '',
-  
+
   // Références
   reference: '',
   mpn: '',
   isbn: '',
-  ean13: '',      // correspond à ean_jan dans l'ancien code
+  ean13: '',
   upc: '',
-  
+
   // Catégorie et marque
   id_category_default: '',
   id_manufacturer: '',
-  
+
   // Stock
   quantity: 0,
   minimal_quantity: 0,
-  
+
   // Dimensions et poids
   weight: '0',
   width: '0',
   height: '0',
   depth: '0',
-  
+
   // Prix
   price: '0',
   wholesale_price: '0',
   unit_price_ratio: '0',
   additional_shipping_cost: '0',
-  
+
   // Statut et visibilité
   active: true,
   available_for_order: true,
   online_only: false,
   visibility: 'both',
-  
+
   // Associations
-  associated_products: [] as number[]
+  associated_products: [] as number[],
+
+  // Stock avancé
+  out_of_stock: 2 as number,
+  available_now: '',
+  available_later: '',
+  available_date: '',
+  low_stock_alert: false,
+  low_stock_threshold: 0 as number,
+
+  // Livraison
+  delivery_delay_type: 'default' as 'none' | 'default' | 'specific',
+  delivery_delay_in_stock: '',
+  delivery_delay_out_of_stock: '',
+  id_carrier: '' as string,
 });
 
 // Initialisation
 const initForm = (product: any) => {
   form.value = {
-    name: product?.name || '',
-    description: product?.description || '',
-    descriptionShort: product?.description_short || '',
-    reference: product?.reference || '',
-    mpn: product?.mpn || '',
-    isbn: product?.isbn || '',
-    ean13: product?.ean13 || product?.ean_jan || '',
-    upc: product?.upc || '',
-    id_category_default: product?.id_category_default || '',
-    id_manufacturer: product?.id_manufacturer || '',
-    quantity: product?.quantity || product?.stock || 0,
-    minimal_quantity: product?.minimal_quantity || 0,
-    weight: product?.weight || '0',
-    width: product?.width || '0',
-    height: product?.height || '0',
-    depth: product?.depth || '0',
-    additional_shipping_cost: product?.additional_shipping_cost || '0',
-    price: product?.price || '0',
-    wholesale_price: product?.wholesale_price || '0',
-    unit_price_ratio: product?.unit_price_ratio || '0',
-    active: product?.active == 1,
-    available_for_order: product?.available_for_order ?? true,
-    online_only: product?.online_only ?? false,
-    visibility: product?.visibility || 'both',
-    associated_products: product?.associated_products || []
+    name:                        product?.name || '',
+    description:                 product?.description || '',
+    descriptionShort:            product?.description_short || '',
+    reference:                   product?.reference || '',
+    mpn:                         product?.mpn || '',
+    isbn:                        product?.isbn || '',
+    ean13:                       product?.ean13 || product?.ean_jan || '',
+    upc:                         product?.upc || '',
+    id_category_default:         product?.id_category_default || '',
+    id_manufacturer:             product?.id_manufacturer || '',
+    quantity:                    product?.quantity || product?.stock || 0,
+    minimal_quantity:            product?.minimal_quantity || 0,
+    weight:                      product?.weight || '0',
+    width:                       product?.width || '0',
+    height:                      product?.height || '0',
+    depth:                       product?.depth || '0',
+    additional_shipping_cost:    product?.additional_shipping_cost || '0',
+    price:                       product?.price || '0',
+    wholesale_price:             product?.wholesale_price || '0',
+    unit_price_ratio:            product?.unit_price_ratio || '0',
+    active:                      product?.active == 1,
+    available_for_order:         product?.available_for_order ?? true,
+    online_only:                 product?.online_only ?? false,
+    visibility:                  product?.visibility || 'both',
+    associated_products:         product?.associated_products || [],
+    out_of_stock:                product?.out_of_stock ?? 2,
+    available_now:               product?.available_now || '',
+    available_later:             product?.available_later || '',
+    available_date:              product?.available_date || '',
+    low_stock_alert:             product?.low_stock_alert ?? false,
+    low_stock_threshold:         product?.low_stock_threshold ?? 0,
+    delivery_delay_type:         product?.delivery_delay_type || 'default',
+    delivery_delay_in_stock:     product?.delivery_delay_in_stock || '',
+    delivery_delay_out_of_stock: product?.delivery_delay_out_of_stock || '',
+    id_carrier:                  product?.id_carrier || '',
   };
-  
-  imageFiles.value = [];
-  imagePreviews.value = [];
+
+  stockDelta.value      = 0;
+  imageFiles.value      = [];
+  imagePreviews.value   = [];
   characteristics.value = product?.characteristics || [];
-  documents.value = product?.documents || [];
+  documents.value       = product?.documents || [];
+
+  fetchStockMovementsForProduct();
 };
 
 // Lifecycle
@@ -126,6 +161,8 @@ onMounted(async () => {
     productStore.fetchAll(),
     featureStore.fetchAll(),
     languageStore.fetchAll(),
+    stockStore.fetchAll(),
+    carrierStore.fetchAll(),
   ]);
   initForm(props.product);
 });
@@ -135,7 +172,6 @@ watch(() => props.product, (newProduct) => initForm(newProduct));
 // Computed
 const filteredDocuments = computed(() => {
   if (!searchDocumentQuery.value) return documents.value;
-  
   return documents.value.filter((doc) =>
     doc.name?.toLowerCase().includes(searchDocumentQuery.value.toLowerCase()) ||
     doc.filename?.toLowerCase().includes(searchDocumentQuery.value.toLowerCase())
@@ -143,38 +179,27 @@ const filteredDocuments = computed(() => {
 });
 
 // Image Management
-const triggerFileInput = () => {
-  fileInput.value?.click();
-};
+const triggerFileInput = () => fileInput.value?.click();
 
 const handleImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement;
-  
-  if (!input.files || input.files.length === 0) {
-    console.log('Aucun fichier sélectionné');
-    return;
-  }
-  
+  if (!input.files || input.files.length === 0) return;
+
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-  
+
   Array.from(input.files).forEach(file => {
     if (!allowedTypes.includes(file.type)) {
-      console.warn(`Type non autorisé: ${file.type} pour ${file.name}`);
       alert(`Le fichier ${file.name} n'est pas au format JPEG ou PNG`);
       return;
     }
-    
     imageFiles.value.push(file);
-    
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (e.target?.result) {
-        imagePreviews.value.push(e.target.result as string);
-      }
+      if (e.target?.result) imagePreviews.value.push(e.target.result as string);
     };
     reader.readAsDataURL(file);
   });
-  
+
   input.value = '';
 };
 
@@ -190,13 +215,11 @@ const addCharacteristic = () => {
     valueMode: 'predefined',
     value: '',
     customValue: '',
-    language: ''
+    language: '',
   });
 };
 
-const removeCharacteristic = (index: number) => {
-  characteristics.value.splice(index, 1);
-};
+const removeCharacteristic = (index: number) => characteristics.value.splice(index, 1);
 
 const availableFeatureValues = (row: any) => {
   const feature = featureStore.features.find(f => f.id === row.featureId);
@@ -204,58 +227,59 @@ const availableFeatureValues = (row: any) => {
 };
 
 // Documents Management
-const addDocument = (fileData: any) => {
-  documents.value.push(fileData);
+const addDocument = (fileData: any) => documents.value.push(fileData);
+
+const fetchStockMovementsForProduct = async () => {
+  try {
+    await stockStore.fetchAllStockMovements(100);
+  } catch (error) {
+    console.error('Erreur:', error);
+    stockStore.stockMovements = [];
+  }
 };
 
 // Form Submission
 const submit = () => {
+  const newQty = form.value.quantity + stockDelta.value;
   emit('save', {
-    // Base info
-    name: form.value.name,
-    description: form.value.description,
-    description_short: form.value.descriptionShort,
-    
-    // References
-    reference: form.value.reference,
-    mpn: form.value.mpn,
-    isbn: form.value.isbn,
-    ean13: form.value.ean13,
-    upc: form.value.upc,
-    
-    // Foreign keys
-    id_category_default: form.value.id_category_default,
-    id_manufacturer: form.value.id_manufacturer,
-    
-    // Stock
-    quantity: form.value.quantity,
-    minimal_quantity: form.value.minimal_quantity,
-    
-    // Dimensions
-    weight: form.value.weight,
-    width: form.value.width,
-    height: form.value.height,
-    depth: form.value.depth,
-    additional_shipping_cost: form.value.additional_shipping_cost,
-    
-    // Prices
-    price: form.value.price,
-    wholesale_price: form.value.wholesale_price,
-    unit_price_ratio: form.value.unit_price_ratio,
-    
-    // Status
-    active: form.value.active ? '1' : '0',
-    available_for_order: form.value.available_for_order ? '1' : '0',
-    online_only: form.value.online_only ? '1' : '0',
-    visibility: form.value.visibility,
-    
-    // Associations
-    associated_products: form.value.associated_products,
-    
-    // Additional data
-    characteristics: characteristics.value,
-    documents: documents.value,
-    images: imageFiles.value
+    name:                        form.value.name,
+    description:                 form.value.description,
+    description_short:           form.value.descriptionShort,
+    reference:                   form.value.reference,
+    mpn:                         form.value.mpn,
+    isbn:                        form.value.isbn,
+    ean13:                       form.value.ean13,
+    upc:                         form.value.upc,
+    id_category_default:         form.value.id_category_default,
+    id_manufacturer:             form.value.id_manufacturer,
+    quantity:                    newQty,
+    minimal_quantity:            form.value.minimal_quantity,
+    weight:                      form.value.weight,
+    width:                       form.value.width,
+    height:                      form.value.height,
+    depth:                       form.value.depth,
+    additional_shipping_cost:    form.value.additional_shipping_cost,
+    price:                       form.value.price,
+    wholesale_price:             form.value.wholesale_price,
+    unit_price_ratio:            form.value.unit_price_ratio,
+    active:                      form.value.active ? '1' : '0',
+    available_for_order:         form.value.available_for_order ? '1' : '0',
+    online_only:                 form.value.online_only ? '1' : '0',
+    visibility:                  form.value.visibility,
+    out_of_stock:                form.value.out_of_stock,
+    available_now:               form.value.available_now,
+    available_later:             form.value.available_later,
+    available_date:              form.value.available_date,
+    low_stock_alert:             form.value.low_stock_alert ? '1' : '0',
+    low_stock_threshold:         form.value.low_stock_threshold,
+    associated_products:         form.value.associated_products,
+    characteristics:             characteristics.value,
+    documents:                   documents.value,
+    images:                      imageFiles.value,
+    delivery_delay_type:         form.value.delivery_delay_type,
+    delivery_delay_in_stock:     form.value.delivery_delay_in_stock,
+    delivery_delay_out_of_stock: form.value.delivery_delay_out_of_stock,
+    id_carrier:                  form.value.id_carrier,
   });
 };
 </script>
@@ -280,8 +304,8 @@ const submit = () => {
 
     <!-- Tab Content -->
     <div class="tab-content">
-      
-      <!-- Onglet Description -->
+
+      <!-- ─── Onglet Description ────────────────────────────────────── -->
       <section v-if="activeTab === 'Description'" class="form-section">
         <div class="form-group">
           <label>Article *</label>
@@ -299,9 +323,9 @@ const submit = () => {
               @change="handleImageUpload"
               class="file-input"
             />
-            <p class="upload-hint"> Cliquez pour ajouter une ou plusieurs images (JPEG, PNG)</p>
+            <p class="upload-hint">Cliquez pour ajouter une ou plusieurs images (JPEG, PNG)</p>
           </div>
-          
+
           <div v-if="imagePreviews.length" class="image-previews">
             <div v-for="(preview, index) in imagePreviews" :key="index" class="image-preview">
               <img :src="preview" :alt="`Aperçu ${index + 1}`" />
@@ -355,17 +379,16 @@ const submit = () => {
         </div>
       </section>
 
-      <!-- Onglet Détail -->
+      <!-- ─── Onglet Détail ─────────────────────────────────────────── -->
       <section v-if="activeTab === 'Detail'" class="form-section">
         <div class="subsection">
-          <h4> Références produit</h4>
-          
+          <h4>Références produit</h4>
+
           <div class="form-row">
             <div class="form-group">
               <label>Référence</label>
               <input v-model="form.reference" placeholder="Référence produit" />
             </div>
-
             <div class="form-group">
               <label>MPN</label>
               <input v-model="form.mpn" placeholder="Manufacturer Part Number" />
@@ -377,7 +400,6 @@ const submit = () => {
               <label>ISBN</label>
               <input v-model="form.isbn" placeholder="ISBN" />
             </div>
-
             <div class="form-group">
               <label>UPC</label>
               <input v-model="form.upc" placeholder="Code UPC" />
@@ -391,12 +413,12 @@ const submit = () => {
         </div>
 
         <div class="subsection">
-          <h4> Caractéristiques</h4>
-          
+          <h4>Caractéristiques</h4>
+
           <button type="button" @click="addCharacteristic" class="btn-add">
             + Ajouter une caractéristique
           </button>
-          
+
           <div v-for="(char, index) in characteristics" :key="index" class="characteristic-row">
             <select v-model="char.featureId" class="feature-select">
               <option value="">Sélectionner</option>
@@ -412,7 +434,9 @@ const submit = () => {
 
             <select v-model="char.language">
               <option value="">Langue</option>
-              <option v-for="lang in languageStore.languages" :key="lang.id" :value="lang.id">{{ lang.name }}</option>
+              <option v-for="lang in languageStore.languages" :key="lang.id" :value="lang.id">
+                {{ lang.name }}
+              </option>
             </select>
 
             <button type="button" @click="removeCharacteristic(index)" class="btn-remove">
@@ -422,21 +446,21 @@ const submit = () => {
         </div>
 
         <div class="subsection">
-          <h4> Documents joints</h4>
-          
-          <input 
-            v-model="searchDocumentQuery" 
-            placeholder=" Rechercher un document..." 
-            class="search-input" 
+          <h4>Documents joints</h4>
+
+          <input
+            v-model="searchDocumentQuery"
+            placeholder="Rechercher un document..."
+            class="search-input"
           />
-          
+
           <button type="button" @click="showFileModal = true" class="btn-add">
             + Ajouter un fichier
           </button>
-          
+
           <div class="documents-list">
             <div v-for="(doc, index) in filteredDocuments" :key="index" class="document-item">
-              <span> {{ doc.name }} ({{ doc.filename }})</span>
+              <span>{{ doc.name }} ({{ doc.filename }})</span>
               <button type="button" @click="documents.splice(index, 1)" class="btn-remove">
                 Supprimer
               </button>
@@ -445,108 +469,314 @@ const submit = () => {
         </div>
 
         <div class="subsection">
-          <h4> Statut du produit</h4>
-          
+          <h4>Statut du produit</h4>
           <div class="form-row">
             <div class="form-group">
               <label>Activé</label>
               <select v-model="form.active">
-                <option :value="true"> Oui</option>
-                <option :value="false"> Non</option>
+                <option :value="true">Oui</option>
+                <option :value="false">Non</option>
               </select>
             </div>
           </div>
-
         </div>
       </section>
 
-      <!-- Onglet Stock -->
+      <!-- ─── Onglet Stock ──────────────────────────────────────────── -->
       <section v-if="activeTab === 'Stock'" class="form-section">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Quantité disponible</label>
-            <input v-model="form.quantity" type="number" step="1" placeholder="0" />
-          </div>
-          
-          <div class="form-group">
-            <label>Quantité minimale</label>
-            <input v-model="form.minimal_quantity" type="number" step="1" placeholder="1" />
+
+        <div class="subsection">
+          <h4>Stock</h4>
+          <div class="stock-qty-block">
+            <div class="stock-current">
+              <span class="stock-label">Quantité actuelle</span>
+              <span class="stock-value">{{ form.quantity }}</span>
+            </div>
+            <div class="form-group">
+              <label>Ajouter ou soustraire des éléments</label>
+              <div class="stock-delta-row">
+                <input
+                  v-model.number="stockDelta"
+                  type="number"
+                  step="1"
+                  placeholder="0"
+                  class="stock-delta-input"
+                />
+                <span class="stock-preview">→ {{ form.quantity + stockDelta }}</span>
+              </div>
+            </div>
           </div>
         </div>
+
+        <div class="subsection">
+          <h4>Mouvements récents des stocks</h4>
+          <div class="stock-table-wrapper">
+            <table class="stock-table" v-if="stockStore.stockMovements.length">
+              <thead>
+                <tr>
+                  <th>Date et heure</th>
+                  <th>Employé</th>
+                  <th>Quantité</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(mvt, i) in stockStore.stockMovements" :key="i">
+                  <td>{{ mvt.date }}</td>
+                  <td>{{ mvt.employee }}</td>
+                  <td :class="mvt.quantity >= 0 ? 'qty-positive' : 'qty-negative'">
+                    {{ mvt.quantity >= 0 ? '+' : '' }}{{ mvt.quantity }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="empty-hint">Aucun mouvement de stock enregistré.</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Quantité minimale pour la vente</label>
+          <input v-model.number="form.minimal_quantity" type="number" step="1" min="1" placeholder="1" />
+        </div>
+
+        <div class="subsection">
+          <div class="alert-toggle-row">
+            <label class="toggle-label">
+              <span>Recevoir une alerte par e-mail lorsque le stock est faible</span>
+              <button
+                type="button"
+                class="toggle-btn"
+                :class="{ active: form.low_stock_alert }"
+                @click="form.low_stock_alert = !form.low_stock_alert"
+              >
+                {{ form.low_stock_alert ? 'Activé' : 'Désactivé' }}
+              </button>
+            </label>
+          </div>
+          <div class="form-group" v-if="form.low_stock_alert">
+            <label>Seuil d'alerte</label>
+            <input v-model.number="form.low_stock_threshold" type="number" step="1" min="0" placeholder="0" />
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h4>En cas de rupture de stock</h4>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" v-model.number="form.out_of_stock" :value="0" />
+              <span>Refuser les commandes</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" v-model.number="form.out_of_stock" :value="1" />
+              <span>Accepter les commandes</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" v-model.number="form.out_of_stock" :value="2" />
+              <span>Utiliser le comportement par défaut <em>(Refuser les commandes)</em></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <div class="form-group">
+            <label>Libellé en stock</label>
+            <input v-model="form.available_now" type="text" placeholder="Ex : En stock" />
+          </div>
+          <div class="form-group" style="margin-top: 12px;">
+            <label>Libellé si en rupture de stock <em>(commandes en attente autorisées)</em></label>
+            <input v-model="form.available_later" type="text" placeholder="Ex : Livraison sous 8 à 10 jours" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Date de disponibilité</label>
+          <input v-model="form.available_date" type="date" />
+        </div>
+
       </section>
 
-      <!-- Onglet Livraison -->
+      <!-- ─── Onglet Livraison ──────────────────────────────────────── -->
       <section v-if="activeTab === 'Livraison'" class="form-section">
-        <div class="form-group">
-          <label>Poids (kg)</label>
-          <input v-model="form.weight" type="number" step="0.01" placeholder="0.00" />
-        </div>
-        
-        <div class="form-group">
-          <label>Dimensions (L x H x P)</label>
-          <div class="dimensions">
-            <input v-model="form.width" type="number" step="0.01" placeholder="Largeur" />
-            <input v-model="form.height" type="number" step="0.01" placeholder="Hauteur" />
-            <input v-model="form.depth" type="number" step="0.01" placeholder="Profondeur" />
+
+        <!-- Dimensions du paquet -->
+        <div class="subsection">
+          <h4>Dimensions du paquet</h4>
+          <p class="subsection-hint">
+            Ajustez vos frais de livraison en renseignant les dimensions du produit.
+          </p>
+
+          <div class="form-row dimensions-grid">
+            <div class="form-group">
+              <label>Largeur</label>
+              <div class="input-unit-wrap">
+                <input v-model="form.width" type="number" step="0.01" min="0" placeholder="0.00" />
+                <span class="unit">cm</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Hauteur</label>
+              <div class="input-unit-wrap">
+                <input v-model="form.height" type="number" step="0.01" min="0" placeholder="0.00" />
+                <span class="unit">cm</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Profondeur</label>
+              <div class="input-unit-wrap">
+                <input v-model="form.depth" type="number" step="0.01" min="0" placeholder="0.00" />
+                <span class="unit">cm</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Poids</label>
+              <div class="input-unit-wrap">
+                <input v-model="form.weight" type="number" step="0.001" min="0" placeholder="0.000" />
+                <span class="unit">kg</span>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <div class="form-group">
-          <label>Frais de livraison additionnels</label>
-          <input v-model="form.additional_shipping_cost" type="number" step="0.01" placeholder="0.00" />
+
+        <!-- Délai de livraison -->
+        <div class="subsection">
+          <h4>Délai de livraison</h4>
+
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" v-model="form.delivery_delay_type" value="none" />
+              <span>Aucun</span>
+            </label>
+
+            <label class="radio-option">
+              <input type="radio" v-model="form.delivery_delay_type" value="default" />
+              <span>
+                Délai de livraison par défaut&nbsp;: <em>N/D - N/D</em>
+              </span>
+            </label>
+
+            <label class="radio-option">
+              <input type="radio" v-model="form.delivery_delay_type" value="specific" />
+              <span>Délai de livraison spécifique pour ce produit</span>
+            </label>
+          </div>
+
+          <Transition name="fade-slide">
+            <div v-if="form.delivery_delay_type === 'specific'" class="specific-delays">
+              <div class="form-group">
+                <label>Délai de livraison pour les produits en stock</label>
+                <input
+                  v-model="form.delivery_delay_in_stock"
+                  type="text"
+                  placeholder="Ex : Livraison en 2-3 jours ouvrés"
+                />
+              </div>
+              <div class="form-group" style="margin-top: 12px;">
+                <label>Délai de livraison des produits épuisés avec commande autorisée</label>
+                <input
+                  v-model="form.delivery_delay_out_of_stock"
+                  type="text"
+                  placeholder="Ex : Livraison sous 8 à 10 jours"
+                />
+              </div>
+            </div>
+          </Transition>
         </div>
+
+        <!-- Frais de livraison -->
+        <div class="subsection">
+          <h4>Frais de livraison</h4>
+
+          <div class="form-group">
+            <label>Frais de port supplémentaires</label>
+            <div class="input-unit-wrap">
+              <input
+                v-model="form.additional_shipping_cost"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+              />
+              <span class="unit">Ar</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transporteurs disponibles -->
+        <div class="subsection">
+          <h4>Transporteurs disponibles</h4>
+
+          <div class="form-group">
+            <label>Transporteur</label>
+            <select v-model="form.id_carrier" :disabled="carrierStore.loading">
+              <option value="">
+                {{ carrierStore.loading ? 'Chargement…' : 'Tous les transports' }}
+              </option>
+              <option
+                v-for="carrier in carrierStore.carriers"
+                :key="carrier.id"
+                :value="carrier.id"
+              >
+                {{ carrier.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
       </section>
 
-      <!-- Onglet Prix -->
+      <!-- ─── Onglet Prix ───────────────────────────────────────────── -->
       <section v-if="activeTab === 'Prix'" class="form-section">
         <div class="form-group">
           <label>Prix HT *</label>
           <input v-model="form.price" type="number" step="0.01" placeholder="0.00" required />
         </div>
-        
+
         <div class="form-group">
           <label>Prix d'achat</label>
           <input v-model="form.wholesale_price" type="number" step="0.01" placeholder="0.00" />
         </div>
-        
+
         <div class="form-group">
           <label>Ratio prix unitaire</label>
           <input v-model="form.unit_price_ratio" type="number" step="0.01" placeholder="0.00" />
         </div>
       </section>
 
-      <!-- Onglet Option -->
+      <!-- ─── Onglet Option ─────────────────────────────────────────── -->
       <section v-if="activeTab === 'Option'" class="form-section">
         <div class="form-group">
           <label>Activé</label>
           <select v-model="form.active">
-            <option :value="true"> Actif</option>
-            <option :value="false"> Inactif</option>
+            <option :value="true">Actif</option>
+            <option :value="false">Inactif</option>
           </select>
         </div>
-        
+
         <div class="form-group">
           <label>Disponible à la commande</label>
           <select v-model="form.available_for_order">
-            <option :value="true"> Disponible</option>
-            <option :value="false"> Indisponible</option>
+            <option :value="true">Disponible</option>
+            <option :value="false">Indisponible</option>
           </select>
         </div>
-        
+
         <div class="form-group">
           <label>En ligne uniquement</label>
           <select v-model="form.online_only">
-            <option :value="false"> Non</option>
-            <option :value="true"> Oui</option>
+            <option :value="false">Non</option>
+            <option :value="true">Oui</option>
           </select>
         </div>
       </section>
+
     </div>
 
     <!-- Actions -->
     <div class="form-actions">
-      <button type="submit" class="btn-save"> Sauvegarder</button>
-      <button type="button" @click="$emit('cancel')" class="btn-cancel"> Annuler</button>
+      <button type="submit" class="btn-save">Sauvegarder</button>
+      <button type="button" @click="$emit('cancel')" class="btn-cancel">Annuler</button>
     </div>
 
     <!-- Modals -->
@@ -555,7 +785,7 @@ const submit = () => {
       @close="showCategoryModal = false"
       @add="(cat) => { form.id_category_default = cat.id; }"
     />
-    
+
     <AddFileModal
       :open="showFileModal"
       @close="showFileModal = false"
@@ -574,7 +804,7 @@ const submit = () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 900px;
+  max-width: 2000px;
 }
 
 .form-title {
@@ -589,11 +819,25 @@ const submit = () => {
   gap: 20px;
 }
 
-
+.subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #fafafa;
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  padding: 16px;
+}
 
 .subsection h4 {
   margin: 0 0 16px 0;
   color: #2c3e50;
+}
+
+.subsection-hint {
+  margin: -8px 0 14px;
+  font-size: 13px;
+  color: #888;
 }
 
 .form-group {
@@ -606,6 +850,16 @@ const submit = () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.dimensions-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 600px) {
+  .dimensions-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 label {
@@ -631,6 +885,51 @@ input:focus, select:focus, textarea:focus {
 textarea {
   resize: vertical;
   font-family: inherit;
+}
+
+/* Input with unit badge */
+.input-unit-wrap {
+  display: flex;
+  align-items: stretch;
+}
+
+.input-unit-wrap input {
+  flex: 1;
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+}
+
+.input-unit-wrap .unit {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Délais spécifiques */
+.specific-delays {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #ddd;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* Tabs */
@@ -795,15 +1094,9 @@ textarea {
   margin-bottom: 12px;
 }
 
-/* Dimensions */
-.dimensions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
 /* Buttons */
-.btn-add, .btn-remove {
+.btn-add,
+.btn-remove {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
@@ -843,7 +1136,8 @@ textarea {
   margin-top: 8px;
 }
 
-.btn-save, .btn-cancel {
+.btn-save,
+.btn-cancel {
   padding: 10px 24px;
   border: none;
   border-radius: 6px;
@@ -872,22 +1166,184 @@ textarea {
   background: #7f8c8d;
 }
 
+/* Stock tab */
+.stock-qty-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.stock-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stock-label {
+  font-weight: 600;
+  color: #34495e;
+  font-size: 13px;
+}
+
+.stock-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #2c3e50;
+  background: #fff;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  padding: 4px 18px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.stock-delta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stock-delta-input {
+  width: 140px;
+}
+
+.stock-preview {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.stock-table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stock-table th {
+  background: #f0f0f0;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: #34495e;
+  border-bottom: 2px solid #ddd;
+}
+
+.stock-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #eee;
+  color: #555;
+}
+
+.stock-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.qty-positive { color: #27ae60; font-weight: 600; }
+.qty-negative { color: #e74c3c; font-weight: 600; }
+
+.empty-hint {
+  text-align: center;
+  color: #aaa;
+  padding: 20px;
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Alert toggle */
+.alert-toggle-row {
+  margin-bottom: 12px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-weight: 600;
+  color: #34495e;
+  font-size: 13px;
+  cursor: default;
+}
+
+.toggle-btn {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ccc;
+  color: #fff;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-btn.active {
+  background: #4CAF50;
+}
+
+/* Radio group */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #444;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.radio-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.radio-option em {
+  color: #888;
+  font-size: 12px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .product-form {
     padding: 16px;
   }
-  
+
   .form-row,
-  .characteristic-row,
-  .dimensions {
+  .characteristic-row {
     grid-template-columns: 1fr;
   }
-  
+
+  .dimensions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .category-selector {
     flex-direction: column;
   }
-  
+
   .tabs {
     overflow-x: auto;
   }

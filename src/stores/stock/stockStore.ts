@@ -12,10 +12,19 @@ export interface Stock {
   product_name?: string;
 }
 
+// Nouvelle interface pour les mouvements de stock
+export interface StockMovement {
+  date: string;
+  employee: string;
+  quantity: number;
+  reason?: string;
+}
+
 export const useStockStore = defineStore('stock', {
   state: () => ({
     stocks: [] as Stock[],
     products: [] as any[],
+    stockMovements: [] as StockMovement[],
     loading: false,
     error: null as string | null,
   }),
@@ -125,6 +134,84 @@ export const useStockStore = defineStore('stock', {
       }
 
       this.error = failed > 0 ? `${success} succès, ${failed} erreurs` : null;
+    },
+
+    // Récupérer les mouvements de stock pour un stock spécifique
+    async fetchStockMovements(idStock: string, limit: number = 50) {
+      try {
+        const response = await api.get(
+          `/stock_movements?output_format=XML&display=full&filter[id_stock]=${idStock}&sort=date_add_DESC&limit=${limit}`
+        );
+        
+        const xmlDoc = parse(response.data);
+        const movements = xmlDoc.querySelectorAll('stock_mvt');
+        
+        this.stockMovements = Array.from(movements).map(mvt => {
+          const physicalQuantity = parseInt(text(mvt, 'physical_quantity')) || 0;
+          const sign = parseInt(text(mvt, 'sign')) || 1;
+          const quantity = physicalQuantity * sign;
+          
+          const dateAdd = text(mvt, 'date_add');
+          const formattedDate = new Date(dateAdd).toLocaleString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          
+          return {
+            date: formattedDate,
+            employee: `${text(mvt, 'employee_firstname')} ${text(mvt, 'employee_lastname')}`.trim() || '—',
+            quantity: quantity,
+            reason: text(mvt, 'id_stock_mvt_reason'),
+          };
+        });
+      } catch (error: any) {
+        this.error = `Erreur récupération mouvements : ${error.message}`;
+        console.error('Erreur fetchStockMovements:', error);
+        this.stockMovements = [];
+        throw error;
+      }
+    },
+
+    // Dans le store stock.ts, modifiez fetchAllStockMovements
+
+async fetchAllStockMovements(limit: number = 100) {
+  try {
+    const response = await api.get('/stock_movements', {
+      params: {
+        output_format: 'XML',
+        display: 'full',
+        sort: 'date_add_DESC',
+        limit: limit
+      }
+    });
+
+    const xmlDoc = parse(response.data);
+    const movements = xmlDoc.querySelectorAll('stock_mvt');
+    
+    this.stockMovements = Array.from(movements).map(mvt => {
+      const physicalQuantity = parseInt(text(mvt, 'physical_quantity')) || 0;
+      const sign = parseInt(text(mvt, 'sign')) || 1;
+      const quantity = physicalQuantity * sign;
+      
+      const dateAdd = text(mvt, 'date_add');
+      
+      return {
+        date: dateAdd,  // Format brut: "2026-05-07 20:42:54"
+        employee: `${text(mvt, 'employee_firstname')} ${text(mvt, 'employee_lastname')}`.trim(),
+        quantity: quantity,
+        reason: text(mvt, 'id_stock_mvt_reason'),
+      };
+    });
+    
+  } catch (error: any) {
+    console.error('Erreur fetchAllStockMovements:', error);
+    this.stockMovements = [];
+    throw error;
+  }
     }
   }
 });
