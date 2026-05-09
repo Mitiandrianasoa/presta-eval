@@ -9,6 +9,7 @@ import { useStockStore } from '../../stores/stock/stockStore';
 import { useCarrierStore } from '../../stores/carrier/carrierStore';
 import AddCategoryModal from './AddCategoryModal.vue';
 import AddFileModal from './AddFileModal.vue';
+import AddSpecificPriceModal from './AddSpecificPriceModal.vue';
 import ProductSearch from './ProductSearch.vue';
 import api from '../../api/api';
 
@@ -30,6 +31,7 @@ const tabs = ['Description', 'Detail', 'Stock', 'Livraison', 'Prix', 'Option'];
 const activeTab = ref('Description');
 const showCategoryModal = ref(false);
 const showFileModal = ref(false);
+const showSpecificPriceModal = ref(false);
 
 // Search & Filters
 const searchDocumentQuery = ref('');
@@ -48,6 +50,8 @@ const stockDelta = ref<number>(0);
 
 // Form Data
 const form = ref({
+  id: '',
+
   // Informations de base
   name: '',
   description: '',
@@ -79,6 +83,14 @@ const form = ref({
   wholesale_price: '0',
   unit_price_ratio: '0',
   additional_shipping_cost: '0',
+  tax_rule: '',
+  price_ttc: '',
+  show_unit_price: false,
+  unit_price_ht: '',
+  unit_price_ttc: '',
+  unit_price_unit: '',
+  specific_prices: [] as any[],
+  priority_order: 'default',
 
   // Statut et visibilité
   active: true,
@@ -107,6 +119,7 @@ const form = ref({
 // Initialisation
 const initForm = (product: any) => {
   form.value = {
+    id:                          product?.id || '',
     name:                        product?.name || '',
     description:                 product?.description || '',
     descriptionShort:            product?.description_short || '',
@@ -127,6 +140,14 @@ const initForm = (product: any) => {
     price:                       product?.price || '0',
     wholesale_price:             product?.wholesale_price || '0',
     unit_price_ratio:            product?.unit_price_ratio || '0',
+    tax_rule:                    product?.tax_rule || '',
+    price_ttc:                   product?.price_ttc || '',
+    show_unit_price:             product?.show_unit_price || false,
+    unit_price_ht:               product?.unit_price_ht || '',
+    unit_price_ttc:              product?.unit_price_ttc || '',
+    unit_price_unit:             product?.unit_price_unit || '',
+    specific_prices:             product?.specific_prices || [],
+    priority_order:              product?.priority_order || 'default',
     active:                      product?.active == 1,
     available_for_order:         product?.available_for_order ?? true,
     online_only:                 product?.online_only ?? false,
@@ -176,6 +197,15 @@ const filteredDocuments = computed(() => {
     doc.name?.toLowerCase().includes(searchDocumentQuery.value.toLowerCase()) ||
     doc.filename?.toLowerCase().includes(searchDocumentQuery.value.toLowerCase())
   );
+});
+
+const calculatedPriceTTC = computed(() => {
+  const price = parseFloat(form.value.price) || 0;
+  const taxRule = form.value.tax_rule;
+  let taxRate = 0;
+  if (taxRule === 'MG_20') taxRate = 0.20;
+  else if (taxRule === 'FR_0') taxRate = 0;
+  return (price * (1 + taxRate)).toFixed(2);
 });
 
 // Image Management
@@ -238,6 +268,24 @@ const fetchStockMovementsForProduct = async () => {
   }
 };
 
+const addSpecificPrice = () => {
+  showSpecificPriceModal.value = true;
+};
+
+const handleSpecificPriceSave = (data: any) => {
+  if (!form.value.specific_prices) {
+    form.value.specific_prices = [];
+  }
+  form.value.specific_prices.push(data);
+  showSpecificPriceModal.value = false;
+};
+
+const removeSpecificPrice = (index: number) => {
+  if (form.value.specific_prices) {
+    form.value.specific_prices.splice(index, 1);
+  }
+};
+
 // Form Submission
 const submit = () => {
   const newQty = form.value.quantity + stockDelta.value;
@@ -281,6 +329,10 @@ const submit = () => {
     delivery_delay_out_of_stock: form.value.delivery_delay_out_of_stock,
     id_carrier:                  form.value.id_carrier,
   });
+
+
+
+  
 };
 </script>
 
@@ -726,24 +778,166 @@ const submit = () => {
 
       </section>
 
-      <!-- ─── Onglet Prix ───────────────────────────────────────────── -->
-      <section v-if="activeTab === 'Prix'" class="form-section">
-        <div class="form-group">
-          <label>Prix HT *</label>
-          <input v-model="form.price" type="number" step="0.01" placeholder="0.00" required />
-        </div>
+     <!-- ─── Onglet Prix ───────────────────────────────────────────── -->
+<section v-if="activeTab === 'Prix'" class="form-section">
+  <!-- Section Prix de vente -->
+  <div class="subsection">
+    <h4>Prix de vente</h4>
+  </div>
 
-        <div class="form-group">
-          <label>Prix d'achat</label>
-          <input v-model="form.wholesale_price" type="number" step="0.01" placeholder="0.00" />
-        </div>
+  <div class="form-row price-sale-row">
+    <div class="form-group price-ht-group">
+      <label>Prix de vente (HT)</label>
+      <div class="input-unit-wrap">
+        <input v-model="form.price" type="number" step="0.01" placeholder="0.00" required />
+        <span class="unit">Ar</span>
+      </div>
+    </div>
 
-        <div class="form-group">
-          <label>Ratio prix unitaire</label>
-          <input v-model="form.unit_price_ratio" type="number" step="0.01" placeholder="0.00" />
-        </div>
-      </section>
+    <div class="price-operator">+</div>
 
+    <div class="form-group tax-rule-group">
+      <label>Règle de taxe</label>
+      <select v-model="form.tax_rule">
+        <option value="">Aucune taxe</option>
+        <option value="MG_20">MG Standard Rate (20%)</option>
+        <option value="FR_0">Taxe FR : 0 %</option>
+      </select>
+    </div>
+
+    <div class="price-operator">=</div>
+
+    <div class="form-group price-ttc-group">
+      <label>Prix de vente (TTC)</label>
+      <div class="input-unit-wrap">
+        <input :value="calculatedPriceTTC" type="number" step="0.01" placeholder="0.00" disabled />
+        <span class="unit">Ar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section Prix d'achat -->
+  <div class="subsection">
+    <h4>Prix d'achat</h4>
+  </div>
+
+  <div class="form-group">
+    <label>Prix d'achat (HT)</label>
+    <div class="input-unit-wrap">
+      <input v-model="form.wholesale_price" type="number" step="0.01" placeholder="0.00" />
+      <span class="unit">Ar</span>
+    </div>
+  </div>
+
+  <!-- Section Prix de vente unitaire -->
+  <div class="subsection">
+    <div class="subsection-header">
+      <h4>Afficher le prix de vente unitaire</h4>
+      <label class="toggle-switch">
+        <input type="checkbox" v-model="form.show_unit_price" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div v-if="form.show_unit_price" class="unit-price-section">
+    <div class="form-group">
+      <label>Prix de vente unitaire (HT)</label>
+      <div class="input-unit-wrap">
+        <input v-model="form.unit_price_ht" type="number" step="0.01" placeholder="0.00" />
+        <span class="unit">Ar</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Prix de vente unitaire (TTC)</label>
+      <div class="input-unit-wrap">
+        <input v-model="form.unit_price_ttc" type="number" step="0.01" placeholder="0.00" disabled />
+        <span class="unit">Ar</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Unité</label>
+      <input v-model="form.unit_price_unit" type="text" placeholder="Ex: kg, litre, pièce, mètre..." />
+    </div>
+  </div>
+
+  <!-- Section Prix spécifique -->
+  <div class="subsection">
+    <div class="subsection-header">
+      <h4>Prix spécifique</h4>
+      <button type="button" class="btn-add" @click="addSpecificPrice">
+        + Ajouter Prix spécifique
+      </button>
+    </div>
+  </div>
+
+  <AddSpecificPriceModal
+    v-if="showSpecificPriceModal"
+    :product-id="form.id?.toString()"
+    @close="showSpecificPriceModal = false"
+    @save="handleSpecificPriceSave"
+  />
+
+  <div v-if="form.specific_prices && form.specific_prices.length > 0" class="specific-prices-list">
+    <div v-for="(price, index) in form.specific_prices" :key="index" class="specific-price-card">
+      <div class="specific-price-header">
+        <div class="price-info">
+          <strong>Prix spécifique #{{ index + 1 }}</strong>
+          <span v-if="price.id_customer === '0'" class="badge all-customers">Tous les clients</span>
+          <span v-else class="badge specific-customer">Client spécifique</span>
+        </div>
+        <button type="button" class="btn-remove" @click="removeSpecificPrice(index)">✕</button>
+      </div>
+      <div class="specific-price-details">
+        <div class="detail-row">
+          <span class="detail-label">Conditions:</span>
+          <span class="detail-value">
+            {{ price.id_currency ? 'Devise: ' + price.id_currency : 'Toutes devises' }}
+            {{ price.id_country ? ' | Pays: ' + price.id_country : ' | Tous pays' }}
+            {{ price.id_group ? ' | Groupe: ' + price.id_group : ' | Tous groupes' }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Quantité min:</span>
+          <span class="detail-value">{{ price.from_quantity || 1 }} unité(s)</span>
+        </div>
+        <div v-if="price.from || price.to" class="detail-row">
+          <span class="detail-label">Période:</span>
+          <span class="detail-value">{{ price.from || '...' }} au {{ price.to || '...' }}</span>
+        </div>
+        <div class="detail-row price-impact">
+          <span class="detail-label">Impact:</span>
+          <span class="detail-value">
+            <span v-if="price.reduction && price.reduction !== '0'" class="impact-discount">
+              Remise: {{ price.reduction }}{{ price.reduction_type === 'percentage' ? '%' : ' Ar' }} {{ price.reduction_tax === '1' ? 'TTC' : 'HT' }}
+            </span>
+            <span v-if="price.price && price.price !== '-1'" class="impact-price">
+              Prix fixe: {{ price.price }} Ar HT
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section Gestion des priorités -->
+  <div class="subsection">
+    <h4>Gestion des priorités</h4>
+  </div>
+
+  <div class="priority-options">
+    <label class="radio-label">
+      <input type="radio" value="default" v-model="form.priority_order" />
+      <span>Utiliser l'ordre par défaut : Groupe - Devise - Pays - Magasin</span>
+    </label>
+    <label class="radio-label">
+      <input type="radio" value="custom" v-model="form.priority_order" />
+      <span>Saisir un prix spécifique pour ce produit</span>
+    </label>
+  </div>
+</section>
       <!-- ─── Onglet Option ─────────────────────────────────────────── -->
       <section v-if="activeTab === 'Option'" class="form-section">
         <div class="form-group">
@@ -850,6 +1044,46 @@ const submit = () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+/* Prix de vente row - 5 columns layout (HT + operator + Tax + operator + TTC) */
+.price-sale-row {
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.price-ht-group,
+.tax-rule-group,
+.price-ttc-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-operator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #666;
+  padding-bottom: 8px;
+  user-select: none;
+}
+
+.price-ttc-group input:disabled {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .price-sale-row {
+    grid-template-columns: 1fr;
+  }
+
+  .price-operator {
+    display: none;
+  }
 }
 
 .dimensions-grid {
@@ -1323,6 +1557,105 @@ textarea {
 .radio-option em {
   color: #888;
   font-size: 12px;
+}
+
+/* Specific Price Cards */
+.specific-prices-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.specific-price-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.specific-price-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.price-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.price-info strong {
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge.all-customers {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.badge.specific-customer {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.specific-price-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #666;
+  min-width: 100px;
+}
+
+.detail-value {
+  color: #444;
+  flex: 1;
+}
+
+.price-impact .detail-value {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.impact-discount {
+  background: #ffebee;
+  color: #c62828;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.impact-price {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 /* Responsive */
