@@ -5,12 +5,16 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-stock']);
+const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-stock', 'show-customers', 'show-brands-suppliers']);
 
 const showConfig = ref(false);
 
 const goToConfig = () => {
   router.push('/config');
+};
+
+const showBrandsSuppliers = () => {
+  emit('show-brands-suppliers');
 };
 </script>
 
@@ -49,6 +53,18 @@ const goToConfig = () => {
         <span>Catégories</span>
       </button>
 
+      <!-- Marques & Fournisseurs -->
+      <button @click="showBrandsSuppliers" class="menu-item main-item brands-suppliers-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+          <path d="M4 7v8"/>
+          <path d="M20 7v8"/>
+        </svg>
+        <span>Marques & Fournisseurs</span>
+      </button>
+
       <!-- Gérer le stock -->
       <button @click="$emit('show-stock')" class="menu-item main-item stock-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -61,6 +77,15 @@ const goToConfig = () => {
           <line x1="16" y1="7" x2="16" y2="7.01"/>
         </svg>
         <span>Stock</span>
+      </button>
+
+      <!-- Gérer les clients -->
+      <button @click="$emit('show-customers')" class="menu-item main-item customer-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>Clients</span>
       </button>
     </div>
 
@@ -186,14 +211,14 @@ const goToConfig = () => {
   font-weight: 500;
 }
 
-/* Style spécifique pour l'élément Stock */
-.stock-item {
+/* Style spécifique pour Marques & Fournisseurs */
+.brands-suppliers-item {
   position: relative;
 }
 
 .badge {
   display: inline-block;
-  background: #e67e22;
+  background: #3498db;
   color: white;
   font-size: 9px;
   font-weight: 600;
@@ -203,6 +228,11 @@ const goToConfig = () => {
   letter-spacing: 0.5px;
   margin-left: 5px;
   flex: none;
+}
+
+/* Style spécifique pour l'élément Stock */
+.stock-item {
+  position: relative;
 }
 
 /* Section toggle (Configuration) */
@@ -263,6 +293,22 @@ const goToConfig = () => {
 .config-btn:hover {
   background: rgba(52, 152, 219, 0.12);
   color: #2980b9;
+  transform: translateX(4px);
+}
+
+/* Bouton clients */
+.customer-item {
+  color: #ecf0f1;
+}
+
+.customer-item .icon {
+  stroke: #ecf0f1;
+  opacity: 1;
+}
+
+.customer-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
   transform: translateX(4px);
 }
 

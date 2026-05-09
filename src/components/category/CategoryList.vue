@@ -1,12 +1,34 @@
 <!-- components/CategoryList.vue -->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useCategoryStore } from '../../stores/category/CategoryStore';
 import CategoryForm from './CategoryForm.vue';
 
 const store = useCategoryStore();
 const showForm = ref(false);
 const editing = ref<any>(null);
+const selectedCategories = ref<string[]>([]);
+
+const isAllSelected = computed(() => {
+  return store.categories.length > 0 && selectedCategories.value.length === store.categories.length;
+});
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedCategories.value = [];
+  } else {
+    selectedCategories.value = store.categories.map(c => c.id);
+  }
+};
+
+const toggleCategory = (id: string) => {
+  const index = selectedCategories.value.indexOf(id);
+  if (index === -1) {
+    selectedCategories.value.push(id);
+  } else {
+    selectedCategories.value.splice(index, 1);
+  }
+};
 
 onMounted(() => store.fetchAll());
 
@@ -27,16 +49,40 @@ const remove = async (id: number) => {
 <template>
   <div>
     <h2>Gestion des Catégories</h2>
-    <button v-if="!showForm" @click="add" class="btn-add">+ Nouvelle catégorie</button>
+    <div class="filters" v-if="!showForm">
+      <button @click="add" class="btn-add">+ Nouvelle catégorie</button>
+    </div>
+
+    <div v-if="selectedCategories.length > 0 && !showForm" class="selection-bar">
+      <span>{{ selectedCategories.length }} catégorie(s) sélectionnée(s)</span>
+      <button class="btn-clear" @click="selectedCategories = []">Désélectionner</button>
+    </div>
 
     <CategoryForm v-if="showForm" :category="editing" @save="submit" @cancel="close" />
 
     <table v-if="!showForm">
       <thead>
-        <tr><th>ID</th><th>Nom</th><th>Description</th><th>Actif</th><th></th></tr>
+        <tr>
+          <th class="checkbox-col">
+            <input
+              type="checkbox"
+              :checked="isAllSelected"
+              @change="toggleSelectAll"
+              :disabled="store.categories.length === 0"
+            />
+          </th>
+          <th>ID</th><th>Nom</th><th>Description</th><th>Actif</th><th></th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="cat in store.categories" :key="cat.id">
+          <td class="checkbox-col">
+            <input
+              type="checkbox"
+              :checked="selectedCategories.includes(cat.id)"
+              @change="toggleCategory(cat.id)"
+            />
+          </td>
           <td>{{ cat.id }}</td>
           <td>{{ cat.name }}</td>
           <td>{{ cat.description?.substring(0, 100) }}...</td>
@@ -68,6 +114,50 @@ th { background: #f8f9fa; text-align: left; }
 .on, .off { padding: 3px 10px; border-radius: 12px; font-size: 12px; }
 .on { background: #d4edda; }
 .off { background: #f8d7da; }
-.btn-add { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
+.btn-add { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
 button { cursor: pointer; border: none; background: none; font-size: 16px; }
+
+.filters {
+  margin-bottom: 20px;
+}
+
+.checkbox-col {
+  width: 40px;
+  text-align: center;
+}
+
+.checkbox-col input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.selection-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #e3f2fd;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #1976d2;
+}
+
+.btn-clear {
+  background: #fff;
+  border: 1px solid #1976d2;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-clear:hover {
+  background: #1976d2;
+  color: white;
+}
 </style>
