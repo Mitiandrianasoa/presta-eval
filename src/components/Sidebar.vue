@@ -1,24 +1,17 @@
 <!-- components/Sidebar.vue -->
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useResetStore } from '../stores/reset/resetStore';
+import { useRouter } from 'vue-router';
 
-const resetStore = useResetStore();
+const router = useRouter();
 
 const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-stock']);
 
-const showConfirm = ref(false);
 const showConfig = ref(false);
 
-async function confirmReset() {
-  showConfirm.value = false;
-  try {
-    await resetStore.resetAll();
-    emit('show-products');
-  } catch (e) {
-    console.error('Erreur lors de la réinitialisation', e);
-  }
-}
+const goToConfig = () => {
+  router.push('/config');
+};
 </script>
 
 <template>
@@ -89,66 +82,19 @@ async function confirmReset() {
       <!-- Sous-menu Configuration -->
       <div class="submenu" :class="{ open: showConfig }">
         <button
-          class="menu-item submenu-item reset-btn"
-          :disabled="resetStore.loading"
-          @click="showConfirm = true"
+          class="menu-item submenu-item config-btn"
+          @click="goToConfig"
         >
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-            <path d="M10 11v6M14 11v6"/>
-            <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
           </svg>
-          <span v-if="resetStore.loading">
-            {{ resetStore.step }} ({{ resetStore.progress }}/{{ resetStore.total }})
-          </span>
-          <span v-else>Réinitialiser les données</span>
+          <span>Configuration avancée</span>
         </button>
       </div>
     </div>
 
-    <!-- Modal de confirmation -->
-    <Teleport to="body">
-      <div v-if="showConfirm" class="modal-overlay" @click.self="showConfirm = false">
-        <div class="modal">
-          <div class="modal-icon-wrap">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </div>
-          <h3>Réinitialiser les données ?</h3>
-          <p>
-            Cette action va supprimer <strong>tous les produits</strong> et
-            <strong>toutes les catégories</strong> via l'API PrestaShop.
-            <br>Cette opération est <strong>irréversible</strong>.
-          </p>
-          <div class="modal-actions">
-            <button class="btn-cancel" @click="showConfirm = false">Annuler</button>
-            <button class="btn-confirm" @click="confirmReset">Oui, réinitialiser</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- Overlay de progression -->
-    <Teleport to="body">
-      <div v-if="resetStore.loading" class="progress-overlay">
-        <div class="progress-box">
-          <div class="spinner"></div>
-          <p class="progress-step">{{ resetStore.step }}</p>
-          <div class="progress-bar-wrap">
-            <div
-              class="progress-bar-fill"
-              :style="{ width: resetStore.total > 0 ? (resetStore.progress / resetStore.total * 100) + '%' : '0%' }"
-            ></div>
-          </div>
-          <p class="progress-count">{{ resetStore.progress }} / {{ resetStore.total }}</p>
-        </div>
-      </div>
-    </Teleport>
-    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -304,26 +250,20 @@ async function confirmReset() {
   font-size: 13px;
 }
 
-/* Bouton reset */
-.reset-btn {
-  color: #e87b6e;
+/* Bouton config */
+.config-btn {
+  color: #3498db;
 }
 
-.reset-btn .icon {
-  stroke: #e87b6e;
+.config-btn .icon {
+  stroke: #3498db;
   opacity: 1;
 }
 
-.reset-btn:hover:not(:disabled) {
-  background: rgba(231, 76, 60, 0.12);
-  color: #ff8a7f;
+.config-btn:hover {
+  background: rgba(52, 152, 219, 0.12);
+  color: #2980b9;
   transform: translateX(4px);
-}
-
-.reset-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
 }
 
 .divider {
