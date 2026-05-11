@@ -1,10 +1,11 @@
 import axios from 'axios';
+import { API_CONFIG } from './config';
 
 const api = axios.create({
   baseURL: '/api',
   auth: {
-    username: 'bqHTFCOOgQIPEq03m6yZTUZt6iyhAwVG', // clé générée dans PrestaShop
-    password: ''            // vide car PrestaShop utilise seulement la clé
+    username: API_CONFIG.AUTH_KEY,
+    password: ''
   }
 });
 
