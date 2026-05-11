@@ -59,21 +59,6 @@ const routes = [
     name: 'register',
     component: RegisterView 
   },
-  { 
-    path: '/cart', 
-    name: 'cart',
-    component: CartView 
-  },
-  { 
-    path: '/checkout', 
-    name: 'checkout',
-    component: CheckoutView 
-  },
-  { 
-    path: '/confirmation/:orderId', 
-    name: 'confirmation',
-    component: ConfirmationView 
-  },
 
   // Backoffice Routes
   { 

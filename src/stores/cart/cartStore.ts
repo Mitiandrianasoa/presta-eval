@@ -62,6 +62,7 @@ export const useCartStore = defineStore('cart', {
         const newId = result?.cart?.id ?? result?.id ?? null;
         if (newId) {
           this.cartId = String(newId);
+          this.saveCartId(String(newId));
           await this.fetchCart(this.cartId);
         }
         return newId;
@@ -84,13 +85,15 @@ export const useCartStore = defineStore('cart', {
         const cartEl = xmlDoc.querySelector('cart');
         if (!cartEl) throw new Error('Cart not found in XML');
 
-        const items: CartItem[] = Array.from(
-          cartEl.querySelectorAll('associations row')
-        ).map(row => ({
-          id_product:           text(row, 'id_product'),
+        const rows = Array.from(
+          cartEl.querySelectorAll('associations cart_rows cart_row, associations cart_row, associations row')
+        );
+
+        const items: CartItem[] = rows.map(row => ({
+          id_product: text(row, 'id_product'),
           id_product_attribute: text(row, 'id_product_attribute'),
-          quantity:             parseInt(text(row, 'quantity')) || 1,
-        }));
+          quantity: parseInt(text(row, 'quantity')) || 1,
+        })).filter(item => item.id_product);
 
         this.cart = {
           id:                  text(cartEl, 'id'),
@@ -267,23 +270,38 @@ export const useCartStore = defineStore('cart', {
           );
           const doc = parse(res.data);
           const pEl = doc.querySelector('product');
-          if (!pEl) continue;
+          if (!pEl) {
+            // Produit non trouvé, on utilise les données existantes
+            console.warn(`⚠️ Produit ${item.id_product} non trouvé, données manquantes`);
+            if (item.product_price) {
+              totalProducts += item.product_price * item.quantity;
+            }
+            continue;
+          }
 
           const price = parseFloat(
             pEl.querySelector('price')?.textContent?.trim() || '0'
           );
           const imgId =
             pEl.querySelector('associations images image id')?.textContent?.trim() || '';
+          const name = pEl.querySelector('name language')?.textContent?.trim() || '';
 
-          item.product_name  = pEl.querySelector('name language')?.textContent?.trim() || '';
-          item.product_price = price;
-          item.product_image = imgId
-            ? `/api/images/products/${item.id_product}/${imgId}`
-            : undefined;
+          // Mettre à jour les données du produit
+          if (name) item.product_name = name;
+          if (price) item.product_price = price;
+          if (imgId) {
+            item.product_image = `/api/images/products/${item.id_product}/${imgId}`;
+          }
 
-          totalProducts += price * item.quantity;
-        } catch {
-          // produit inaccessible, on continue
+          // Le stock ne supprime pas le produit du panier!
+          // On ajoute juste le prix au total
+          totalProducts += (item.product_price ?? 0) * item.quantity;
+        } catch (err) {
+          // Produit inaccessible, on GARDE le produit dans le panier
+          console.warn(`⚠️ Erreur récupération produit ${item.id_product}:`, err);
+          if (item.product_price) {
+            totalProducts += item.product_price * item.quantity;
+          }
         }
       }
 

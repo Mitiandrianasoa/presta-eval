@@ -91,18 +91,18 @@
                   Ref: {{ product.reference }}
                 </span>
                 <span v-if="product.quantity && product.quantity > 0" class="stock available">
-                  En stock
+                  En stock ({{ product.quantity }})
                 </span>
                 <span v-else class="stock unavailable">
-                  Rupture de stock
+                  ⚠️ Rupture de stock
                 </span>
               </div>
               <button 
                 class="add-to-cart-btn" 
-                @click.stop="addToCart(product)"
-                :disabled="!product.quantity || product.quantity <= 0"
+                @click.stop="addToCart(product, $event)"
+                :class="{ 'out-of-stock': !product.quantity || product.quantity <= 0 }"
               >
-                {{ product.quantity && product.quantity > 0 ? 'Ajouter au panier' : 'Indisponible' }}
+                {{ product.quantity && product.quantity > 0 ? 'Ajouter au panier' : 'Ajouter quand même' }}
               </button>
             </div>
           </div>
@@ -275,7 +275,7 @@ const loadCategories = async () => {
 };
 
 // Ajouter au panier via cartStore Pinia
-const addToCart = async (product: any) => {
+const addToCart = async (product: any, event: MouseEvent) => {
   try {
     // Créer un panier s'il n'existe pas
     if (!cartStore.cartId) {
@@ -287,7 +287,7 @@ const addToCart = async (product: any) => {
     await cartStore.addItem(product.id, 1, '0');
 
     // Animation feedback
-    const button = event?.target as HTMLButtonElement;
+    const button = event.currentTarget as HTMLButtonElement | null;
     if (button) {
       button.textContent = 'Ajouté !';
       button.classList.add('added');
@@ -601,6 +601,16 @@ onMounted(async () => {
 .add-to-cart-btn:disabled {
   background: #cbd5e1;
   cursor: not-allowed;
+}
+
+.add-to-cart-btn.out-of-stock {
+  background: #ff9800;
+  border: 2px solid #f57c00;
+}
+
+.add-to-cart-btn.out-of-stock:hover {
+  background: #f57c00;
+  box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
 }
 
 .add-to-cart-btn.added {
