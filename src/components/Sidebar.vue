@@ -57,18 +57,6 @@ const showBrandsSuppliers = () => {
         <span>Catégories</span>
       </button>
 
-      <!-- Marques & Fournisseurs -->
-      <button @click="showBrandsSuppliers" class="menu-item main-item brands-suppliers-item">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-          <path d="M4 7v8"/>
-          <path d="M20 7v8"/>
-        </svg>
-        <span>Marques & Fournisseurs</span>
-      </button>
-
       <!-- Gérer le stock -->
       <button @click="$emit('show-stock')" class="menu-item main-item stock-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -224,10 +212,7 @@ const showBrandsSuppliers = () => {
   font-weight: 500;
 }
 
-/* Style spécifique pour Marques & Fournisseurs */
-.brands-suppliers-item {
-  position: relative;
-}
+
 
 .badge {
   display: inline-block;
