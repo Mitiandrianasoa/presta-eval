@@ -34,15 +34,10 @@ export const buildPrestashopXml = (
         }
       };
     } else {
-      // Pour les booléens et nombres, PrestaShop refuse parfois le CDATA
-      if (['isBool', 'isUnsignedInt', 'isUnsignedId', 'isInt'].includes(field.format)) {
-        entityObject[field.name] = String(value);
-      } else {
-        // Pour les autres (chaînes, HTML), on utilise CDATA
-        entityObject[field.name] = {
-          '__cdata': String(value)
-        };
-      }
+      // PrestaShop est très strict sur de nombreux formats (isEmail, isPrice, isBool, etc.)
+      // Il vaut mieux envoyer le texte brut (échappé par le builder) plutôt que du CDATA
+      // qui fait souvent échouer les regex de PrestaShop.
+      entityObject[field.name] = String(value);
     }
   }
 
