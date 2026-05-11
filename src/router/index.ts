@@ -6,12 +6,16 @@ import ProductsView from '../views/frontoffice/ProductsView.vue';
 import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
 import LoginView from '../views/frontoffice/LoginView.vue';
 import RegisterView from '../views/frontoffice/RegisterView.vue';
+import CartView from '../views/frontoffice/CartView.vue';
+import CheckoutView from '../views/frontoffice/CheckoutView.vue';
+import ConfirmationView from '../views/frontoffice/ConfirmationView.vue';
 
 // Backoffice
 import CatalogView from '../views/backoffice/CatalogView.vue';
 import ConfigView from '../views/backoffice/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
 import OrderView from '../views/OrderView.vue';
+import StockListView from '../views/backoffice/StockListView.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -40,6 +44,21 @@ const routes = [
     name: 'register',
     component: RegisterView 
   },
+  { 
+    path: '/cart', 
+    name: 'cart',
+    component: CartView 
+  },
+  { 
+    path: '/checkout', 
+    name: 'checkout',
+    component: CheckoutView 
+  },
+  { 
+    path: '/confirmation/:orderId', 
+    name: 'confirmation',
+    component: ConfirmationView 
+  },
 
   // Backoffice Routes
   { 
@@ -56,6 +75,11 @@ const routes = [
     path: '/admin/import-categories',
     name: 'import-categories',
     component: CategoryImportView
+  },
+  {
+    path: '/admin/stock',
+    name: 'admin-stock',
+    component: StockListView
   },
   {
     path: '/orders',
