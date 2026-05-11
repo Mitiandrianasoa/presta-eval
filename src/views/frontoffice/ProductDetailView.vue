@@ -205,8 +205,6 @@
             <ul>
               <li><router-link to="/">Accueil</router-link></li>
               <li><router-link to="/products">Produits</router-link></li>
-              <li><router-link to="/cart">Panier</router-link></li>
-              <li><router-link to="/orders">Commandes</router-link></li>
             </ul>
           </div>
           <div>
