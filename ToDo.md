@@ -13,9 +13,18 @@ NEW APP
         - update affichage:
             - button tout effacer/ tout selectionner 
     - import[Mitia]:
-        - input csv 3
+        - input 3 csv 
+            - format 
+            - function
+            - affichage
         - input zip img
+            - format 
+            - function
+            - affichage
         - API 
+            - status
+            - fonction
+            - affichage
     - liste commandes[Mitia]:
         - details:
             - modifier etat

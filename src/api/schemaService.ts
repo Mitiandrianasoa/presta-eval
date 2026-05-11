@@ -122,3 +122,46 @@ export const parseSchema = (xmlSchema: string): SchemaResult => {
     fields: fields
   };
 };
+
+/**
+ * Construit un XML valide pour mettre à jour une ressource PrestaShop
+ * @param endpoint - L'endpoint (ex: 'orders')
+ * @param id - L'ID de la ressource
+ * @param data - Les données à mettre à jour (ex: {current_state: '2'})
+ * @returns XML formaté correctement
+ */
+export const buildUpdateXml = (endpoint: string, id: string, data: Record<string, any>): string => {
+  // Déterminer le nom de l'entité singulière (orders → order, categories → category)
+  const entityName = endpoint.endsWith('s') ? endpoint.slice(0, -1) : endpoint;
+  
+  // Construire les champs XML (compact, sans indentation)
+  let fieldsXml = `<id>${escapeXml(id)}</id>`;
+  
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== null && value !== undefined && value !== '') {
+      fieldsXml += `<${key}>${escapeXml(String(value))}</${key}>`;
+    }
+  }
+
+  // Construire le XML complet (format compact)
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><prestashop><${entityName}>${fieldsXml}</${entityName}></prestashop>`;
+
+  console.log('📝 XML généré (compact):', xml);
+  
+  // Aussi log la version formatée pour le debugging
+  console.log('📝 XML généré (formaté):', xml.replace(/></g, '>\n<'));
+  
+  return xml;
+};
+
+/**
+ * Échappe les caractères spéciaux XML
+ */
+const escapeXml = (str: string): string => {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+};

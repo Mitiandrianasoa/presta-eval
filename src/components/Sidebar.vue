@@ -13,6 +13,10 @@ const goToConfig = () => {
   router.push('/config');
 };
 
+const goToOrders = () => {
+  router.push('/orders');
+};
+
 const showBrandsSuppliers = () => {
   emit('show-brands-suppliers');
 };
@@ -86,6 +90,15 @@ const showBrandsSuppliers = () => {
           <circle cx="12" cy="7" r="4"/>
         </svg>
         <span>Clients</span>
+      </button>
+
+      <!-- Liste des commandes -->
+      <button @click="goToOrders" class="menu-item main-item orders-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11H3v2h6v-2zm0-4H3v2h6V7zm6 0v2h6V7h-6zm0 4v2h6v-2h-6z"/>
+          <path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+        </svg>
+        <span>Commandes</span>
       </button>
     </div>
 

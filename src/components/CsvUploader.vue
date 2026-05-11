@@ -2,38 +2,56 @@
 import { ref } from 'vue';
 import Papa from 'papaparse';
 
+export interface ParsedCsvFile {
+  fileName: string;
+  columns: string[];
+  data: any[];
+}
+
 const emit = defineEmits<{
-  (e: 'fileParsed', columns: string[], data: any[]): void;
+  (e: 'filesParsed', parsedFiles: ParsedCsvFile[]): void;
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const fileName = ref('');
+const fileNames = ref<string[]>([]);
 
-const handleFileUpload = (event: Event) => {
+const handleFileUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
+  const files = target.files;
 
-  if (!file) return;
+  if (!files || files.length === 0) return;
 
-  fileName.value = file.name;
+  fileNames.value = Array.from(files).map(f => f.name);
+  const parsedFiles: ParsedCsvFile[] = [];
 
-  // Utilisation de PapaParse pour lire le fichier CSV
-  Papa.parse(file, {
-    header: true, // La première ligne contient les noms des colonnes
-    skipEmptyLines: true,
-    complete: (results) => {
-      // results.meta.fields contient le nom des colonnes
-      // results.data contient les lignes sous forme d'objets JSON
-      const columns = results.meta.fields || [];
-      const data = results.data;
-      
-      emit('fileParsed', columns, data);
-    },
-    error: (error: any) => {
-      console.error('Erreur lors de la lecture du CSV:', error);
-      alert('Impossible de lire le fichier CSV.');
-    }
-  });
+  // Lecture asynchrone de chaque fichier sélectionné
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    await new Promise<void>((resolve) => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const columns = results.meta.fields || [];
+          const data = results.data;
+          
+          parsedFiles.push({
+            fileName: file.name,
+            columns,
+            data
+          });
+          resolve();
+        },
+        error: (error: any) => {
+          console.error(`Erreur lors de la lecture du CSV ${file.name}:`, error);
+          alert(`Impossible de lire le fichier ${file.name}.`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  emit('filesParsed', parsedFiles);
 };
 
 const triggerFileInput = () => {
@@ -48,11 +66,17 @@ const triggerFileInput = () => {
       @click="triggerFileInput"
     >
       <i class="upload-icon">📁</i>
-      <p v-if="!fileName">Cliquez ici pour sélectionner un fichier CSV</p>
-      <p v-else class="file-name">Fichier sélectionné : <strong>{{ fileName }}</strong></p>
+      <p v-if="fileNames.length === 0">Cliquez ici pour sélectionner vos fichiers CSV (vous pouvez en sélectionner plusieurs)</p>
+      <div v-else class="file-names-list">
+        <p><strong>Fichiers sélectionnés :</strong></p>
+        <ul>
+          <li v-for="name in fileNames" :key="name">{{ name }}</li>
+        </ul>
+      </div>
       <input 
         type="file" 
         accept=".csv" 
+        multiple
         ref="fileInput" 
         @change="handleFileUpload" 
         style="display: none;"
@@ -83,7 +107,14 @@ const triggerFileInput = () => {
   margin-bottom: 10px;
   display: block;
 }
-.file-name {
+.file-names-list {
+  text-align: left;
   color: #2e7d32;
+  margin-top: 10px;
+  display: inline-block;
+}
+.file-names-list ul {
+  padding-left: 20px;
+  margin-top: 5px;
 }
 </style>
