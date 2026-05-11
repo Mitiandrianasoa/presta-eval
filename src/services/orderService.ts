@@ -1,5 +1,5 @@
 import api from '../api/api';
-import { buildUpdateXml } from '../api/schemaService';
+import { updateResource } from '../api/schemaService';
 
 const parse = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
 const text = (el: Element, tag: string) => el.querySelector(tag)?.textContent?.trim() || '';
@@ -169,80 +169,13 @@ export const orderService = {
 
   /**
    * Met à jour plusieurs champs d'une commande à la fois
-   * NOUVELLE APPROCHE: Récupère le XML complet, modifie, puis renvoi le XML complet
+   * Utilise updateResource du schemaService
    */
   async updateOrder(orderId: string, data: Record<string, any>): Promise<void> {
     try {
-      // Validation
-      if (!orderId || orderId.trim() === '') {
-        throw new Error('❌ Erreur: orderId est vide!');
-      }
-      
-      // Filtrer les champs vides
-      const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== null && v !== undefined && v !== '')
-      );
-      
-      if (Object.keys(cleanData).length === 0) {
-        throw new Error('❌ Erreur: Aucun champ à mettre à jour!');
-      }
-      
-      console.log(`🔄 [NOUVELLE APPROCHE] Mise à jour commande ${orderId}`);
-      console.log(`1️⃣  Récupération du XML complet de la commande ${orderId}...`);
-      
-      // 1. RÉCUPÉRER le XML complet
-      const res = await api.get(`/orders/${orderId}?output_format=XML`);
-      console.log('✅ XML reçu du serveur');
-      console.log('📄 XML avant modification:', res.data);
-      
-      // 2. PARSER le XML
-      const xmlDoc = parse(res.data);
-      const orderElement = xmlDoc.querySelector('order');
-      
-      if (!orderElement) {
-        throw new Error('❌ Élément <order> non trouvé dans le XML');
-      }
-      
-      // 3. MODIFIER les champs
-      console.log(`2️⃣  Modification des champs:`, cleanData);
-      for (const [key, value] of Object.entries(cleanData)) {
-        let fieldElement = orderElement.querySelector(key);
-        
-        if (!fieldElement) {
-          console.log(`    ➕ Création du champ <${key}>`);
-          fieldElement = xmlDoc.createElement(key);
-          orderElement.appendChild(fieldElement);
-        }
-        
-        const oldValue = fieldElement.textContent;
-        fieldElement.textContent = String(value);
-        console.log(`    ✏️  <${key}> ${oldValue} → ${value}`);
-      }
-      
-      // 4. SÉRIALISER le XML modifié
-      const serializer = new XMLSerializer();
-      const modifiedXml = serializer.serializeToString(xmlDoc);
-      
-      console.log('📄 XML après modification:', modifiedXml);
-      console.log(`3️⃣  Envoi du PUT vers /orders/${orderId}?output_format=JSON`);
-      
-      // 5. ENVOYER le PUT avec le XML complet
-      const updateResponse = await api.put(`/orders/${orderId}?output_format=JSON`, modifiedXml, {
-        headers: { 
-          'Content-Type': 'text/xml; charset=utf-8',
-          'Accept': 'application/json'
-        }
-      });
-      
-      console.log(`✅ Commande ${orderId} mise à jour avec succès!`);
-      console.log(`   Status: ${updateResponse.status}`);
-      console.log(`   Réponse:`, updateResponse.data);
-      
+      await updateResource('orders', orderId, data);
     } catch (error: any) {
-      console.error('❌ Erreur mise à jour commande:', error.message);
-      console.error('❌ Response data:', error.response?.data);
-      console.error('❌ Status:', error.response?.status);
-      console.error('❌ StatusText:', error.response?.statusText);
+      console.error('❌ Erreur updateOrder:', error.message);
       throw error;
     }
   },
