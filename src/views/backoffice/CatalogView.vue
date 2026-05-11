@@ -1,8 +1,6 @@
 <!-- views/CatalogView.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { fetchSchema } from '../../api/schemaService';
-import api from '../../api/api';
+import { ref } from 'vue';
 import Sidebar from '../../components/Sidebar.vue';
 import ProductList from '../../components/product/productList.vue';
 import CategoryList from '../../components/category/CategoryList.vue';
@@ -12,86 +10,31 @@ import CustomerList from '../../components/customer/CustomerList.vue';
 const currentView = ref<'products' | 'categories' | 'stock' | 'customers'>('products');
 const selectedCategory = ref<number | null>(null);
 const isAuthenticated = ref(false);
-const currentUser = ref<any>(null);
-const userProfile = ref<any>(null);
-const profiles = ref<any[]>([]);
-const accesses = ref<any[]>([]);
-const authorizationRoles = ref<any[]>([]);
-const email = ref('tsantarakotoarisoa620@gmail.com');
-const password = ref('tsanta12./');
-const loading = ref(false);
+const currentUser = ref<{ name: string; username: string } | null>(null);
+const username = ref('');
+const password = ref('');
 const error = ref('');
 
-const handleLogin = async () => {
-  loading.value = true;
+const CREDENTIALS = [
+  { username: 'admin', password: 'admin123', name: 'Administrateur' },
+];
+
+const handleLogin = () => {
   error.value = '';
-  
-  try {
-    // Utiliser schemaService pour récupérer le schéma customers
-    const schema = await fetchSchema('customers');
-    
-    // Rechercher le client par email via l'API customers
-    const response = await api.get(`/customers?filter[email]=[${email.value}]&output_format=XML&display=full`);
-    
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const customers = xmlDoc.querySelectorAll('customer');
-    
-    if (customers.length === 0) {
-      error.value = 'Email non trouvé';
-      return;
-    }
-    
-    const customerEl = customers[0];
-    if (!customerEl) {
-      error.value = 'Client introuvable';
-      return;
-    }
-    
-    const user = {
-      id: customerEl.querySelector('id')?.textContent?.trim() || '',
-      email: customerEl.querySelector('email')?.textContent?.trim() || '',
-      firstname: customerEl.querySelector('firstname')?.textContent?.trim() || '',
-      lastname: customerEl.querySelector('lastname')?.textContent?.trim() || '',
-      active: customerEl.querySelector('active')?.textContent?.trim() || '0',
-    };
-    
-    // Vérifier si le compte est actif
-    if (user.active !== '1') {
-      error.value = 'Compte désactivé';
-      return;
-    }
-    
-    // Vérifier les identifiants
-    if (email.value === 'tsantarakotoarisoa620@gmail.com' && password.value === 'tsanta12./') {
-      // Charger les rôles et permissions via schemaService
-      await loadAllRoles();
-      
-      // Pour les clients, utiliser un profil par défaut
-      // En production, vous devriez récupérer le profil depuis la table employee si c'est un employé
-      userProfile.value = {
-        id: '1', // Profil par défaut (SuperAdmin)
-        name: 'Administrateur'
-      };
-      
-      isAuthenticated.value = true;
-      currentUser.value = user;
-      return;
-    }
-    
+  const match = CREDENTIALS.find(
+    c => c.username === username.value && c.password === password.value
+  );
+  if (match) {
+    isAuthenticated.value = true;
+    currentUser.value = { name: match.name, username: match.username };
+  } else {
     error.value = 'Identifiants incorrects';
-    
-  } catch (err: any) {
-    error.value = `Erreur: ${err.message}`;
-  } finally {
-    loading.value = false;
   }
 };
 
 const handleLogout = () => {
   isAuthenticated.value = false;
   currentUser.value = null;
-  userProfile.value = null;
 };
 
 const handleKeyPress = (event: KeyboardEvent) => {
@@ -100,133 +43,6 @@ const handleKeyPress = (event: KeyboardEvent) => {
   }
 };
 
-// Fonctions pour charger les rôles et permissions via schemaService
-const loadProfiles = async () => {
-  try {
-    const response = await api.get('/profiles?output_format=XML&display=full');
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const profileElements = xmlDoc.querySelectorAll('profile');
-
-    profiles.value = Array.from(profileElements).map(el => ({
-      id: el.querySelector('id')?.textContent?.trim() || '',
-      name: el.querySelector('name')?.textContent?.trim() || ''
-    }));
-
-    return profiles.value;
-  } catch (error) {
-    console.error('Erreur lors du chargement des profils:', error);
-    return [];
-  }
-};
-
-const loadAccesses = async () => {
-  try {
-    const response = await api.get('/accesses?output_format=XML&display=full');
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const accessElements = xmlDoc.querySelectorAll('access');
-
-    accesses.value = Array.from(accessElements).map(el => ({
-      id: el.querySelector('id')?.textContent?.trim() || '',
-      id_profile: el.querySelector('id_profile')?.textContent?.trim() || '',
-      id_authorization_role: el.querySelector('id_authorization_role')?.textContent?.trim() || '',
-      view: el.querySelector('view')?.textContent?.trim() || '0',
-      add: el.querySelector('add')?.textContent?.trim() || '0',
-      edit: el.querySelector('edit')?.textContent?.trim() || '0',
-      delete: el.querySelector('delete')?.textContent?.trim() || '0'
-    }));
-
-    return accesses.value;
-  } catch (error) {
-    console.error('Erreur lors du chargement des accès:', error);
-    return [];
-  }
-};
-
-const loadAuthorizationRoles = async () => {
-  try {
-    const response = await api.get('/authorization_roles?output_format=XML&display=full');
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const roleElements = xmlDoc.querySelectorAll('authorization_role');
-
-    authorizationRoles.value = Array.from(roleElements).map(el => ({
-      id: el.querySelector('id')?.textContent?.trim() || '',
-      name: el.querySelector('name')?.textContent?.trim() || ''
-    }));
-
-    return authorizationRoles.value;
-  } catch (error) {
-    console.error('Erreur lors du chargement des rôles d\'autorisation:', error);
-    return [];
-  }
-};
-
-const loadAllRoles = async () => {
-  await Promise.all([
-    loadProfiles(),
-    loadAccesses(),
-    loadAuthorizationRoles()
-  ]);
-};
-
-// Fonctions de vérification des permissions
-const hasPermission = (profileId: string, permission: string, action: 'view' | 'add' | 'edit' | 'delete') => {
-  const authRole = authorizationRoles.value.find(role => 
-    role.name.toLowerCase().includes(permission.toLowerCase())
-  );
-
-  if (!authRole) return false;
-
-  const access = accesses.value.find(acc => 
-    acc.id_profile === profileId && acc.id_authorization_role === authRole.id
-  );
-
-  if (!access) return false;
-
-  return access[action] === '1';
-};
-
-const canAccessProducts = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'product', 'view');
-};
-
-const canAccessCategories = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'category', 'view');
-};
-
-const canAccessStock = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'stock', 'view');
-};
-
-const canAccessCustomers = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'customer', 'view');
-};
-
-const canManageProducts = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'product', 'edit') || hasPermission(userProfile.value.id, 'product', 'add');
-};
-
-const canManageCategories = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'category', 'edit') || hasPermission(userProfile.value.id, 'category', 'add');
-};
-
-const canManageStock = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'stock', 'edit') || hasPermission(userProfile.value.id, 'stock', 'add');
-};
-
-const canManageCustomers = () => {
-  if (!userProfile.value) return false;
-  return hasPermission(userProfile.value.id, 'customer', 'edit') || hasPermission(userProfile.value.id, 'customer', 'add');
-};
 </script>
 
 <template>
@@ -239,12 +55,12 @@ const canManageCustomers = () => {
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="username">Nom d'utilisateur</label>
           <input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="Entrez votre email"
+            id="username"
+            v-model="username"
+            type="text"
+            placeholder="Nom d'utilisateur"
             class="form-input"
             required
             @keypress="handleKeyPress"
@@ -271,9 +87,8 @@ const canManageCustomers = () => {
         <button
           type="submit"
           class="login-button"
-          :disabled="loading"
         >
-          {{ loading ? 'Connexion...' : 'Se connecter' }}
+          Se connecter
         </button>
       </form>
     </div>
@@ -294,9 +109,7 @@ const canManageCustomers = () => {
         <!-- Header utilisateur -->
         <div class="user-header">
           <div class="user-info">
-            <span class="welcome">Bienvenue, {{ currentUser?.firstname }} {{ currentUser?.lastname }}</span>
-            <span class="user-email">{{ currentUser?.email }}</span>
-            <span class="user-role">Profil: {{ userProfile?.name || 'Non défini' }}</span>
+            <span class="welcome">Bienvenue, {{ currentUser?.name }}</span>
           </div>
           <button @click="handleLogout" class="logout-btn">
             Déconnexion

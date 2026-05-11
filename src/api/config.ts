@@ -4,7 +4,7 @@
 
 export const API_CONFIG = {
   // Clé d'authentification PrestaShop
-  AUTH_KEY: '3GRNXCFZWTWID1J1LHIPAB5CTTE14W2X',
+  AUTH_KEY: 'bqHTFCOOgQIPEq03m6yZTUZt6iyhAwVG',
   
   // Endpoints
   ENDPOINTS: {
