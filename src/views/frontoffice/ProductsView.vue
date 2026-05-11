@@ -216,15 +216,28 @@ const filteredProducts = computed(() => {
   return filtered;
 });
 
-// Charger les produits
+// Charger les produits + stock depuis stock_availables
 const loadProducts = async () => {
   loading.value = true;
   error.value = '';
-  
+
   try {
-    const response = await api.get('/products?output_format=XML&display=full&limit=100');
+    const [pRes, sRes] = await Promise.all([
+      api.get('/products?output_format=XML&display=full&limit=100'),
+      api.get('/stock_availables?output_format=XML&display=[id,id_product,id_product_attribute,quantity]&filter[id_product_attribute]=[0]&limit=1000'),
+    ]);
+
+    // Construire une map produitId → quantité depuis stock_availables
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const stockXml = parser.parseFromString(sRes.data, 'text/xml');
+    const stockMap: Record<string, number> = {};
+    stockXml.querySelectorAll('stock_available').forEach(el => {
+      const pid = el.querySelector('id_product')?.textContent?.trim() || '';
+      const qty = parseInt(el.querySelector('quantity')?.textContent?.trim() || '0');
+      stockMap[pid] = qty;
+    });
+
+    const xmlDoc = parser.parseFromString(pRes.data, 'text/xml');
     const productElements = xmlDoc.querySelectorAll('product');
 
     products.value = Array.from(productElements).map(el => {
@@ -239,7 +252,7 @@ const loadProducts = async () => {
         price: el.querySelector('price')?.textContent?.trim() || '',
         wholesale_price: el.querySelector('wholesale_price')?.textContent?.trim() || '',
         reference: el.querySelector('reference')?.textContent?.trim() || '',
-        quantity: parseInt(el.querySelector('quantity')?.textContent?.trim() || '0'),
+        quantity: stockMap[productId] ?? 0,
         id_category_default: el.querySelector('id_category_default')?.textContent?.trim() || '',
         on_sale: el.querySelector('on_sale')?.textContent?.trim() === '1',
         image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null

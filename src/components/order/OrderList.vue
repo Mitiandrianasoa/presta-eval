@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Sidebar from '../../components/Sidebar.vue';
 import { onMounted, ref, computed } from 'vue';
 import { orderService, type Order, type OrderState } from '../../services/orderService';
 import OrderDetails from './OrderDetails.vue';
@@ -8,14 +9,20 @@ const orderStates = ref<OrderState[]>([]);
 const selectedOrderId = ref<string | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const sidebarCollapsed = ref(false); // Ajouté pour contrôler l'état du sidebar
+
+// Fonction pour gérer le toggle du sidebar
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+};
 
 // Fonction pour ajouter l'état actuel à la liste si absent
 const getStatesWithCurrentState = (currentState: string): OrderState[] => {
   const exists = orderStates.value.find(s => s.id === currentState);
   
-  // 🔍 Log every state to see which has empty ID
-  console.log('📋 All states:', orderStates.value.map((s, i) => `[${i}] id="${s.id}" name="${s.name}"`));
-  console.log('🎯 Current state:', currentState, '| Type:', typeof currentState);
+  //  Log every state to see which has empty ID
+  console.log(' All states:', orderStates.value.map((s, i) => `[${i}] id="${s.id}" name="${s.name}"`));
+  console.log(' Current state:', currentState, '| Type:', typeof currentState);
   
   if (exists) {
     console.log('✅ Current state found in list');
@@ -120,78 +127,104 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="order-list-container">
-    <h2> Liste des Commandes</h2>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <Sidebar :collapsed="sidebarCollapsed" @toggle="toggleSidebar" />
+    
+    <!-- Contenu principal -->
+    <div class="main-content" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <div class="order-list-container">
+        <h2>📦 Liste des Commandes</h2>
 
-    <!-- Erreurs -->
-    <div v-if="error" class="error-box">
-      ❌ {{ error }}
-    </div>
+        <!-- Erreurs -->
+        <div v-if="error" class="error-box">
+          ❌ {{ error }}
+        </div>
 
-    <!-- Chargement -->
-    <div v-if="loading" class="loading">
-      ⏳ Chargement...
-    </div>
+        <!-- Chargement -->
+        <div v-if="loading" class="loading">
+          ⏳ Chargement...
+        </div>
 
-    <!-- Tableau -->
-    <div v-if="!loading && orders.length > 0" class="table-wrapper">
-      <table class="orders-table">
-        <thead>
-          <tr>
-            <th>Référence</th>
-            <th>Client</th>
-            <th>Total</th>
-            <th>Paiement</th>
-            <th>État</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="order in orders" :key="order.id" :class="{ active: selectedOrderId === order.id }">
-            <td class="ref-col">{{ order.reference }}</td>
-            <td>{{ order.customer_name }}</td>
-            <td class="price-col">{{ order.total_paid }} €</td>
-            <td>{{ order.payment || '—' }}</td>
-            <td>
-              <select 
-                :value="order.current_state"
-                @change="handleSelectChange($event, order.id)"
-                class="state-select"
-              >
-                <option v-for="state in getStatesWithCurrentState(order.current_state)" 
-                  :key="state.id" 
-                  :value="state.id"
-                  :selected="order.current_state === state.id"
-                >
-                  {{ state.name }}
-                </option>
-              </select>
-            </td>
-            <td class="date-col">{{ new Date(order.date_add).toLocaleDateString('fr-FR') }}</td>
-            <td class="actions-col">
-              <button @click="selectOrder(order.id)" class="btn-details">Détails</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <!-- Tableau -->
+        <div v-if="!loading && orders.length > 0" class="table-wrapper">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>Référence</th>
+                <th>Client</th>
+                <th>Total</th>
+                <th>Paiement</th>
+                <th>État</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in orders" :key="order.id" :class="{ active: selectedOrderId === order.id }">
+                <td class="ref-col">{{ order.reference }}</td>
+                <td>{{ order.customer_name }}</td>
+                <td class="price-col">{{ order.total_paid }} €</td>
+                <td>{{ order.payment || '—' }}</td>
+                <td>
+                  <select 
+                    :value="order.current_state"
+                    @change="handleSelectChange($event, order.id)"
+                    class="state-select"
+                  >
+                    <option v-for="state in getStatesWithCurrentState(order.current_state)" 
+                      :key="state.id" 
+                      :value="state.id"
+                      :selected="order.current_state === state.id"
+                    >
+                      {{ state.name }}
+                    </option>
+                  </select>
+                </td>
+                <td class="date-col">{{ new Date(order.date_add).toLocaleDateString('fr-FR') }}</td>
+                <td class="actions-col">
+                  <button @click="selectOrder(order.id)" class="btn-details">Détails</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-    <!-- Pas de données -->
-    <div v-if="!loading && orders.length === 0" class="no-data">
-      Aucune commande trouvée
-    </div>
+        <!-- Pas de données -->
+        <div v-if="!loading && orders.length === 0" class="no-data">
+          Aucune commande trouvée
+        </div>
 
-    <!-- Détails -->
-    <div v-if="selectedOrderId" class="details-panel">
-      <OrderDetails :orderId="selectedOrderId" :orderStates="orderStates" @close="selectedOrderId = null" />
+        <!-- Détails -->
+        <div v-if="selectedOrderId" class="details-panel">
+          <OrderDetails :orderId="selectedOrderId" :orderStates="orderStates" @close="selectedOrderId = null" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.order-list-container {
+/* Layout principal avec sidebar */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 250px; /* Largeur du sidebar déployé */
+  transition: margin-left 0.3s ease;
   padding: 20px;
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 70px; /* Largeur du sidebar réduit */
+}
+
+/* Styles existants */
+.order-list-container {
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -199,6 +232,7 @@ onMounted(() => {
 h2 {
   margin-bottom: 20px;
   color: #333;
+  font-size: 1.5rem;
 }
 
 .error-box {
@@ -218,13 +252,15 @@ h2 {
 
 .table-wrapper {
   overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .orders-table {
   width: 100%;
   border-collapse: collapse;
   background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .orders-table thead {
@@ -269,13 +305,17 @@ h2 {
 
 .state-select {
   padding: 6px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid #ddd; 
   border-radius: 4px;
   font-size: 0.9em;
   cursor: pointer;
   background-color: white;
   width: 100%;
   max-width: 200px;
+}
+
+.state-select:hover {
+  border-color: #2196f3;
 }
 
 .actions-col {
@@ -290,6 +330,7 @@ h2 {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9em;
+  transition: background-color 0.2s;
 }
 
 .btn-details:hover {
@@ -306,5 +347,18 @@ h2 {
   margin-top: 30px;
   border-top: 2px solid #ddd;
   padding-top: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 70px;
+  }
+  
+  .orders-table th,
+  .orders-table td {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
 }
 </style>

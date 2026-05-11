@@ -109,7 +109,7 @@
 
               <div class="stock-info">
                 <span v-if="product.quantity && product.quantity > 0" class="stock available">
-                  ✓ En stock ({{ product.quantity }} disponible(s))
+                  ✓ En stock 
                 </span>
                 <span v-else class="stock unavailable">
                   ✗ Rupture de stock
@@ -263,15 +263,22 @@ const loadProduct = async () => {
   error.value = '';
   
   try {
-    const response = await api.get(`/products/${productId}?output_format=XML&display=full`);
+    const [pRes, sRes] = await Promise.all([
+      api.get(`/products/${productId}?output_format=XML&display=full`),
+      api.get(`/stock_availables?output_format=XML&display=[id,id_product,quantity]&filter[id_product]=[${productId}]&filter[id_product_attribute]=[0]&limit=1`),
+    ]);
+
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const productElement = xmlDoc.querySelector('product');
+    const productElement = parser.parseFromString(pRes.data, 'text/xml').querySelector('product');
 
     if (!productElement) {
       error.value = 'Produit non trouvé';
       return;
     }
+
+    // Stock depuis stock_availables (source de vérité)
+    const stockEl = parser.parseFromString(sRes.data, 'text/xml').querySelector('stock_available');
+    const realQuantity = parseInt(stockEl?.querySelector('quantity')?.textContent?.trim() || '0');
 
     const imageId = productElement.querySelector('associations images image id')?.textContent?.trim()
       || productElement.querySelector('image id')?.textContent?.trim();
@@ -284,7 +291,7 @@ const loadProduct = async () => {
       wholesale_price: productElement.querySelector('wholesale_price')?.textContent?.trim() || '',
       reference: productElement.querySelector('reference')?.textContent?.trim() || '',
       ean13: productElement.querySelector('ean13')?.textContent?.trim() || '',
-      quantity: parseInt(productElement.querySelector('quantity')?.textContent?.trim() || '0'),
+      quantity: realQuantity,
       id_category_default: productElement.querySelector('id_category_default')?.textContent?.trim() || '',
       on_sale: productElement.querySelector('on_sale')?.textContent?.trim() === '1',
       image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null,

@@ -43,8 +43,14 @@
                   {{ formatPrice(product.price) }}
                 </span>
               </div>
-              <button class="add-to-cart-btn" @click.stop="addToCart(product)">
-                Ajouter au panier
+              <span v-if="product.quantity > 0" class="stock-badge available">En stock</span>
+              <span v-else class="stock-badge unavailable">Rupture de stock</span>
+              <button
+                class="add-to-cart-btn"
+                @click.stop="addToCart(product)"
+                :disabled="!product.quantity || product.quantity <= 0"
+              >
+                {{ product.quantity > 0 ? 'Ajouter au panier' : 'Indisponible' }}
               </button>
             </div>
           </div>
@@ -132,11 +138,23 @@ const cartItemCount = computed(() => {
 const loadFeaturedProducts = async () => {
   loading.value = true;
   error.value = '';
-  
+
   try {
-    const response = await api.get('/products?output_format=XML&display=full&limit=8');
+    const [pRes, sRes] = await Promise.all([
+      api.get('/products?output_format=XML&display=full&limit=8'),
+      api.get('/stock_availables?output_format=XML&display=[id,id_product,id_product_attribute,quantity]&filter[id_product_attribute]=[0]&limit=1000'),
+    ]);
+
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const stockXml = parser.parseFromString(sRes.data, 'text/xml');
+    const stockMap: Record<string, number> = {};
+    stockXml.querySelectorAll('stock_available').forEach(el => {
+      const pid = el.querySelector('id_product')?.textContent?.trim() || '';
+      const qty = parseInt(el.querySelector('quantity')?.textContent?.trim() || '0');
+      stockMap[pid] = qty;
+    });
+
+    const xmlDoc = parser.parseFromString(pRes.data, 'text/xml');
     const productElements = xmlDoc.querySelectorAll('product');
 
     featuredProducts.value = Array.from(productElements).map(el => {
@@ -150,6 +168,7 @@ const loadFeaturedProducts = async () => {
         description_short: el.querySelector('description_short')?.textContent?.trim() || '',
         price: el.querySelector('price')?.textContent?.trim() || '',
         reference: el.querySelector('reference')?.textContent?.trim() || '',
+        quantity: stockMap[productId] ?? 0,
         image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null
       };
     });
@@ -399,6 +418,25 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
+.stock-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.75rem;
+}
+
+.stock-badge.available {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.stock-badge.unavailable {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .add-to-cart-btn {
   width: 100%;
   background: var(--primary);
@@ -412,8 +450,14 @@ onMounted(() => {
   transition: background var(--transition);
 }
 
-.add-to-cart-btn:hover {
+.add-to-cart-btn:hover:not(:disabled) {
   background: var(--primary-dark);
+}
+
+.add-to-cart-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .add-to-cart-btn.added {
