@@ -1,0 +1,229 @@
+import api from '../api/api';
+import { createResourceWithBlankSchema } from '../api/schemaService';
+
+const parse = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
+const text  = (el: Element, tag: string) => el.querySelector(tag)?.textContent?.trim() || '';
+
+export interface FrontOrder {
+  id: string;
+  reference: string;
+  id_customer: string;
+  total_paid: string;
+  total_paid_tax_incl: string;
+  total_shipping: string;
+  payment: string;
+  current_state: string;
+  date_add: string;
+  items: FrontOrderItem[];
+  stateName?: string;
+}
+
+export interface FrontOrderItem {
+  id_product: string;
+  product_name: string;
+  product_quantity: string;
+  unit_price_tax_incl: string;
+  total_price_tax_incl: string;
+}
+
+export interface OrderState {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+export interface CreateOrderPayload {
+  id_customer: string;
+  id_cart: string;
+  id_currency: string;
+  id_lang: string;
+  id_carrier: string;
+  id_address_delivery: string;
+  id_address_invoice: string;
+  payment: string;         // ex: 'Paiement à la livraison'
+  module: string;          // ex: 'cod'
+  current_state?: string;  // ex: '1' = En attente de paiement
+  total_paid?: string;
+  total_paid_tax_incl?: string;
+  total_products?: string;
+  total_shipping?: string;
+}
+
+/**
+ * Service commandes côté frontoffice
+ * Utilise createResourceWithBlankSchema pour POST et l'API XML pour GET
+ */
+export const frontOrderService = {
+
+  // ── Création d'une commande depuis le panier ─────────────────────
+  async createOrder(payload: CreateOrderPayload): Promise<string> {
+    const data = {
+      id_customer:          payload.id_customer,
+      id_cart:              payload.id_cart,
+      id_currency:          payload.id_currency || '1',
+      id_lang:              payload.id_lang     || '1',
+      id_carrier:           payload.id_carrier  || '0',
+      id_address_delivery:  payload.id_address_delivery,
+      id_address_invoice:   payload.id_address_invoice,
+      payment:              payload.payment,
+      module:               payload.module,
+      current_state:        payload.current_state  ?? '1',
+      total_paid:           payload.total_paid     ?? '0',
+      total_paid_tax_incl:  payload.total_paid_tax_incl ?? '0',
+      total_paid_real:      payload.total_paid     ?? '0',
+      total_products:       payload.total_products ?? '0',
+      total_products_wt:    payload.total_products ?? '0',
+      total_shipping:       payload.total_shipping ?? '0',
+      total_shipping_tax_incl: payload.total_shipping ?? '0',
+      total_shipping_tax_excl: payload.total_shipping ?? '0',
+      total_wrapping:       '0',
+      total_discounts:      '0',
+      conversion_rate:      '1',
+      recyclable:           '0',
+      gift:                 '0',
+      secure_key:           Math.random().toString(36).substring(2, 18),
+    };
+
+    const result = await createResourceWithBlankSchema('orders', data);
+    const orderId = result?.order?.id ?? result?.id;
+    if (!orderId) throw new Error('Impossible de récupérer l\'ID de la commande créée');
+    return String(orderId);
+  },
+
+  // ── Récupération de toutes les commandes d'un client ────────────
+  async fetchCustomerOrders(idCustomer: string): Promise<FrontOrder[]> {
+    const res = await api.get(
+      `/orders?output_format=XML&display=full&filter[id_customer]=[${idCustomer}]&sort=date_add_DESC&limit=100`
+    );
+    const xmlDoc = parse(res.data);
+
+    return Array.from(xmlDoc.querySelectorAll('order')).map(el => ({
+      id:                  text(el, 'id'),
+      reference:           text(el, 'reference'),
+      id_customer:         text(el, 'id_customer'),
+      total_paid:          text(el, 'total_paid'),
+      total_paid_tax_incl: text(el, 'total_paid_tax_incl'),
+      total_shipping:      text(el, 'total_shipping'),
+      payment:             text(el, 'payment'),
+      current_state:       text(el, 'current_state'),
+      date_add:            text(el, 'date_add'),
+      items: Array.from(el.querySelectorAll('associations order_rows order_row')).map(row => ({
+        id_product:           text(row, 'product_id'),
+        product_name:         text(row, 'product_name'),
+        product_quantity:     text(row, 'product_quantity'),
+        unit_price_tax_incl:  text(row, 'unit_price_tax_incl'),
+        total_price_tax_incl: text(row, 'total_price_tax_incl'),
+      })),
+    }));
+  },
+
+  // ── Récupération d'une commande ─────────────────────────────────
+  async fetchOrder(orderId: string): Promise<FrontOrder | null> {
+    try {
+      const res = await api.get(`/orders/${orderId}?output_format=XML&display=full`);
+      const xmlDoc = parse(res.data);
+      const el = xmlDoc.querySelector('order');
+      if (!el) return null;
+
+      return {
+        id:                  text(el, 'id'),
+        reference:           text(el, 'reference'),
+        id_customer:         text(el, 'id_customer'),
+        total_paid:          text(el, 'total_paid'),
+        total_paid_tax_incl: text(el, 'total_paid_tax_incl'),
+        total_shipping:      text(el, 'total_shipping'),
+        payment:             text(el, 'payment'),
+        current_state:       text(el, 'current_state'),
+        date_add:            text(el, 'date_add'),
+        items: Array.from(el.querySelectorAll('associations order_rows order_row')).map(row => ({
+          id_product:           text(row, 'product_id'),
+          product_name:         text(row, 'product_name'),
+          product_quantity:     text(row, 'product_quantity'),
+          unit_price_tax_incl:  text(row, 'unit_price_tax_incl'),
+          total_price_tax_incl: text(row, 'total_price_tax_incl'),
+        })),
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  // ── Récupération des statuts de commande ─────────────────────────
+  async fetchOrderStates(): Promise<OrderState[]> {
+    try {
+      const res = await api.get('/order_states?output_format=XML&display=full&limit=100');
+      const xmlDoc = parse(res.data);
+      return Array.from(xmlDoc.querySelectorAll('order_state')).map(el => ({
+        id:    text(el, 'id'),
+        name:  el.querySelector('name language')?.textContent?.trim() || text(el, 'name'),
+        color: text(el, 'color'),
+      }));
+    } catch {
+      return [
+        { id: '1',  name: 'En attente de paiement (chèque)',   color: '#4169E1' },
+        { id: '2',  name: 'Paiement accepté',                   color: '#32CD32' },
+        { id: '3',  name: 'En cours de préparation',            color: '#FF8C00' },
+        { id: '4',  name: 'Expédiée',                           color: '#9400D3' },
+        { id: '5',  name: 'Livrée',                             color: '#228B22' },
+        { id: '6',  name: 'Annulée',                            color: '#DC143C' },
+        { id: '7',  name: 'Remboursée',                         color: '#808080' },
+        { id: '8',  name: 'Erreur de paiement',                 color: '#FF0000' },
+        { id: '12', name: 'En attente de paiement (virement)',  color: '#4169E1' },
+      ];
+    }
+  },
+
+  // ── Récupération des transporteurs actifs ────────────────────────
+  async fetchCarriers(): Promise<{ id: string; name: string; price: number }[]> {
+    try {
+      const res = await api.get('/carriers?output_format=XML&display=full&filter[deleted]=0');
+      const xmlDoc = parse(res.data);
+      return Array.from(xmlDoc.querySelectorAll('carrier'))
+        .filter(el => text(el, 'active') === '1')
+        .map(el => ({
+          id:    text(el, 'id'),
+          name:  text(el, 'name'),
+          price: 0,
+        }));
+    } catch {
+      return [];
+    }
+  },
+
+  // ── Récupération des adresses d'un client ────────────────────────
+  async fetchCustomerAddresses(idCustomer: string) {
+    try {
+      const res = await api.get(
+        `/addresses?output_format=XML&display=full&filter[id_customer]=[${idCustomer}]`
+      );
+      const xmlDoc = parse(res.data);
+      return Array.from(xmlDoc.querySelectorAll('address')).map(el => ({
+        id:       text(el, 'id'),
+        alias:    text(el, 'alias'),
+        lastname: text(el, 'lastname'),
+        firstname:text(el, 'firstname'),
+        address1: text(el, 'address1'),
+        city:     text(el, 'city'),
+        postcode: text(el, 'postcode'),
+      }));
+    } catch {
+      return [];
+    }
+  },
+
+  // ── Helper label statut ──────────────────────────────────────────
+  getStateName(states: OrderState[], id: string): string {
+    return states.find(s => s.id === id)?.name ?? `État ${id}`;
+  },
+
+  getStateColor(states: OrderState[], id: string): string {
+    return states.find(s => s.id === id)?.color ?? '#888';
+  },
+
+  formatPrice(amount: string | number): string {
+    return new Intl.NumberFormat('fr-MG', {
+      style: 'currency',
+      currency: 'MGA',
+    }).format(Number(amount));
+  },
+};

@@ -25,6 +25,21 @@ const routes = [
     component: HomeView 
   },
   { 
+    path: '/cart', 
+    name: 'cart',
+    component: CartView 
+  },
+  { 
+    path: '/checkout', 
+    name: 'checkout',
+    component: CheckoutView 
+  },
+  { 
+    path: '/confirmation/:orderId', 
+    name: 'confirmation',
+    component: ConfirmationView 
+  },
+  { 
     path: '/products', 
     name: 'products',
     component: ProductsView 

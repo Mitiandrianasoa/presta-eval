@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-stock', 'show-customers', 'show-brands-suppliers']);
+const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-customers', 'show-brands-suppliers']);
 
 const showConfig = ref(false);
 
@@ -15,6 +15,10 @@ const goToConfig = () => {
 
 const goToOrders = () => {
   router.push('/orders');
+};
+
+const goToStock = () => {
+  router.push('/admin/stock');
 };
 
 const showBrandsSuppliers = () => {
@@ -70,7 +74,7 @@ const showBrandsSuppliers = () => {
       </button>
 
       <!-- Gérer le stock -->
-      <button @click="$emit('show-stock')" class="menu-item main-item stock-item">
+      <button @click="goToStock" class="menu-item main-item stock-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>

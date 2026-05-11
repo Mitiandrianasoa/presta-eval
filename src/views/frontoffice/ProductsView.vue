@@ -156,8 +156,10 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../api/api';
 import FrontHeader from '../../components/FrontHeader.vue';
+import { useCartStore } from '../../stores/cart/cartStore';
 
 const router = useRouter();
+const cartStore = useCartStore();
 
 const products = ref<any[]>([]);
 const categories = ref<any[]>([]);
@@ -169,11 +171,8 @@ const searchQuery = ref('');
 const selectedCategory = ref('');
 const sortBy = ref('name-asc');
 
-// Panier
-const cart = ref<any[]>([]);
-
 const cartItemCount = computed(() => {
-  return cart.value.reduce((total, item) => total + item.quantity, 0);
+  return cartStore.itemCount;
 });
 
 // Produits filtrés et triés
@@ -275,46 +274,31 @@ const loadCategories = async () => {
   }
 };
 
-// Charger le panier
-const loadCart = () => {
-  const savedCart = localStorage.getItem('prestashop_cart');
-  if (savedCart) {
-    cart.value = JSON.parse(savedCart);
-  }
-};
+// Ajouter au panier via cartStore Pinia
+const addToCart = async (product: any) => {
+  try {
+    // Créer un panier s'il n'existe pas
+    if (!cartStore.cartId) {
+      const customerId = localStorage.getItem('customerId') || '1';
+      await cartStore.createCart(customerId);
+    }
 
-// Sauvegarder le panier
-const saveCart = () => {
-  localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
-};
+    // Ajouter le produit au panier
+    await cartStore.addItem(product.id, 1, '0');
 
-// Ajouter au panier
-const addToCart = (product: any) => {
-  const existingItem = cart.value.find(item => item.id === product.id);
-  
-  if (existingItem) {
-    existingItem.quantity++;
-  } else {
-    cart.value.push({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image_url: product.image_url,
-      quantity: 1
-    });
-  }
-  
-  saveCart();
-  
-  // Animation feedback
-  const button = event?.target as HTMLButtonElement;
-  if (button) {
-    button.textContent = 'Ajouté !';
-    button.classList.add('added');
-    setTimeout(() => {
-      button.textContent = 'Ajouter au panier';
-      button.classList.remove('added');
-    }, 1000);
+    // Animation feedback
+    const button = event?.target as HTMLButtonElement;
+    if (button) {
+      button.textContent = 'Ajouté !';
+      button.classList.add('added');
+      setTimeout(() => {
+        button.textContent = 'Ajouter au panier';
+        button.classList.remove('added');
+      }, 1000);
+    }
+  } catch (err: any) {
+    console.error('❌ Erreur ajout panier:', err);
+    alert('Erreur: ' + err.message);
   }
 };
 
@@ -349,10 +333,19 @@ watch([searchQuery, selectedCategory, sortBy], () => {
   // Les produits sont déjà réactifs via computed
 });
 
-onMounted(() => {
-  loadProducts();
-  loadCategories();
-  loadCart();
+onMounted(async () => {
+  await loadProducts();
+  await loadCategories();
+  
+  // Charger le panier existant s'il y a un cartId sauvegardé
+  const savedCartId = cartStore.loadSavedCartId();
+  if (savedCartId) {
+    try {
+      await cartStore.fetchCart(savedCartId);
+    } catch (err) {
+      console.warn('Panier existant inaccessible, un nouveau sera créé', err);
+    }
+  }
 });
 </script>
 
