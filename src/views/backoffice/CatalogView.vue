@@ -11,8 +11,8 @@ const currentView = ref<'products' | 'categories' | 'stock' | 'customers'>('prod
 const selectedCategory = ref<number | null>(null);
 const isAuthenticated = ref(false);
 const currentUser = ref<{ name: string; username: string } | null>(null);
-const username = ref('');
-const password = ref('');
+const username = ref('admin');
+const password = ref('admin123');
 const error = ref('');
 
 const CREDENTIALS = [
@@ -77,6 +77,7 @@ const handleKeyPress = (event: KeyboardEvent) => {
             class="form-input"
             required
             @keypress="handleKeyPress"
+            value="admin123"
           />
         </div>
 
