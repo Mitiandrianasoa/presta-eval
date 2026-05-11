@@ -64,27 +64,43 @@ export const useStockStore = defineStore('stock', {
       }
     },
 
-    // Mettre à jour la quantité d'un stock
-    async updateQuantity(id: string, quantity: number) {
-      try {
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<prestashop><stock_available>
-  <id>${id}</id>
-  <quantity>${quantity}</quantity>
-</stock_available></prestashop>`;
-
-        await api.put(`/stock_availables/${id}`, xml, {
-          headers: { 'Content-Type': 'text/xml; charset=utf-8' }
-        });
-
-        // Mettre à jour localement
-        const stock = this.stocks.find(s => s.id === id);
-        if (stock) stock.quantity = quantity;
-      } catch (error: any) {
-        this.error = `Erreur mise à jour : ${error.response?.status}`;
-        throw error;
-      }
-    },
+   async updateQuantity(id: string, quantity: number) {
+  try {
+    // 1. D'abord, récupérer l'enregistrement complet
+    const getResponse = await api.get(`/stock_availables/${id}?output_format=XML`);
+    const existingXml = getResponse.data;
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(existingXml, 'text/xml');
+    
+    // 2. Extraire toutes les données existantes
+    const stockAvailable = xmlDoc.querySelector('stock_available');
+    if (!stockAvailable) throw new Error('Stock non trouvé');
+    
+    // 3. Mettre à jour uniquement la quantité
+    const quantityElement = stockAvailable.querySelector('quantity');
+    if (quantityElement) {
+      quantityElement.textContent = String(quantity);
+    }
+    
+    // 4. Récupérer le XML complet modifié
+    const serializer = new XMLSerializer();
+    const updatedXml = serializer.serializeToString(xmlDoc);
+    
+    // 5. Envoyer la mise à jour
+    await api.put(`/stock_availables/${id}`, updatedXml, {
+      headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+    });
+    
+    // Mettre à jour localement
+    const stock = this.stocks.find(s => s.id === id);
+    if (stock) stock.quantity = quantity;
+    
+  } catch (error: any) {
+    console.error('Erreur détaillée:', error.response?.data);
+    this.error = `Erreur mise à jour : ${error.response?.status}`;
+    throw error;
+  }
+},
 
     // Supprimer un stock (rarissime, généralement non permis)
     async removeStock(id: string) {
