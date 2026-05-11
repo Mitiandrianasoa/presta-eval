@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8081/evaluation/prestashop_edition_classic_version_8.2.6',
+        target: 'http://localhost/ETUDE/prestashop_edition_classic_version_8.2.6',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
       }

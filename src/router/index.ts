@@ -1,11 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import ProductList from '../views/CatalogView.vue';
 import ConfigView from '../views/ConfigView.vue';
+import CategoryImportView from '../views/CategoryImportView.vue';
 // import OrderList from '../components/OrderList.vue';
 
 const routes = [
   { path: '/', component: ProductList },
-  { path: '/config', component: ConfigView }
+  { path: '/config', component: ConfigView },
+ {
+  path: '/import-categories',
+  name: 'import-categories',
+  component: CategoryImportView
+}
   // { path: '/orders', component: OrderList }
 ];
 
