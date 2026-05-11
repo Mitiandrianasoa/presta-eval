@@ -11,6 +11,7 @@ import RegisterView from '../views/frontoffice/RegisterView.vue';
 import CatalogView from '../views/backoffice/CatalogView.vue';
 import ConfigView from '../views/backoffice/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
+import OrderView from '../views/OrderView.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -56,11 +57,20 @@ const routes = [
     name: 'import-categories',
     component: CategoryImportView
   },
+  {
+    path: '/orders',
+    name: 'orders',
+    component: OrderView
+  },
 
   // Redirect old routes
   { 
     path: '/config', 
     redirect: '/admin/config' 
+  },
+  { 
+    path: '/order', 
+    redirect: '/orders' 
   }
 ];
 
