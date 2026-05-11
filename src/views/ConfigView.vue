@@ -362,14 +362,15 @@ const tables = [
 
 // State
 const selectedTable = ref('');
+const selectedTables = ref<string[]>([]);
 const searchQuery = ref('');
 const showConfirm = ref(false);
 const resetResult = ref<{ success: boolean; message: string } | null>(null);
-const tableStats = ref<{ count: number; loading: boolean }>({ count: 0, loading: false });
 const loading = ref(false);
+const step = ref('');
 const progress = ref(0);
 const total = ref(0);
-const step = ref('');
+const tableStats = ref({ count: 0, loading: false });
 
 // Computed
 const filteredTables = computed(() => {
@@ -480,6 +481,107 @@ const onTableChange = () => {
   resetResult.value = null;
   checkTableCount();
 };
+
+// Fonctions pour la sélection multiple
+const selectAllTables = () => {
+  selectedTables.value = filteredTables.value.map(table => table.table);
+};
+
+const clearAllTables = () => {
+  selectedTables.value = [];
+  selectedTable.value = '';
+};
+
+const toggleTableSelection = (tableName: string) => {
+  const index = selectedTables.value.indexOf(tableName);
+  if (index > -1) {
+    selectedTables.value.splice(index, 1);
+  } else {
+    selectedTables.value.push(tableName);
+  }
+};
+
+const isTableSelected = (tableName: string) => {
+  return selectedTables.value.includes(tableName);
+};
+
+// Fonction pour réinitialiser plusieurs tables
+const confirmMultipleReset = () => {
+  if (selectedTables.value.length === 0) return;
+  showConfirm.value = true;
+};
+
+const executeMultipleReset = async () => {
+  showConfirm.value = false;
+  resetResult.value = null;
+
+  if (selectedTables.value.length === 0) return;
+
+  loading.value = true;
+  let totalDeleted = 0;
+  let successCount = 0;
+  let errorCount = 0;
+  const errors: string[] = [];
+
+  for (const tableName of selectedTables.value) {
+    const table = tables.find(t => t.table === tableName);
+    if (!table) continue;
+
+    try {
+      step.value = `Traitement de ${table.label}...`;
+      progress.value = totalDeleted;
+
+      // Récupérer tous les IDs
+      const res = await api.get(`/${table.endpoint}?output_format=XML&display=[id]&limit=10000`);
+      const doc = new DOMParser().parseFromString(res.data, 'text/xml');
+      const elements = Array.from(doc.getElementsByTagName(table.tag));
+      const skip = table.skip || [];
+      const ids = elements
+        .map(el => parseInt(el.getElementsByTagName('id')[0]?.textContent || '0'))
+        .filter(id => id > 0 && !skip.includes(id));
+
+      if (ids.length === 0) {
+        successCount++;
+        continue;
+      }
+
+      // Supprimer chaque élément
+      for (const id of [...ids].sort((a, b) => b - a)) {
+        try {
+          await api.delete(`/${table.endpoint}/${id}`);
+          totalDeleted++;
+        } catch (e: any) {
+          if (!table.soft) {
+            throw new Error(`Erreur lors de la suppression de ${table.endpoint}/${id}`);
+          }
+        }
+      }
+
+      successCount++;
+    } catch (e: any) {
+      errorCount++;
+      errors.push(`${table.label}: ${e.message || 'Erreur inconnue'}`);
+    }
+  }
+
+  if (errorCount === 0) {
+    resetResult.value = {
+      success: true,
+      message: `${totalDeleted} élément(s) de ${successCount} table(s) ont été supprimés avec succès.`
+    };
+  } else {
+    resetResult.value = {
+      success: false,
+      message: `${successCount} table(s) traitées avec succès, ${errorCount} erreur(s). ${errors.join(', ')}`
+    };
+  }
+
+  // Nettoyer la sélection
+  selectedTables.value = [];
+  selectedTable.value = '';
+  
+  loading.value = false;
+};
 </script>
 
 <template>
@@ -502,35 +604,60 @@ const onTableChange = () => {
               </p>
 
               <div class="form-group">
-                <label>Sélectionner une table ({{ tables.length }} tables disponibles via API)</label>
+                <label>Sélectionner les tables ({{ tables.length }} tables disponibles via API)</label>
                 <input
                   v-model="searchQuery"
                   type="text"
                   placeholder="Rechercher une table..."
                   class="search-input"
                 />
-                <select v-model="selectedTable" @change="onTableChange" class="table-select" size="10">
-                  <option value="">-- Choisir une table --</option>
-                  <option v-for="table in filteredTables" :key="table.table" :value="table.table">
-                    {{ table.table }} - {{ table.label }}
-                  </option>
-                </select>
+                
+                <!-- Boutons de sélection multiple -->
+                <div class="selection-buttons">
+                  <button @click="selectAllTables" class="select-btn select-all">
+                    Tout sélectionner
+                  </button>
+                  <button @click="clearAllTables" class="select-btn clear-all">
+                    Tout effacer
+                  </button>
+                  <span class="selection-count">
+                    {{ selectedTables.length }} table(s) sélectionnée(s)
+                  </span>
+                </div>
+
+                <!-- Liste des tables avec checkboxes -->
+                <div class="table-list">
+                  <div 
+                    v-for="table in filteredTables" 
+                    :key="table.table"
+                    class="table-item"
+                    :class="{ selected: isTableSelected(table.table) }"
+                    @click="toggleTableSelection(table.table)"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="isTableSelected(table.table)"
+                      @change="toggleTableSelection(table.table)"
+                      class="table-checkbox"
+                    />
+                    <div class="table-info">
+                      <span class="table-name">{{ table.table }}</span>
+                      <span class="table-label">{{ table.label }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div v-if="selectedTable && tableStats.count > 0" class="table-info">
+              <div v-if="selectedTables.length > 0" class="table-info">
                 <span class="record-count">
-                  <strong>{{ tableStats.count }}</strong> enregistrement(s) trouvé(s) dans {{ currentTable()?.table }}
+                  <strong>{{ selectedTables.length }}</strong> table(s) sélectionnée(s) pour la réinitialisation
                 </span>
-              </div>
-
-              <div v-if="selectedTable && tableStats.count === 0 && !tableStats.loading" class="table-info empty">
-                <span>Aucun enregistrement dans cette table</span>
               </div>
 
               <button
                 class="reset-btn"
-                :disabled="!selectedTable || loading || tableStats.count === 0"
-                @click="confirmReset"
+                :disabled="selectedTables.length === 0 || loading"
+                @click="confirmMultipleReset"
               >
                 <svg v-if="!loading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
@@ -541,7 +668,7 @@ const onTableChange = () => {
                   {{ step }} ({{ progress }}/{{ total }})
                 </span>
                 <span v-else>
-                  Réinitialiser les données
+                  Réinitialiser les données ({{ selectedTables.length }} table(s))
                 </span>
               </button>
 
@@ -567,13 +694,21 @@ const onTableChange = () => {
           </div>
           <h3>Confirmer la réinitialisation ?</h3>
           <p>
-            Vous êtes sur le point de supprimer <strong>tous les enregistrements</strong> de la table
-            <strong>{{ currentTable()?.table }} ({{ currentTable()?.label }})</strong>.
+            Vous êtes sur le point de supprimer <strong>tous les enregistrements</strong> de 
+            <strong>{{ selectedTables.length }} table(s)</strong> sélectionnée(s).
             <br>Cette opération est <strong>irréversible</strong>.
           </p>
+          <div class="selected-tables-list">
+            <strong>Tables concernées :</strong>
+            <ul>
+              <li v-for="tableName in selectedTables" :key="tableName">
+                {{ tableName }} - {{ tables.find(t => t.table === tableName)?.label }}
+              </li>
+            </ul>
+          </div>
           <div class="modal-actions">
             <button class="btn-cancel" @click="showConfirm = false">Annuler</button>
-            <button class="btn-confirm" @click="executeReset">Oui, réinitialiser</button>
+            <button class="btn-confirm" @click="executeMultipleReset">Oui, réinitialiser</button>
           </div>
         </div>
       </div>
@@ -687,16 +822,128 @@ const onTableChange = () => {
   border-color: #4CAF50;
 }
 
-.table-select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 13px;
-  background: white;
+/* Boutons de sélection multiple */
+.selection-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.select-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+}
+
+.select-btn.select-all {
+  background: #28a745;
+  color: white;
+}
+
+.select-btn.select-all:hover {
+  background: #218838;
+}
+
+.select-btn.clear-all {
+  background: #dc3545;
+  color: white;
+}
+
+.select-btn.clear-all:hover {
+  background: #c82333;
+}
+
+.selection-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Liste des tables avec checkboxes */
+.table-list {
   max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+}
+
+.table-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.table-item:hover {
+  background-color: #f8f9fa;
+}
+
+.table-item.selected {
+  background-color: #e3f2fd;
+  border-left: 3px solid #2196f3;
+}
+
+.table-item:last-child {
+  border-bottom: none;
+}
+
+.table-checkbox {
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.table-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.table-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-family: 'Courier New', monospace;
+}
+
+.table-label {
+  font-size: 11px;
+  color: #7f8c8d;
+}
+
+/* Styles pour la liste des tables dans le modal */
+.selected-tables-list {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.selected-tables-list ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.selected-tables-list li {
+  font-size: 12px;
+  margin: 4px 0;
+  color: #495057;
 }
 
 .table-select:focus {

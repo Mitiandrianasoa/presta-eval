@@ -9,9 +9,10 @@ NEW APP
         - affichage
         - gestion de role utilisateur 
         
-    - configuration reset data[Tsanta]:
+    - configuration reset data[Tsanta][ok]:
         - update affichage:
             - button tout effacer/ tout selectionner 
+
     - import[Mitia]:
         - input csv 3
         - input zip img
