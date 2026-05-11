@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import Sidebar from '../components/Sidebar.vue';
-import api from '../api/api';
+import Sidebar from '../../components/Sidebar.vue';
+import api from '../../api/api';
 
 // Liste complète des tables PrestaShop (mappées aux endpoints API disponibles)
 // Note: Toutes les tables SQL n'ont pas forcément un endpoint API exposé

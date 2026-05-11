@@ -20,7 +20,11 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8081/evaluation/prestashop_edition_classic_version_8.2.6',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
+        // Injecte l'auth pour toutes les requêtes proxy (y compris les <img>)
+        headers: {
+          Authorization: 'Basic ' + Buffer.from('bqHTFCOOgQIPEq03m6yZTUZt6iyhAwVG:').toString('base64')
+        }
       }
     }
   }

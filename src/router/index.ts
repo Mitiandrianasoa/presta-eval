@@ -1,18 +1,67 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import ProductList from '../views/CatalogView.vue';
-import ConfigView from '../views/ConfigView.vue';
-import CategoryImportView from '../views/CategoryImportView.vue';
-// import OrderList from '../components/OrderList.vue';
+
+// Frontoffice
+import HomeView from '../views/frontoffice/HomeView.vue';
+import ProductsView from '../views/frontoffice/ProductsView.vue';
+import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
+import LoginView from '../views/frontoffice/LoginView.vue';
+import RegisterView from '../views/frontoffice/RegisterView.vue';
+
+// Backoffice
+import CatalogView from '../views/backoffice/CatalogView.vue';
+import ConfigView from '../views/backoffice/ConfigView.vue';
+import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
 
 const routes = [
-  { path: '/', component: ProductList },
-  { path: '/config', component: ConfigView },
- {
-  path: '/import-categories',
-  name: 'import-categories',
-  component: CategoryImportView
-}
-  // { path: '/orders', component: OrderList }
+  // Frontoffice Routes
+  { 
+    path: '/', 
+    name: 'home',
+    component: HomeView 
+  },
+  { 
+    path: '/products', 
+    name: 'products',
+    component: ProductsView 
+  },
+  { 
+    path: '/product/:id', 
+    name: 'product-detail',
+    component: ProductDetailView 
+  },
+  { 
+    path: '/login', 
+    name: 'login',
+    component: LoginView 
+  },
+  { 
+    path: '/register', 
+    name: 'register',
+    component: RegisterView 
+  },
+
+  // Backoffice Routes
+  { 
+    path: '/admin', 
+    name: 'admin',
+    component: CatalogView 
+  },
+  { 
+    path: '/admin/config', 
+    name: 'admin-config',
+    component: ConfigView 
+  },
+  {
+    path: '/admin/import-categories',
+    name: 'import-categories',
+    component: CategoryImportView
+  },
+
+  // Redirect old routes
+  { 
+    path: '/config', 
+    redirect: '/admin/config' 
+  }
 ];
 
 export default createRouter({

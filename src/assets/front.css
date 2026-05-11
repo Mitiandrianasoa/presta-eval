@@ -1,0 +1,146 @@
+/* ── Design tokens ─────────────────────────────────────── */
+:root {
+  --primary:       #2563eb;
+  --primary-dark:  #1d4ed8;
+  --primary-light: #eff6ff;
+  --navy:          #0f172a;
+  --text:          #1e293b;
+  --muted:         #64748b;
+  --border:        #e2e8f0;
+  --bg:            #f8fafc;
+  --surface:       #ffffff;
+  --success:       #16a34a;
+  --success-bg:    #f0fdf4;
+  --error:         #dc2626;
+  --error-bg:      #fef2f2;
+  --radius:        8px;
+  --radius-lg:     12px;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg:     0 12px 28px rgba(0,0,0,0.12);
+  --transition:    0.2s ease;
+}
+
+/* ── Global reset / base ───────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Shared utilities ──────────────────────────────────── */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.section-heading {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.section-heading h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 0.75rem;
+  display: inline-block;
+  position: relative;
+}
+
+.section-heading h2::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+  margin: 0.6rem auto 0;
+}
+
+.section-heading p {
+  color: var(--muted);
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* ── Shared spinner ────────────────────────────────────── */
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Shared footer ─────────────────────────────────────── */
+.front-footer {
+  background: var(--navy);
+  color: #cbd5e1;
+  padding: 3.5rem 0 1.5rem;
+}
+
+.front-footer .footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.front-footer h3,
+.front-footer h4 {
+  color: #f1f5f9;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 1rem;
+}
+
+.front-footer p {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.front-footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.front-footer ul li {
+  margin-bottom: 0.5rem;
+}
+
+.front-footer a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color var(--transition);
+}
+
+.front-footer a:hover {
+  color: #f1f5f9;
+}
+
+.front-footer .footer-bottom {
+  border-top: 1px solid #1e293b;
+  padding-top: 1.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #475569;
+}
