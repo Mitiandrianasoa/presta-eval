@@ -1,4 +1,5 @@
 import api from '../api/api';
+import { createResourceWithBlankSchema } from '../api/schemaService';
 
 const parse = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
 const text  = (el: Element, tag: string) => el.querySelector(tag)?.textContent?.trim() || '';
@@ -23,6 +24,8 @@ export interface FrontOrderItem {
   product_quantity: string;
   unit_price_tax_incl: string;
   total_price_tax_incl: string;
+  product_attribute_id?: string; // Pour les déclinaisons
+  product_reference?: string; 
 }
 
 export interface OrderState {
@@ -69,18 +72,19 @@ export interface CreateOrderPayload {
   items?: FrontOrderItem[];
 }
 
+
+
 /**
  * Service commandes côté frontoffice
  * Utilise createResourceWithBlankSchema pour POST et l'API XML pour GET
  */
 export const frontOrderService = {
   appendOrderRow(xmlDoc: Document, orderRows: Element, item: FrontOrderItem) {
-    const orderRow = xmlDoc.createElement('order_row');
+  const orderRow = xmlDoc.createElement('order_row');
 
-    const fields: Record<string, string> = {
-      id: '',
+  const fields: Record<string, string> = {
       product_id: item.id_product,
-      product_attribute_id: '',
+      product_attribute_id: '0',
       product_quantity: item.product_quantity,
       product_name: item.product_name,
       product_reference: '',
@@ -88,9 +92,21 @@ export const frontOrderService = {
       product_isbn: '',
       product_upc: '',
       product_price: item.unit_price_tax_incl,
-      id_customization: '',
+      reduction_percent: '0',
+      reduction_amount: '0',
+      reduction_amount_tax_incl: '0',
+      reduction_amount_tax_excl: '0',
+      product_quantity_discount: '0',
+      product_quantity_in_stock: '0',
+      product_quantity_refunded: '0',
+      product_quantity_return: '0',
+      product_quantity_reinjected: '0',
+      group_reduction: '0',
+      id_customization: '0',
       unit_price_tax_incl: item.unit_price_tax_incl,
-      unit_price_tax_excl: item.unit_price_tax_incl,
+      unit_price_tax_excl: String(parseFloat(item.unit_price_tax_incl) / 1.2), // Calcul approximatif HT
+      total_price_tax_incl: item.total_price_tax_incl,
+      total_price_tax_excl: String(parseFloat(item.total_price_tax_incl) / 1.2), // Calcul approximatif HT
     };
 
     Object.entries(fields).forEach(([key, value]) => {
@@ -99,8 +115,8 @@ export const frontOrderService = {
       orderRow.appendChild(field);
     });
 
-    orderRows.appendChild(orderRow);
-  },
+  orderRows.appendChild(orderRow);
+},
 
   // ── Création d'une adresse client ───────────────────────────────
   async createCustomerAddress(payload: CreateAddressPayload): Promise<string> {
@@ -118,44 +134,19 @@ export const frontOrderService = {
       id_country: payload.id_country || '1',
     };
 
-    const blankResponse = await api.get('/addresses?schema=blank');
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(blankResponse.data, 'text/xml');
-    const addressElement = xmlDoc.querySelector('address');
+    const response = await createResourceWithBlankSchema('addresses', data);
 
-    if (!addressElement) {
-      throw new Error('Structure XML d\'adresse introuvable');
-    }
-
-    Object.entries(data).forEach(([key, value]) => {
-      let field = addressElement.querySelector(key);
-      if (!field) {
-        field = xmlDoc.createElement(key);
-        addressElement.appendChild(field);
-      }
-      field.textContent = String(value);
-    });
-
-    const serializer = new XMLSerializer();
-    const xmlToSend = serializer.serializeToString(xmlDoc);
-
-    const response = await api.post('/addresses?output_format=JSON', xmlToSend, {
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'Accept': 'application/json',
-      },
-    });
-
-    const addressId = response.data?.address?.id ?? response.data?.id;
+    const addressId = response?.address?.id ?? response?.id;
     if (!addressId) {
       throw new Error('Impossible de récupérer l\'ID de l\'adresse créée');
     }
-
+    
     return String(addressId);
   },
 
   // ── Création d'une commande depuis le panier ─────────────────────
   async createOrder(payload: CreateOrderPayload): Promise<string> {
+    console.log('🚀 Démarrage de createOrder avec payload:', JSON.stringify(payload, null, 2));
     const data = {
       id_customer:          payload.id_customer,
       id_cart:              payload.id_cart,
@@ -169,6 +160,7 @@ export const frontOrderService = {
       current_state:        payload.current_state  ?? '1',
       total_paid:           payload.total_paid     ?? '0',
       total_paid_tax_incl:  payload.total_paid_tax_incl ?? '0',
+      total_paid_tax_excl:  payload.total_paid_tax_incl ?? '0',
       total_paid_real:      payload.total_paid     ?? '0',
       total_products:       payload.total_products ?? '0',
       total_products_wt:    payload.total_products ?? '0',
@@ -180,7 +172,7 @@ export const frontOrderService = {
       conversion_rate:      '1',
       recyclable:           '0',
       gift:                 '0',
-      secure_key:           Math.random().toString(36).substring(2, 18),
+      secure_key:           '12345678901234567890123456789012',
     };
 
     const items = payload.items ?? [];
@@ -189,24 +181,36 @@ export const frontOrderService = {
       throw new Error('Aucun produit à commander');
     }
 
-    const blankResponse = await api.get('/orders?schema=blank');
+    // Récupérer un schema synopsis (plus complet que blank)
+    const templateResponse = await api.get('/orders?schema=synopsis');
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(blankResponse.data, 'text/xml');
+    const xmlDoc = parser.parseFromString(templateResponse.data, 'text/xml');
     const orderElement = xmlDoc.querySelector('order');
 
     if (!orderElement) {
       throw new Error('Structure XML de commande introuvable');
     }
 
+    // Nettoyer les champs vides du synopsis qui causent des erreurs 500
+    Array.from(orderElement.children).forEach(child => {
+      if (child.tagName !== 'associations' && (!child.textContent || child.textContent.trim() === '')) {
+        orderElement.removeChild(child);
+      }
+    });
+
+    // Appliquer les données
     Object.entries(data).forEach(([key, value]) => {
       let field = orderElement.querySelector(key);
       if (!field) {
         field = xmlDoc.createElement(key);
         orderElement.appendChild(field);
       }
+      // Supprimer les attributs potentiellement problématiques comme xlink:href
+      Array.from(field.attributes).forEach(attr => field.removeAttribute(attr.name));
       field.textContent = String(value);
     });
 
+    // Associations
     const associations = orderElement.querySelector('associations') || xmlDoc.createElement('associations');
     if (!associations.parentNode) {
       orderElement.appendChild(associations);
@@ -221,24 +225,71 @@ export const frontOrderService = {
     orderRows.textContent = '';
     items.forEach((item) => this.appendOrderRow(xmlDoc, orderRows as Element, item));
 
-    const serializer = new XMLSerializer();
-    const xmlToSend = serializer.serializeToString(xmlDoc);
-
-    const response = await api.post('/orders?output_format=JSON', xmlToSend, {
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'Accept': 'application/json',
-      },
+    // 🧹 Nettoyage final strict (supprime tous les champs XML vides)
+    const elementsToRemove: Element[] = [];
+    const walk = (node: Element) => {
+      Array.from(node.children).forEach((child: Element) => {
+        if (child.children.length > 0) {
+          walk(child);
+        } else if (child.tagName !== 'associations' && (!child.textContent || child.textContent.trim() === '')) {
+          elementsToRemove.push(child);
+        }
+      });
+    };
+    walk(orderElement);
+    elementsToRemove.forEach(el => {
+      if (el.parentNode) el.parentNode.removeChild(el);
     });
 
-    const orderId = response.data?.order?.id ?? response.data?.id;
-    if (!orderId) {
-      throw new Error('Impossible de récupérer l\'ID de la commande créée');
+    const serializer = new XMLSerializer();
+    const xmlToSend = serializer.serializeToString(xmlDoc);
+    console.log('📄 XML envoyé pour CREATE ORDER:', xmlToSend);
+    
+    // 🔍 Vérification
+    console.log('🏠 id_address_delivery dans XML:', orderElement.querySelector('id_address_delivery')?.textContent);
+    console.log('📮 id_address_invoice dans XML:', orderElement.querySelector('id_address_invoice')?.textContent);
+
+    try {
+      const response = await api.post('/orders?output_format=JSON', xmlToSend, {
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'Accept': 'application/json',
+        },
+      });
+
+      const orderId = response.data?.order?.id ?? response.data?.id;
+      if (!orderId) {
+        throw new Error('Erreur lors de la création de la commande (ID manquant)');
+      }
+
+      return String(orderId);
+    } catch (error: any) {
+      const psErrors: { code: number; message: string }[] = error.response?.data?.errors ?? [];
+      console.error('Détails de l\'erreur API PrestaShop:', JSON.stringify(error.response?.data, null, 2));
+
+      const isOnlyWarnings = psErrors.length > 0 && psErrors.every(e => e.code === 15);
+      if (isOnlyWarnings || error.response?.status === 500) {
+        try {
+          const cartId = data.id_cart;
+          const checkRes = await api.get(
+            `/orders?output_format=JSON&display=full&filter[id_cart]=[${cartId}]&sort=id_DESC&limit=1`
+          );
+          const orders = checkRes.data?.orders;
+          const found = Array.isArray(orders) ? orders[0] : null;
+          if (found?.id) {
+            console.warn('⚠️ Commande créée malgré l\'erreur serveur (hook deprecated). ID:', found.id);
+            return String(found.id);
+          }
+        } catch {
+          // La vérification a échoué, on relance l'erreur originale
+        }
+      }
+
+      const errorMessage = psErrors[0]?.message || error.message;
+      throw new Error(`Rejet de PrestaShop: ${errorMessage}`);
     }
-
-    return String(orderId);
   },
-
+  
   // ── Récupération de toutes les commandes d'un client ────────────
   async fetchCustomerOrders(idCustomer: string): Promise<FrontOrder[]> {
     const res = await api.get(
@@ -322,32 +373,20 @@ export const frontOrderService = {
     }
   },
 
-  // ── Récupération des paiements enregistrés ──────────────────────
+  // ── Récupération des paiements disponibles ──────────────────────
   async fetchOrderPayments(): Promise<PaymentOption[]> {
-    try {
-      const res = await api.get('/order_payments?output_format=XML&display=full&limit=100');
-      const xmlDoc = parse(res.data);
-
-      const payments = Array.from(xmlDoc.querySelectorAll('order_payment'))
-        .map((el, index) => {
-          const paymentMethod = text(el, 'payment_method') || text(el, 'payment') || 'Paiement';
-          const amount = text(el, 'amount');
-          const orderReference = text(el, 'order_reference');
-
-          return {
-            id: text(el, 'id') || `${index + 1}`,
-            name: paymentMethod,
-            description: [orderReference ? `Commande ${orderReference}` : '', amount ? `${amount} MGA` : '']
-              .filter(Boolean)
-              .join(' - '),
-          } as PaymentOption;
-        });
-
-      return payments;
-    } catch (error) {
-      console.error('❌ Erreur chargement paiements:', error);
-      return [];
-    }
+    // Note: PrestaShop's /order_payments endpoint returns past TRANSACTIONS, not available methods.
+    // For a headless front-end, payment modules must usually be hardcoded or retrieved via a custom module.
+    // Here we provide the standard payment methods.
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve([
+          { id: 'ps_wirepayment', name: 'Virement Bancaire', description: 'Payer par virement bancaire' },
+          { id: 'ps_checkpayment', name: 'Paiement par Chèque', description: 'Payer par chèque à l\'ordre de la boutique' },
+          { id: 'cashondelivery', name: 'Paiement à la livraison', description: 'Payer au livreur lors de la réception' }
+        ]);
+      }, 500);
+    });
   },
 
   // ── Récupération des transporteurs actifs ────────────────────────

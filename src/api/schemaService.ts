@@ -175,12 +175,13 @@ export const updateResource = async (
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(getResponse.data, 'text/xml');
     
-    // Déterminer le nom de l'entité singulière (orders → order, categories → category)
-    const entityName = endpoint.endsWith('s') ? endpoint.slice(0, -1) : endpoint;
-    const entityElement = xmlDoc.querySelector(entityName);
+    // Lire le vrai nom de la balise directement depuis le XML (fiable, pas de singularisation manuelle)
+    const prestashopEl = xmlDoc.querySelector('prestashop');
+    const entityElement = prestashopEl?.firstElementChild ?? null;
+    const entityName = entityElement?.tagName ?? endpoint;
     
     if (!entityElement) {
-      throw new Error(`❌ Élément <${entityName}> non trouvé dans le XML`);
+      throw new Error(`❌ Aucun élément enfant trouvé dans <prestashop> (XML de ${endpoint})`);
     }
     
     // 4. MODIFIER les champs
@@ -269,11 +270,14 @@ export const createResourceWithBlankSchema = async (
     const parser = new DOMParser();
     const blankXmlDoc = parser.parseFromString(blankXmlStr, 'text/xml');
     
-    const entityName = endpoint.endsWith('s') ? endpoint.slice(0, -1) : endpoint;
-    const entityElement = blankXmlDoc.querySelector(entityName);
+    // Lire le vrai nom de la balise directement depuis le XML (évite les singularisations incorrectes)
+    // ex: 'addresses' → <address>, 'categories' → <category>, 'carts' → <cart>
+    const prestashopEl = blankXmlDoc.querySelector('prestashop');
+    const entityElement = prestashopEl?.firstElementChild ?? null;
+    const entityName = entityElement?.tagName ?? endpoint;
     
     if (!entityElement) {
-      throw new Error(`❌ Élément <${entityName}> non trouvé dans le schema blank`);
+      throw new Error(`❌ Aucun élément enfant trouvé dans <prestashop> (schema blank de ${endpoint})`);
     }
     
     console.log(`✅ XML vierge parsé avec élément <${entityName}>`);

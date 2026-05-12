@@ -264,6 +264,11 @@ export const useCartStore = defineStore('cart', {
       let totalProducts = 0;
 
       for (const item of this.cart.items) {
+        // Ignorer silencieusement si c'est un produit ID=0 (produit fantôme PrestaShop parfois généré)
+        if (!item.id_product || item.id_product === '0') {
+           continue; 
+        }
+
         try {
           const res = await api.get(
             `/products/${item.id_product}?output_format=XML&display=full`
