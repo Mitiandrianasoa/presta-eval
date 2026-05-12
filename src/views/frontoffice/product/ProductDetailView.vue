@@ -1,23 +1,7 @@
 <template>
   <div class="product-detail-page">
     <!-- Header -->
-    <header class="home-header">
-      <div class="header-content">
-        <div class="logo">
-          <h1>PrestaShop</h1>
-          <span>Boutique en ligne</span>
-        </div>
-        <nav class="main-nav">
-          <router-link to="/" class="nav-link">Accueil</router-link>
-          <router-link to="/products" class="nav-link">Produits</router-link>
-          <router-link to="/cart" class="nav-link cart-link">
-            Panier
-            <span v-if="cartItemCount" class="cart-count">{{ cartItemCount }}</span>
-          </router-link>
-          <router-link to="/orders" class="nav-link">Mes commandes</router-link>
-        </nav>
-      </div>
-    </header>
+    <FrontHeader />
 
     <main class="product-main">
       <div class="container">
@@ -224,7 +208,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '../../api/api';
+import api from '../../../api/api';
+import FrontHeader from '../../../components/FrontHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -238,10 +223,6 @@ const currentImage = ref('');
 
 // Panier
 const cart = ref<any[]>([]);
-
-const cartItemCount = computed(() => {
-  return cart.value.reduce((total, item) => total + item.quantity, 0);
-});
 
 const productImages = computed(() => {
   if (!product.value) return [];
@@ -492,66 +473,6 @@ onMounted(() => {
 .product-detail-page {
   min-height: 100vh;
   background: var(--bg);
-}
-
-/* ── Header inline (pages sans FrontHeader) ───────────── */
-.home-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  height: 64px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.logo h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--navy);
-}
-
-.logo span {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
-.main-nav {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  transition: color var(--transition), background var(--transition);
-}
-
-.nav-link:hover { color: var(--text); background: var(--bg); }
-
-.cart-link { display: flex; align-items: center; gap: 0.4rem; }
-
-.cart-count {
-  background: var(--error);
-  color: white;
-  border-radius: 10px;
-  padding: 0.1rem 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 600;
 }
 
 /* ── Main ─────────────────────────────────────────────── */
@@ -916,9 +837,6 @@ onMounted(() => {
 
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 768px) {
-  .header-content { height: auto; flex-wrap: wrap; padding: 0.75rem 1rem; gap: 0.75rem; }
-  .main-nav { order: 3; width: 100%; justify-content: center; }
-
   .product-detail { padding: 1.25rem; }
 
   .product-content {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import api from '../../api/api';
-import { fetchSchema, fetchResources, type FieldDefinition, type ResourceDefinition } from '../../api/schemaService';
-import { buildPrestashopXml } from '../../utils/prestashopXmlBuilder';
-import CsvUploader from '../../components/CsvUploader.vue';
-import SchemaMapper from '../../components/SchemaMapper.vue';
+import api from '../../../api/api';
+import { fetchSchema, fetchResources, type FieldDefinition, type ResourceDefinition } from '../../../api/schemaService';
+import { buildPrestashopXml } from '../../../utils/prestashopXmlBuilder';
+import CsvUploader from '../../../components/CsvUploader.vue';
+import SchemaMapper from '../../../components/SchemaMapper.vue';
 
 // Listes dynamiques
 const resources = ref<ResourceDefinition[]>([]);

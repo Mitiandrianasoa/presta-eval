@@ -32,7 +32,7 @@ NEW APP
             - etat payement: [echec, effectue, anule]
         
 - FRONT OFFICE
-    - page accueil[Tsanta]:
+    - page accueil[Tsanta]:[ok]
         - list produits
         - fiche details produit
     - gestion panier[Mitia]:

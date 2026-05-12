@@ -2,16 +2,16 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 // Frontoffice
 import HomeView from '../views/frontoffice/HomeView.vue';
-import ProductsView from '../views/frontoffice/ProductsView.vue';
-import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
-import LoginView from '../views/frontoffice/LoginView.vue';
-import RegisterView from '../views/frontoffice/RegisterView.vue';
+import ProductsView from '../views/frontoffice/product/ProductsView.vue';
+import ProductDetailView from '../views/frontoffice/product/ProductDetailView.vue';
+import LoginView from '../views/frontoffice/auth/LoginView.vue';
+import RegisterView from '../views/frontoffice/auth/RegisterView.vue';
 
 // Backoffice
-import CatalogView from '../views/backoffice/CatalogView.vue';
-import ConfigView from '../views/backoffice/ConfigView.vue';
-import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
-import OrderView from '../views/backoffice/OrderView.vue';
+import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
+import ConfigView from '../views/backoffice/config/ConfigView.vue';
+import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.vue';
+import OrderView from '../views/frontoffice/order/OrderView.vue';
 
 const routes = [
   // Frontoffice Routes

@@ -16,7 +16,15 @@ export const useCategoryStore = defineStore('category', {
       this.loading = true;
       try {
         const res = await api.get('/categories?output_format=XML&display=full&limit=1000');
-        this.categories = Array.from(parse(res.data).querySelectorAll('category')).map(el => ({
+
+        console.log('📡 [fetchAll] Type de res.data     :', typeof res.data);
+        console.log('📡 [fetchAll] Content-Type reçu    :', res.headers?.['content-type']);
+        console.log('📡 [fetchAll] Aperçu brut res.data :', String(res.data).slice(0, 300));
+
+        const parsed = parse(res.data);
+        console.log('🔍 [fetchAll] Résultat du parsing  :', parsed);
+
+        this.categories = Array.from(parsed.querySelectorAll('category')).map(el => ({
           id:          text(el, 'id'),
           name:        lang(el, 'name'),
           description: lang(el, 'description'),
@@ -24,8 +32,15 @@ export const useCategoryStore = defineStore('category', {
           id_parent:   text(el, 'id_parent'),
           level_depth: text(el, 'level_depth'),
         }));
-      } catch (e) { console.error(e); }
-      finally { this.loading = false; }
+
+        console.log('✅ [fetchAll] Nb catégories parsées :', this.categories.length);
+        console.log('✅ [fetchAll] Première catégorie    :', this.categories[0]);
+
+      } catch (e) {
+        console.error('❌ [fetchAll] Erreur :', e);
+      } finally {
+        this.loading = false;
+      }
     },
 
     async save(data: any, id?: number) {
@@ -50,17 +65,26 @@ export const useCategoryStore = defineStore('category', {
   <id_parent>2</id_parent>
 </category></prestashop>`;
 
+      console.log('📤 [save] Mode         :', id ? `UPDATE (id=${id})` : 'CREATE');
+      console.log('📤 [save] URL          :', url);
+      console.log('📤 [save] XML envoyé   :', xml);
+
       try {
-        await method(url, xml, { headers: { 'Content-Type': 'text/xml; charset=utf-8' } });
+        const saveRes = await method(url, xml, { headers: { 'Content-Type': 'text/xml; charset=utf-8' } });
+        console.log('✅ [save] Réponse status    :', saveRes.status);
+        console.log('✅ [save] Réponse data type :', typeof saveRes.data);
+        console.log('✅ [save] Aperçu réponse    :', String(saveRes.data).slice(0, 300));
         await this.fetchAll();
       } catch (error: any) {
-        console.error('❌', error.response?.data);
+        console.error('❌ [save] Erreur            :', error.response?.data);
         throw error;
       }
     },
 
     async remove(id: number) {
+      console.log('🗑️ [remove] Suppression catégorie id :', id);
       await api.delete(`/categories/${id}`);
+      console.log('✅ [remove] Suppression OK, rechargement...');
       await this.fetchAll();
     }
   }

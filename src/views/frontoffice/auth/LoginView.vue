@@ -56,22 +56,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../../api/api';
+import api from '../../../api/api';
 
 const router = useRouter();
 
 const email = ref('');
 const password = ref('');
-const rememberMe = ref(false);
 const loading = ref(false);
 const error = ref('');
 
 // Vérifier si l'utilisateur est déjà connecté
 onMounted(() => {
-  const token = localStorage.getItem('prestashop_token');
-  const user = localStorage.getItem('prestashop_user');
-  
-  if (token && user) {
+  if (sessionStorage.getItem('prestashop_token') && sessionStorage.getItem('prestashop_user')) {
     router.push('/');
   }
 });
@@ -81,85 +77,47 @@ const handleLogin = async () => {
   error.value = '';
 
   try {
-    // Pour le frontoffice, on utilise une authentification simplifiée
-    // On simule la connexion avec des identifiants de test
-    if (email.value === 'client@prestashop.com' && password.value === 'client123') {
-      const user = {
-        id: '1',
-        email: 'client@prestashop.com',
-        firstname: 'Client',
-        lastname: 'Test',
-        phone: '+261 00 000 000'
-      };
-
-      // Simuler un token JWT
-      const token = btoa(JSON.stringify({ 
-        user, 
-        exp: Date.now() + 24 * 60 * 60 * 1000 // 24h
-      }));
-
-      // Sauvegarder la session
-      localStorage.setItem('prestashop_token', token);
-      localStorage.setItem('prestashop_user', JSON.stringify(user));
-
-      if (rememberMe.value) {
-        localStorage.setItem('prestashop_remember', 'true');
-      }
-
-      // Rediriger vers la page d'accueil
-      router.push('/');
-      return;
-    }
-
-    // Essayer de se connecter via l'API PrestaShop (customers)
-    const response = await api.get(`/customers?output_format=XML&display=full&filter[email]=[${email.value}]`);
+    // 1. Chercher le customer par email dans PrestaShop
+    const response = await api.get(
+      `/customers?output_format=XML&display=full&filter[email]=[${email.value}]`
+    );
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const customers = xmlDoc.querySelectorAll('customer');
+    const xmlDoc  = parser.parseFromString(response.data, 'text/xml');
+    const customerEl = xmlDoc.querySelector('customer');
 
-    if (customers.length === 0) {
+    if (!customerEl) {
       error.value = 'Email non trouvé';
       return;
     }
 
-    const customerEl = customers[0];
-    if (!customerEl) {
-      error.value = 'Client introuvable';
-      return;
-    }
-
-    const customer = {
-      id: customerEl.querySelector('id')?.textContent?.trim() || '',
-      email: customerEl.querySelector('email')?.textContent?.trim() || '',
-      firstname: customerEl.querySelector('firstname')?.textContent?.trim() || '',
-      lastname: customerEl.querySelector('lastname')?.textContent?.trim() || '',
-      phone: customerEl.querySelector('phone')?.textContent?.trim() || '',
-      active: customerEl.querySelector('active')?.textContent?.trim() || '0',
-    };
-
-    if (customer.active !== '1') {
+    // 2. Vérifier que le compte est actif
+    const active = customerEl.querySelector('active')?.textContent?.trim();
+    if (active !== '1') {
       error.value = 'Compte désactivé';
       return;
     }
 
-    // Pour la démo, on accepte un mot de passe fixe
-    if (password.value === 'prestashop123') {
-      const token = btoa(JSON.stringify({ 
-        customer, 
-        exp: Date.now() + 24 * 60 * 60 * 1000 // 24h
-      }));
-
-      localStorage.setItem('prestashop_token', token);
-      localStorage.setItem('prestashop_user', JSON.stringify(customer));
-
-      if (rememberMe.value) {
-        localStorage.setItem('prestashop_remember', 'true');
-      }
-
-      router.push('/');
-    } else {
-      error.value = 'Mot de passe incorrect. Utilisez "prestashop123" pour tester';
+    // 3. Récupérer le secure_key PrestaShop — c'est le vrai token du customer
+    const secureKey = customerEl.querySelector('secure_key')?.textContent?.trim() || '';
+    if (!secureKey) {
+      error.value = 'Impossible de récupérer le token PrestaShop';
+      return;
     }
+
+    // 4. Construire l'objet utilisateur
+    const user = {
+      id:        customerEl.querySelector('id')?.textContent?.trim()        || '',
+      email:     customerEl.querySelector('email')?.textContent?.trim()     || '',
+      firstname: customerEl.querySelector('firstname')?.textContent?.trim() || '',
+      lastname:  customerEl.querySelector('lastname')?.textContent?.trim()  || '',
+      phone:     customerEl.querySelector('phone')?.textContent?.trim()     || '',
+    };
+
+    // 5. Stocker le secure_key comme token de session + données utilisateur
+    sessionStorage.setItem('prestashop_token', secureKey);
+    sessionStorage.setItem('prestashop_user', JSON.stringify(user));
+
+    router.push('/');
 
   } catch (err: any) {
     error.value = `Erreur: ${err.message}`;
