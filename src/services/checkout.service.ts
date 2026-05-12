@@ -1,6 +1,5 @@
 // src/services/checkout.service.ts
 import api from '../api/api';
-import { updateResource } from '../api/schemaService';
 
 // ============================================
 // CONFIGURATION PAR DÉFAUT (VALEURS EN DUR)
@@ -382,13 +381,17 @@ const createOrderWithSchema = async (
         // Attendre un peu pour que la commande soit créée
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Chercher la dernière commande du client
+        // Chercher la dernière commande du client (display=full requis pour avoir id_cart)
         const ordersResponse = await api.get(
-          `/orders?output_format=XML&filter[id_customer]=[${customerId}]&sort=[id_DESC]&limit=1`
+          `/orders?output_format=XML&filter[id_customer]=[${customerId}]&sort=[id_DESC]&limit=5&display=full`
         );
         
         const ordersDoc = parser.parseFromString(ordersResponse.data, 'text/xml');
-        const lastOrder = ordersDoc.querySelector('orders order');
+        // Chercher parmi les dernières commandes celle qui correspond à notre panier
+        const allOrders = ordersDoc.querySelectorAll('orders order');
+        const lastOrder = Array.from(allOrders).find(
+          o => o.querySelector('id_cart')?.textContent?.trim() === cartId
+        ) || allOrders[0];
         
         if (lastOrder) {
           const orderId = lastOrder.querySelector('id')?.textContent?.trim();
@@ -418,11 +421,14 @@ const createOrderWithSchema = async (
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         const ordersResponse2 = await api.get(
-          `/orders?output_format=XML&filter[id_customer]=[${customerId}]&sort=[id_DESC]&limit=1`
+          `/orders?output_format=XML&filter[id_customer]=[${customerId}]&sort=[id_DESC]&limit=5&display=full`
         );
         
         const ordersDoc2 = parser.parseFromString(ordersResponse2.data, 'text/xml');
-        const lastOrder2 = ordersDoc2.querySelector('orders order');
+        const allOrders2 = ordersDoc2.querySelectorAll('orders order');
+        const lastOrder2 = Array.from(allOrders2).find(
+          o => o.querySelector('id_cart')?.textContent?.trim() === cartId
+        ) || allOrders2[0];
         
         if (lastOrder2) {
           const orderId = lastOrder2.querySelector('id')?.textContent?.trim();
@@ -470,8 +476,26 @@ const createOrderWithSchema = async (
 const updateOrderState = async (orderId: string, newState: string) => {
   try {
     console.log(`🔄 Changement du statut de la commande ${orderId} → ${newState}`);
-    
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+
+    // Récupérer d'abord la commande complète pour ne pas écraser des champs requis
+    let fullOrderXml = '';
+    try {
+      const existing = await api.get(`/orders/${orderId}?output_format=XML&display=full`);
+      const existingDoc = new DOMParser().parseFromString(existing.data, 'text/xml');
+      const orderEl = existingDoc.querySelector('order');
+      if (orderEl) {
+        // Mettre à jour uniquement current_state et valid dans le XML récupéré
+        const stateEl = orderEl.querySelector('current_state');
+        if (stateEl) stateEl.textContent = newState;
+        const validEl = orderEl.querySelector('valid');
+        if (validEl) validEl.textContent = '1';
+        fullOrderXml = `<?xml version="1.0" encoding="UTF-8"?>\n<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">${orderEl.outerHTML}</prestashop>`;
+      }
+    } catch (_) {
+      // Si on ne peut pas récupérer la commande, on tente avec le XML minimal
+    }
+
+    const xml = fullOrderXml || `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order>
     <id>${orderId}</id>
@@ -584,6 +608,21 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       cartData.paymentMethod || DEFAULT_CONFIG.PAYMENT_METHOD
     );
     
+    // ✅ 4. Mettre à jour le statut de la commande en 13
+    if (order.id && order.id !== 'unknown') {
+      console.log(`🔄 Mise à jour du statut de la commande ${order.id} → 13`);
+      
+      try {
+        await updateOrderState(order.id, '13');
+        console.log(`✅ Statut de la commande ${order.id} mis à jour avec succès`);
+      } catch (updateError) {
+        console.warn(`⚠️ Échec de la mise à jour du statut:`, updateError);
+        // On continue même si la mise à jour échoue
+      }
+    } else {
+      console.warn('⚠️ ID commande inconnu, impossible de mettre à jour le statut');
+    }
+    
     console.log('🎉 Checkout terminé avec succès!');
     
     return {
@@ -591,7 +630,8 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       cartId,
       order: {
         id: order.id,
-        total: order.total
+        total: order.total,
+        status: '13' // ✅ Ajout du statut dans la réponse
       },
       customerId,
       addresses,
