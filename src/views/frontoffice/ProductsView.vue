@@ -72,7 +72,14 @@
                 @error="handleImageError"
               />
               <div v-if="product.on_sale" class="sale-badge">Promo</div>
+              <div v-if="getAvailabilityBadge(product.available_date) === 'HOT'" class="hot-badge">
+                HOT
+              </div>
+              <div v-else-if="getAvailabilityBadge(product.available_date) === 'NEW'" class="new-badge">
+                NEW
+              </div>
             </div>
+            
             <div class="product-info">
               <h3>{{ product.name }}</h3>
               <p class="product-description">
@@ -244,6 +251,11 @@ const loadProducts = async () => {
       const productId = el.querySelector('id')?.textContent?.trim() || '';
       const imageId = el.querySelector('associations images image id')?.textContent?.trim()
         || el.querySelector('image id')?.textContent?.trim();
+
+        // Récupérer date_add (date de création du produit)
+      const dateAdd = el.querySelector('date_add')?.textContent?.trim() || '';
+      console.log('Date add:', dateAdd); // Debug
+
       return {
         id: productId,
         name: el.querySelector('name')?.textContent?.trim() || '',
@@ -255,7 +267,9 @@ const loadProducts = async () => {
         quantity: stockMap[productId] ?? 0,
         id_category_default: el.querySelector('id_category_default')?.textContent?.trim() || '',
         on_sale: el.querySelector('on_sale')?.textContent?.trim() === '1',
-        image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null
+        image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null,
+        available_date: dateAdd,
+        date_add: dateAdd,
       };
     });
   } catch (err: any) {
@@ -265,6 +279,41 @@ const loadProducts = async () => {
   }
 };
 
+const getAvailabilityBadge = (available_date: string): 'HOT' | 'NEW' | null => {
+  // Ignorer les dates invalides
+  if (!available_date || available_date === '0000-00-00') return null;
+  
+  const cleanDate = available_date.split(' ')[0];
+  const productDate = new Date(cleanDate);
+  const now = new Date();
+  
+  // Vérifier si la date est valide
+  if (isNaN(productDate.getTime())) return null;
+  
+  // Remettre à minuit pour comparer uniquement les jours
+  const productDateMidnight = new Date(productDate);
+  productDateMidnight.setHours(0, 0, 0, 0);
+  
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0, 0, 0, 0);
+  
+  // Calculer la différence en jours
+  const diffTime = todayMidnight.getTime() - productDateMidnight.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  console.log(`Produit: ${productDate}, Diff jours: ${diffDays}`); // Debug
+  
+  // HOT : sorti aujourd'hui ou hier (0 ou 1 jour)
+  if (diffDays <= 1 && diffDays >= 0) {
+    return 'HOT';
+  }
+  // NEW : sorti entre 2 et 7 jours
+  else if (diffDays <= 7 && diffDays > 1) {
+    return 'NEW';
+  }
+  
+  return null;
+};
 // Charger les catégories
 const loadCategories = async () => {
   try {
@@ -392,6 +441,7 @@ onMounted(() => {
   margin: 0 0 0.4rem;
 }
 
+
 .page-header p {
   color: var(--muted);
   font-size: 1rem;
@@ -509,7 +559,7 @@ onMounted(() => {
 .product-image {
   position: relative;
   height: 200px;
-  overflow: hidden;
+  overflow: visible;
   background: var(--bg);
 }
 
@@ -534,6 +584,33 @@ onMounted(() => {
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
+  z-index: 3;
+}
+
+.hot-badge {
+  position: absolute;
+  top: 35px;
+  right: 10px;
+  background: #ff4757;
+  color: white;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.new-badge {
+  position: absolute;
+  top: 35px;
+  right: 10px;
+  background: #2ed573;
+  color: white;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 2;
 }
 
 .product-info {
