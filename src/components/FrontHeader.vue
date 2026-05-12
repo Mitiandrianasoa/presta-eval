@@ -65,8 +65,8 @@ const currentUser = ref<any>(null);
 const cart = ref<any[]>([]);
 
 const isAuthenticated = computed(() => {
-  const token = localStorage.getItem('prestashop_token');
-  const user = localStorage.getItem('prestashop_user');
+  const token = sessionStorage.getItem('prestashop_token');
+  const user = sessionStorage.getItem('prestashop_user');
   return !!(token && user);
 });
 
@@ -77,7 +77,7 @@ const cartItemCount = computed(() => {
 // Charger les informations utilisateur
 const loadUser = () => {
   try {
-    const userStr = localStorage.getItem('prestashop_user');
+    const userStr = sessionStorage.getItem('prestashop_user');
     if (userStr) {
       currentUser.value = JSON.parse(userStr);
     }
@@ -89,7 +89,7 @@ const loadUser = () => {
 // Charger le panier
 const loadCart = () => {
   try {
-    const cartStr = localStorage.getItem('prestashop_cart');
+    const cartStr = sessionStorage.getItem('prestashop_cart');
     if (cartStr) {
       cart.value = JSON.parse(cartStr);
     }
@@ -113,10 +113,10 @@ const getUserInitials = () => {
 
 // Déconnexion
 const handleLogout = () => {
-  localStorage.removeItem('prestashop_token');
-  localStorage.removeItem('prestashop_user');
-  if (!localStorage.getItem('prestashop_remember')) {
-    localStorage.removeItem('prestashop_cart');
+  sessionStorage.removeItem('prestashop_token');
+  sessionStorage.removeItem('prestashop_user');
+  if (!sessionStorage.getItem('prestashop_remember')) {
+    sessionStorage.removeItem('prestashop_cart');
   }
   currentUser.value = null;
   showDropdown.value = false;

@@ -154,8 +154,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../../api/api';
-import FrontHeader from '../../components/FrontHeader.vue';
+import api from '../../../api/api';
+import FrontHeader from '../../../components/FrontHeader.vue';
 
 const router = useRouter();
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import OrderList from '../components/order/OrderList.vue';
+import OrderList from '../../../components/order/OrderList.vue';
 </script>
 
 <template>

@@ -11,6 +11,9 @@ const showForm = ref(false);
 const editing = ref<any>(null);
 const selectedCategory = ref('');
 const selectedProducts = ref<string[]>([]);
+const repairing = ref(false);
+const repairResult = ref<{ fixed: number; failed: number } | null>(null);
+
 
 const isAllSelected = computed(() => {
   return filteredProducts.value.length > 0 && selectedProducts.value.length === filteredProducts.value.length;
@@ -75,6 +78,12 @@ const filteredProducts = computed(() => {
           {{ cat.name || 'Catégorie ' + cat.id }}
         </option>
       </select>
+    </div>
+
+    <div v-if="repairResult" class="repair-banner" :class="repairResult.failed > 0 ? 'warn' : 'ok'">
+      Réparation terminée : {{ repairResult.fixed }} produit(s) corrigé(s)
+      <span v-if="repairResult.failed > 0">, {{ repairResult.failed }} échec(s)</span>
+      <button class="close-banner" @click="repairResult = null">✕</button>
     </div>
 
     <div v-if="selectedProducts.length > 0 && !showForm" class="selection-bar">
@@ -144,6 +153,42 @@ th { background: #f8f9fa; text-align: left; }
 .on { background: #d4edda; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
 .off { background: #f8d7da; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
 .btn-add { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+
+.btn-repair {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.btn-repair:hover:not(:disabled) { background: #ffe69c; }
+.btn-repair:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.repair-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.repair-banner.ok   { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.repair-banner.warn { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+.close-banner {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: inherit;
+  padding: 0 4px;
+}
 button { cursor: pointer; border: none; background: none; font-size: 16px; padding: 5px; }
 button:hover { transform: scale(1.2); }
 

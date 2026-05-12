@@ -97,7 +97,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../../api/api';
+import api from '../../../api/api';
 
 const router = useRouter();
 
@@ -180,8 +180,8 @@ const handleRegister = async () => {
       exp: Date.now() + 24 * 60 * 60 * 1000 // 24h
     }));
 
-    localStorage.setItem('prestashop_token', token);
-    localStorage.setItem('prestashop_user', JSON.stringify(newCustomer));
+    sessionStorage.setItem('prestashop_token', token);
+    sessionStorage.setItem('prestashop_user', JSON.stringify(newCustomer));
 
     // Rediriger après 2 secondes
     setTimeout(() => {

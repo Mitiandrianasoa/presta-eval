@@ -1,11 +1,11 @@
 <!-- views/CatalogView.vue -->
 <script setup lang="ts">
 import { ref } from 'vue';
-import Sidebar from '../../components/Sidebar.vue';
-import ProductList from '../../components/product/productList.vue';
-import CategoryList from '../../components/category/CategoryList.vue';
-import StockList from '../../components/stock/StockList.vue';
-import CustomerList from '../../components/customer/CustomerList.vue';
+import Sidebar from '../../../components/Sidebar.vue';
+import ProductList from '../../../components/product/productList.vue';
+import CategoryList from '../../../components/category/CategoryList.vue';
+import StockList from '../../../components/stock/StockList.vue';
+import CustomerList from '../../../components/customer/CustomerList.vue';
 
 const currentView = ref<'products' | 'categories' | 'stock' | 'customers'>('products');
 const selectedCategory = ref<number | null>(null);
