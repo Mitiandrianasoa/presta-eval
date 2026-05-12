@@ -18,25 +18,59 @@
             <section class="checkout-section">
               <div class="section-header">
                 <span class="step-number">1</span>
-                <h2>📌 Adresse de livraison</h2>
+                <h2>Adresse de livraison</h2>
               </div>
 
               <div v-if="loadingAddresses" class="loading-text">
-                Chargement des adresses...
+                Vérification des adresses enregistrées...
               </div>
-              <div v-else-if="addresses.length === 0" class="empty-text">
-                Aucune adresse disponible. Veuillez en créer une d'abord.
-              </div>
-              <div v-else class="radio-group">
+
+              <div v-else-if="hasSavedAddresses" class="radio-group">
                 <label v-for="addr in addresses" :key="addr.id" class="radio-item">
                   <input v-model="selectedAddressId" :value="addr.id" type="radio" />
                   <div class="address-display">
-                    <strong>{{ addr.firstname }} {{ addr.lastname }}</strong><br />
+                    <strong>{{ addr.alias || `${addr.firstname} ${addr.lastname}` }}</strong><br />
+                    {{ addr.firstname }} {{ addr.lastname }}<br />
                     {{ addr.address1 }}
                     <span v-if="addr.address2"> {{ addr.address2 }}</span><br />
                     {{ addr.postcode }} {{ addr.city }}
                   </div>
                 </label>
+              </div>
+
+              <div v-else class="address-form-grid">
+                <div class="field-group">
+                  <label>Alias</label>
+                  <input v-model="addressForm.alias" type="text" placeholder="Maison, bureau..." />
+                </div>
+                <div class="field-group">
+                  <label>Prénom</label>
+                  <input v-model="addressForm.firstname" type="text" placeholder="Prénom" />
+                </div>
+                <div class="field-group">
+                  <label>Nom</label>
+                  <input v-model="addressForm.lastname" type="text" placeholder="Nom" />
+                </div>
+                <div class="field-group field-full">
+                  <label>Adresse</label>
+                  <input v-model="addressForm.address1" type="text" placeholder="Rue, quartier, numéro" />
+                </div>
+                <div class="field-group field-full">
+                  <label>Complément</label>
+                  <input v-model="addressForm.address2" type="text" placeholder="Appartement, étage..." />
+                </div>
+                <div class="field-group">
+                  <label>Code postal</label>
+                  <input v-model="addressForm.postcode" type="text" placeholder="101" />
+                </div>
+                <div class="field-group">
+                  <label>Ville</label>
+                  <input v-model="addressForm.city" type="text" placeholder="Antananarivo" />
+                </div>
+                <div class="field-group">
+                  <label>Téléphone</label>
+                  <input v-model="addressForm.phone" type="text" placeholder="+261..." />
+                </div>
               </div>
             </section>
 
@@ -44,7 +78,7 @@
             <section class="checkout-section">
               <div class="section-header">
                 <span class="step-number">2</span>
-                <h2>🚚 Mode de livraison</h2>
+                <h2> Mode de livraison</h2>
               </div>
 
               <div v-if="loadingCarriers" class="loading-text">
@@ -73,7 +107,7 @@
             <section class="checkout-section">
               <div class="section-header">
                 <span class="step-number">3</span>
-                <h2>💳 Mode de paiement</h2>
+                <h2> Mode de paiement</h2>
               </div>
 
               <div v-if="loadingPayments" class="loading-text">
@@ -183,6 +217,16 @@ const store = useCartStore();
 const selectedAddressId = ref('');
 const selectedCarrierId = ref('');
 const selectedPaymentId = ref('');
+const addressForm = ref({
+  alias: 'Adresse de livraison',
+  firstname: '',
+  lastname: '',
+  address1: '',
+  address2: '',
+  postcode: '',
+  city: '',
+  phone: '',
+});
 
 // Loading states
 const loadingAddresses = ref(false);
@@ -197,8 +241,21 @@ const payments = ref<any[]>([]);
 const errorMessage = ref('');
 
 // Computed
+const hasSavedAddresses = computed(() => addresses.value.length > 0);
+
 const isFormValid = computed(
-  () => selectedAddressId.value && selectedCarrierId.value && selectedPaymentId.value
+  () =>
+    (
+      (hasSavedAddresses.value && selectedAddressId.value) ||
+      (!hasSavedAddresses.value &&
+        addressForm.value.firstname.trim() &&
+        addressForm.value.lastname.trim() &&
+        addressForm.value.address1.trim() &&
+        addressForm.value.city.trim() &&
+        addressForm.value.postcode.trim())
+    ) &&
+    selectedCarrierId.value &&
+    selectedPaymentId.value
 );
 
 // Lifecycle
@@ -212,7 +269,6 @@ onMounted(async () => {
     router.push('/products');
     return;
   }
-
   // Charger les données de checkout
   await loadCheckoutData();
 });
@@ -228,6 +284,8 @@ async function loadCheckoutData() {
     addresses.value = await frontOrderService.fetchCustomerAddresses(customerId);
     if (addresses.value.length > 0) {
       selectedAddressId.value = addresses.value[0].id;
+    } else {
+      selectedAddressId.value = '';
     }
     loadingAddresses.value = false;
 
@@ -239,13 +297,9 @@ async function loadCheckoutData() {
     }
     loadingCarriers.value = false;
 
-    // Load payments (pas de fetchPaymentModules dans frontOrderService, on simule)
+    // Load payments depuis l'API réelle
     loadingPayments.value = true;
-    payments.value = [
-      { id: '1', name: 'Transfert bancaire', description: 'Paiement par virement' },
-      { id: '2', name: 'Paiement à la livraison', description: 'Payez le livreur' },
-      { id: '3', name: 'Chèque', description: 'Envoyez un chèque' },
-    ];
+    payments.value = await frontOrderService.fetchOrderPayments();
     if (payments.value.length > 0) {
       selectedPaymentId.value = payments.value[0].id;
     }
@@ -281,6 +335,21 @@ async function submitCheckout() {
 
     const customerId = localStorage.getItem('customerId') || '1';
 
+    const deliveryAddressId = hasSavedAddresses.value
+      ? selectedAddressId.value
+      : await frontOrderService.createCustomerAddress({
+          id_customer: customerId,
+          alias: addressForm.value.alias || 'Adresse de livraison',
+          firstname: addressForm.value.firstname,
+          lastname: addressForm.value.lastname,
+          address1: addressForm.value.address1,
+          address2: addressForm.value.address2,
+          postcode: addressForm.value.postcode,
+          city: addressForm.value.city,
+          phone: addressForm.value.phone,
+          id_country: '1',
+        });
+
     // Create order using frontOrderService
     const orderId = await frontOrderService.createOrder({
       id_customer: customerId,
@@ -288,14 +357,21 @@ async function submitCheckout() {
       id_currency: store.cart.id_currency || '1',
       id_lang: store.cart.id_lang || '1',
       id_carrier: selectedCarrierId.value,
-      id_address_delivery: selectedAddressId.value,
-      id_address_invoice: selectedAddressId.value,
+      id_address_delivery: deliveryAddressId,
+      id_address_invoice: deliveryAddressId,
       payment: selectedPaymentId.value,
       module: 'prestashop',
       total_paid: String(store.cart.total),
       total_paid_tax_incl: String(store.cart.total),
       total_products: String(store.cart.total_products),
       total_shipping: String(store.cart.total_shipping),
+      items: store.cart.items.map((item) => ({
+        id_product: item.id_product,
+        product_name: item.product_name || `Produit ${item.id_product}`,
+        product_quantity: String(item.quantity),
+        unit_price_tax_incl: String(item.product_price ?? 0),
+        total_price_tax_incl: String((item.product_price ?? 0) * item.quantity),
+      })),
     });
 
     console.log('✅ Commande créée:', orderId);
@@ -416,6 +492,43 @@ async function submitCheckout() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.address-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+}
+
+.field-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d8d8d8;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.field-group input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.12);
+}
+
+.field-full {
+  grid-column: 1 / -1;
 }
 
 .radio-item {

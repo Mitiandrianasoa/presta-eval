@@ -319,7 +319,7 @@ const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
   return new Intl.NumberFormat('fr-MG', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'MGA',
   }).format(numPrice);
 };
 

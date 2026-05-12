@@ -1,5 +1,4 @@
 import api from '../api/api';
-import { createResourceWithBlankSchema } from '../api/schemaService';
 
 const parse = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
 const text  = (el: Element, tag: string) => el.querySelector(tag)?.textContent?.trim() || '';
@@ -32,6 +31,26 @@ export interface OrderState {
   color?: string;
 }
 
+export interface PaymentOption {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface CreateAddressPayload {
+  id_customer: string;
+  alias: string;
+  firstname: string;
+  lastname: string;
+  address1: string;
+  city: string;
+  postcode: string;
+  phone?: string;
+  phone_mobile?: string;
+  address2?: string;
+  id_country?: string;
+}
+
 export interface CreateOrderPayload {
   id_customer: string;
   id_cart: string;
@@ -47,6 +66,7 @@ export interface CreateOrderPayload {
   total_paid_tax_incl?: string;
   total_products?: string;
   total_shipping?: string;
+  items?: FrontOrderItem[];
 }
 
 /**
@@ -54,6 +74,85 @@ export interface CreateOrderPayload {
  * Utilise createResourceWithBlankSchema pour POST et l'API XML pour GET
  */
 export const frontOrderService = {
+  appendOrderRow(xmlDoc: Document, orderRows: Element, item: FrontOrderItem) {
+    const orderRow = xmlDoc.createElement('order_row');
+
+    const fields: Record<string, string> = {
+      id: '',
+      product_id: item.id_product,
+      product_attribute_id: '',
+      product_quantity: item.product_quantity,
+      product_name: item.product_name,
+      product_reference: '',
+      product_ean13: '',
+      product_isbn: '',
+      product_upc: '',
+      product_price: item.unit_price_tax_incl,
+      id_customization: '',
+      unit_price_tax_incl: item.unit_price_tax_incl,
+      unit_price_tax_excl: item.unit_price_tax_incl,
+    };
+
+    Object.entries(fields).forEach(([key, value]) => {
+      const field = xmlDoc.createElement(key);
+      field.textContent = value;
+      orderRow.appendChild(field);
+    });
+
+    orderRows.appendChild(orderRow);
+  },
+
+  // ── Création d'une adresse client ───────────────────────────────
+  async createCustomerAddress(payload: CreateAddressPayload): Promise<string> {
+    const data = {
+      id_customer: payload.id_customer,
+      alias: payload.alias,
+      firstname: payload.firstname,
+      lastname: payload.lastname,
+      address1: payload.address1,
+      address2: payload.address2 || '',
+      postcode: payload.postcode,
+      city: payload.city,
+      phone: payload.phone || '',
+      phone_mobile: payload.phone_mobile || '',
+      id_country: payload.id_country || '1',
+    };
+
+    const blankResponse = await api.get('/addresses?schema=blank');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(blankResponse.data, 'text/xml');
+    const addressElement = xmlDoc.querySelector('address');
+
+    if (!addressElement) {
+      throw new Error('Structure XML d\'adresse introuvable');
+    }
+
+    Object.entries(data).forEach(([key, value]) => {
+      let field = addressElement.querySelector(key);
+      if (!field) {
+        field = xmlDoc.createElement(key);
+        addressElement.appendChild(field);
+      }
+      field.textContent = String(value);
+    });
+
+    const serializer = new XMLSerializer();
+    const xmlToSend = serializer.serializeToString(xmlDoc);
+
+    const response = await api.post('/addresses?output_format=JSON', xmlToSend, {
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Accept': 'application/json',
+      },
+    });
+
+    const addressId = response.data?.address?.id ?? response.data?.id;
+    if (!addressId) {
+      throw new Error('Impossible de récupérer l\'ID de l\'adresse créée');
+    }
+
+    return String(addressId);
+  },
 
   // ── Création d'une commande depuis le panier ─────────────────────
   async createOrder(payload: CreateOrderPayload): Promise<string> {
@@ -84,9 +183,59 @@ export const frontOrderService = {
       secure_key:           Math.random().toString(36).substring(2, 18),
     };
 
-    const result = await createResourceWithBlankSchema('orders', data);
-    const orderId = result?.order?.id ?? result?.id;
-    if (!orderId) throw new Error('Impossible de récupérer l\'ID de la commande créée');
+    const items = payload.items ?? [];
+
+    if (items.length === 0) {
+      throw new Error('Aucun produit à commander');
+    }
+
+    const blankResponse = await api.get('/orders?schema=blank');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(blankResponse.data, 'text/xml');
+    const orderElement = xmlDoc.querySelector('order');
+
+    if (!orderElement) {
+      throw new Error('Structure XML de commande introuvable');
+    }
+
+    Object.entries(data).forEach(([key, value]) => {
+      let field = orderElement.querySelector(key);
+      if (!field) {
+        field = xmlDoc.createElement(key);
+        orderElement.appendChild(field);
+      }
+      field.textContent = String(value);
+    });
+
+    const associations = orderElement.querySelector('associations') || xmlDoc.createElement('associations');
+    if (!associations.parentNode) {
+      orderElement.appendChild(associations);
+    }
+
+    let orderRows = associations.querySelector('order_rows');
+    if (!orderRows) {
+      orderRows = xmlDoc.createElement('order_rows');
+      associations.appendChild(orderRows);
+    }
+
+    orderRows.textContent = '';
+    items.forEach((item) => this.appendOrderRow(xmlDoc, orderRows as Element, item));
+
+    const serializer = new XMLSerializer();
+    const xmlToSend = serializer.serializeToString(xmlDoc);
+
+    const response = await api.post('/orders?output_format=JSON', xmlToSend, {
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Accept': 'application/json',
+      },
+    });
+
+    const orderId = response.data?.order?.id ?? response.data?.id;
+    if (!orderId) {
+      throw new Error('Impossible de récupérer l\'ID de la commande créée');
+    }
+
     return String(orderId);
   },
 
@@ -170,6 +319,34 @@ export const frontOrderService = {
         { id: '8',  name: 'Erreur de paiement',                 color: '#FF0000' },
         { id: '12', name: 'En attente de paiement (virement)',  color: '#4169E1' },
       ];
+    }
+  },
+
+  // ── Récupération des paiements enregistrés ──────────────────────
+  async fetchOrderPayments(): Promise<PaymentOption[]> {
+    try {
+      const res = await api.get('/order_payments?output_format=XML&display=full&limit=100');
+      const xmlDoc = parse(res.data);
+
+      const payments = Array.from(xmlDoc.querySelectorAll('order_payment'))
+        .map((el, index) => {
+          const paymentMethod = text(el, 'payment_method') || text(el, 'payment') || 'Paiement';
+          const amount = text(el, 'amount');
+          const orderReference = text(el, 'order_reference');
+
+          return {
+            id: text(el, 'id') || `${index + 1}`,
+            name: paymentMethod,
+            description: [orderReference ? `Commande ${orderReference}` : '', amount ? `${amount} MGA` : '']
+              .filter(Boolean)
+              .join(' - '),
+          } as PaymentOption;
+        });
+
+      return payments;
+    } catch (error) {
+      console.error('❌ Erreur chargement paiements:', error);
+      return [];
     }
   },
 
