@@ -81,6 +81,39 @@ const handleLogin = async () => {
   error.value = '';
 
   try {
+
+     // Essayer de se connecter via l'API PrestaShop (customers)
+    const response = await api.get(`/customers?output_format=XML&display=full&filter[email]=[${email.value}]`);
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const customers = xmlDoc.querySelectorAll('customer');
+
+    if (customers.length === 0) {
+      error.value = 'Email non trouvé';
+      return;
+    }
+
+    const customerEl = customers[0];
+    if (!customerEl) {
+      error.value = 'Client introuvable';
+      return;
+    }
+
+    const customer = {
+      id: customerEl.querySelector('id')?.textContent?.trim() || '',
+      email: customerEl.querySelector('email')?.textContent?.trim() || '',
+      firstname: customerEl.querySelector('firstname')?.textContent?.trim() || '',
+      lastname: customerEl.querySelector('lastname')?.textContent?.trim() || '',
+      phone: customerEl.querySelector('phone')?.textContent?.trim() || '',
+      active: customerEl.querySelector('active')?.textContent?.trim() || '0',
+    };
+
+    if (customer.active !== '1') {
+      error.value = 'Compte désactivé';
+      return;
+    }
+
+
     // Pour le frontoffice, on utilise une authentification simplifiée
     // On simule la connexion avec des identifiants de test
     if (email.value === 'client@prestashop.com' && password.value === 'client123') {
@@ -111,36 +144,7 @@ const handleLogin = async () => {
       return;
     }
 
-    // Essayer de se connecter via l'API PrestaShop (customers)
-    const response = await api.get(`/customers?output_format=XML&display=full&filter[email]=[${email.value}]`);
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const customers = xmlDoc.querySelectorAll('customer');
-
-    if (customers.length === 0) {
-      error.value = 'Email non trouvé';
-      return;
-    }
-
-    const customerEl = customers[0];
-    if (!customerEl) {
-      error.value = 'Client introuvable';
-      return;
-    }
-
-    const customer = {
-      id: customerEl.querySelector('id')?.textContent?.trim() || '',
-      email: customerEl.querySelector('email')?.textContent?.trim() || '',
-      firstname: customerEl.querySelector('firstname')?.textContent?.trim() || '',
-      lastname: customerEl.querySelector('lastname')?.textContent?.trim() || '',
-      phone: customerEl.querySelector('phone')?.textContent?.trim() || '',
-      active: customerEl.querySelector('active')?.textContent?.trim() || '0',
-    };
-
-    if (customer.active !== '1') {
-      error.value = 'Compte désactivé';
-      return;
-    }
+   
 
     // Pour la démo, on accepte un mot de passe fixe
     if (password.value === 'prestashop123') {

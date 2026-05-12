@@ -6,12 +6,15 @@ import ProductsView from '../views/frontoffice/ProductsView.vue';
 import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
 import LoginView from '../views/frontoffice/LoginView.vue';
 import RegisterView from '../views/frontoffice/RegisterView.vue';
+import {  } from "module";
 
 // Backoffice
 import CatalogView from '../views/backoffice/CatalogView.vue';
 import ConfigView from '../views/backoffice/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
 import OrderView from '../views/backoffice/OrderView.vue';
+import CartView from '@/views/frontoffice/CartView.vue';
+import CheckoutView from '../views/frontoffice/CheckoutView.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -47,10 +50,20 @@ const routes = [
     name: 'admin',
     component: CatalogView 
   },
+  {
+    path: '/checkout',
+    name: 'Checkout',
+    component: CheckoutView
+  },
   { 
     path: '/admin/config', 
     name: 'admin-config',
     component: ConfigView 
+  },
+  { 
+    path: '/cart', 
+    name: 'admin-cart',
+    component: CartView 
   },
   {
     path: '/admin/import-categories',
