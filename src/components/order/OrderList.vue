@@ -134,7 +134,7 @@ onMounted(() => {
     <!-- Contenu principal -->
     <div class="main-content" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
       <div class="order-list-container">
-        <h2>📦 Liste des Commandes</h2>
+        <h2>Liste des Commandes</h2>
 
         <!-- Erreurs -->
         <div v-if="error" class="error-box">
@@ -143,7 +143,7 @@ onMounted(() => {
 
         <!-- Chargement -->
         <div v-if="loading" class="loading">
-          ⏳ Chargement...
+           Chargement...
         </div>
 
         <!-- Tableau -->

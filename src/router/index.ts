@@ -11,7 +11,7 @@ import RegisterView from '../views/frontoffice/RegisterView.vue';
 import CatalogView from '../views/backoffice/CatalogView.vue';
 import ConfigView from '../views/backoffice/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
-import OrderView from '../views/OrderView.vue';
+import OrderView from '../views/backoffice/OrderView.vue';
 
 const routes = [
   // Frontoffice Routes
