@@ -6,7 +6,8 @@ import ProductsView from '../views/frontoffice/ProductsView.vue';
 import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
 import LoginView from '../views/frontoffice/LoginView.vue';
 import RegisterView from '../views/frontoffice/RegisterView.vue';
-import {  } from "module";
+import OrderConfirmationView from '../views/frontoffice/OrderConfirmView.vue';
+import OrdersView from '../views/frontoffice/OrderView.vue';
 
 // Backoffice
 import CatalogView from '../views/backoffice/CatalogView.vue';
@@ -42,6 +43,18 @@ const routes = [
     path: '/register', 
     name: 'register',
     component: RegisterView 
+  },
+   {
+    path: '/order-confirmation',
+    name: 'OrderConfirmation',
+    component: OrderConfirmationView,
+    // meta: { requiresAuth: true }
+  },
+  {
+    path: '/orders',
+    name: 'Orders',
+    component: OrdersView,
+    // meta: { requiresAuth: true }
   },
 
   // Backoffice Routes
