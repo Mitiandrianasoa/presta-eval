@@ -66,13 +66,13 @@
       </div>
     </main>
     
-    <footer class="front-footer">
+    <!-- <footer class="front-footer">
       <div class="container">
         <div class="footer-bottom">
           <p>&copy; 2025 PrestaShop. Tous droits réservés.</p>
         </div>
       </div>
-    </footer>
+    </footer> -->
   </div>
 </template>
 
