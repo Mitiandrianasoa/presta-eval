@@ -9,6 +9,10 @@ const emit = defineEmits(['select-category', 'show-categories', 'show-products',
 
 const showConfig = ref(false);
 
+const goToDashboard = () => {
+  router.push('/admin/dashboard');
+};
+
 const goToConfig = () => {
   router.push('/config');
 };
@@ -25,7 +29,6 @@ const showBrandsSuppliers = () => {
 <template>
   <div class="sidebar">
     <div class="sidebar-header">
-      <!-- Logo / titre -->
       <div class="sidebar-logo">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -36,6 +39,18 @@ const showBrandsSuppliers = () => {
     </div>
 
     <div class="sidebar-menu">
+
+      <!-- Dashboard -->
+      <button @click="goToDashboard" class="menu-item main-item dashboard-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9" rx="1"/>
+          <rect x="14" y="3" width="7" height="5" rx="1"/>
+          <rect x="14" y="12" width="7" height="9" rx="1"/>
+          <rect x="3" y="16" width="7" height="5" rx="1"/>
+        </svg>
+        <span>Dashboard</span>
+      </button>
+
       <!-- Tous les produits -->
       <button @click="$emit('show-products')" class="menu-item main-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -105,12 +120,8 @@ const showBrandsSuppliers = () => {
         </svg>
       </button>
 
-      <!-- Sous-menu Configuration -->
       <div class="submenu" :class="{ open: showConfig }">
-        <button
-          class="menu-item submenu-item config-btn"
-          @click="goToConfig"
-        >
+        <button class="menu-item submenu-item config-btn" @click="goToConfig">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>

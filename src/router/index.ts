@@ -12,6 +12,7 @@ import CatalogView from '../views/backoffice/CatalogView.vue';
 import ConfigView from '../views/backoffice/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
 import OrderView from '../views/backoffice/OrderView.vue';
+import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -46,6 +47,11 @@ const routes = [
     path: '/admin', 
     name: 'admin',
     component: CatalogView 
+  },
+  {
+    path: '/admin/dashboard',
+    name: 'admin-dashboard',
+    component: DashboardView
   },
   { 
     path: '/admin/config', 
