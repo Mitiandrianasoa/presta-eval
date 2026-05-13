@@ -186,7 +186,7 @@ import { useRouter } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
 // Importer le service de checkout
 import { processCheckout } from '../../../services/checkout.service';
-
+import { useAuth } from '../../../services/useAuth';
 const router = useRouter();
 
 // État du panier
@@ -197,27 +197,29 @@ const isCartLoaded = ref(false);
 const isProcessing = ref(false);
 const checkoutError = ref('');
 const showConfirmModal = ref(false);
+const { getCustomerId, isLoggedIn } = useAuth();
 
-// Vérifier si l'utilisateur est connecté
-const isLoggedIn = computed(() => {
-  const token = localStorage.getItem('prestashop_token');
-  const user = localStorage.getItem('prestashop_user');
-  return !!(token && user);
-});
+// // Vérifier si l'utilisateur est connecté
+// const isLoggedIn = computed(() => {
+//   const token = localStorage.getItem('prestashop_token');
+//   const user = localStorage.getItem('prestashop_user');
+//   return !!(token && user);
+// });
 
 // Récupérer l'ID du client connecté
-const getCustomerId = (): string => {
-  const user = localStorage.getItem('prestashop_user');
-  if (user) {
-    try {
-      const userData = JSON.parse(user);
-      return userData.id || '1';
-    } catch (err) {
-      return '1';
-    }
-  }
-  return '1'; // Client par défaut
-};
+// const getCustomerId = (): string => {
+//   const user = localStorage.getItem('prestashop_user');
+//   if (user) {
+//     try {
+//       const userData = JSON.parse(user);
+//       return userData.id || '1';
+//     } catch (err) {
+//       return '1';
+//     }
+//   }
+//   return '1'; // Client par défaut
+// };
+
 
 // Calculs du panier
 const cartItemCount = computed(() => {

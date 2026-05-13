@@ -28,7 +28,7 @@
 
         <!-- Pas de commandes -->
         <div v-else-if="orders.length === 0" class="empty-orders">
-          <div class="empty-icon">📋</div>
+          <div class="empty-icon"></div>
           <h2>Aucune commande</h2>
           <p>Vous n'avez pas encore passé de commande.</p>
           <router-link to="/products" class="shop-btn">
@@ -81,25 +81,26 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
 import api from '../../../api/api';
+import { useAuth } from '../../../services/useAuth';
 
+const { getCustomerId } = useAuth();
 const router = useRouter();
-
 const orders = ref<any[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-const getCustomerId = (): string => {
-  const user = localStorage.getItem('prestashop_user');
-  if (user) {
-    try {
-      const userData = JSON.parse(user);
-      return userData.id || '3';
-    } catch (err) {
-      return '3';
-    }
-  }
-  return '3';
-};
+// const getCustomerId = (): string => {
+//   const user = localStorage.getItem('prestashop_user');
+//   if (user) {
+//     try {
+//       const userData = JSON.parse(user);
+//       return userData.id || '3';
+//     } catch (err) {
+//       return '3';
+//     }
+//   }
+//   return '3';
+// };
 
 const loadOrders = async () => {
   loading.value = true;
@@ -127,7 +128,7 @@ const loadOrders = async () => {
       date_add: el.querySelector('date_add')?.textContent?.trim() || '',
       id_cart: el.querySelector('id_cart')?.textContent?.trim() || '',
     }));
-    
+    console.log(`✅ ${customerId} :'ID CUSTOMER'`);
     console.log(`✅ ${orders.value.length} commande(s) trouvée(s)`);
     
   } catch (err: any) {

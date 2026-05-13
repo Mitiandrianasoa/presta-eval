@@ -1,5 +1,6 @@
 // src/services/checkout.service.ts
 import api from '../api/api';
+import { useAuth } from '../services/useAuth';
 
 // ============================================
 // CONFIGURATION PAR DÉFAUT (VALEURS EN DUR)
@@ -37,77 +38,133 @@ export interface CartData {
 // FONCTIONS UTILITAIRES
 // ============================================
 
-/**
- * Récupère le token (secure_key) du client depuis l'API
- */
-const fetchCustomerToken = async (customerId: string): Promise<string> => {
-  console.log(`🔑 Récupération du token pour le client ${customerId}`);
+// /**
+//  * Récupère le token (secure_key) du client depuis l'API
+//  */
+// const fetchCustomerToken = async (customerId: string): Promise<string> => {
+//   console.log(`🔑 Récupération du token pour le client ${customerId}`);
   
-  try {
-    const response = await api.get(`/customers/${customerId}?output_format=XML`);
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+//   try {
+//     const response = await api.get(`/customers/${customerId}?output_format=XML`);
+//     const parser = new DOMParser();
+//     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
     
-    const secureKey = xmlDoc.querySelector('customer secure_key')?.textContent?.trim();
+//     const secureKey = xmlDoc.querySelector('customer secure_key')?.textContent?.trim();
     
-    if (secureKey) {
-      console.log(`✅ Token récupéré: ${secureKey.substring(0, 8)}...`);
-      return secureKey;
-    }
+//     if (secureKey) {
+//       console.log(`✅ Token récupéré: ${secureKey.substring(0, 8)}...`);
+//       return secureKey;
+//     }
     
-    console.warn('⚠️ Secure key non trouvée');
-    return 'default_token';
+//     console.warn('⚠️ Secure key non trouvée');
+//     return 'default_token';
     
-  } catch (error) {
-    console.error('❌ Erreur récupération token:', error);
-    return 'default_token';
-  }
+//   } catch (error) {
+//     console.error('❌ Erreur récupération token:', error);
+//     return 'default_token';
+//   }
+// };
+
+// /**
+//  * Récupère les adresses du client depuis l'API
+//  */
+// const fetchCustomerAddresses = async (customerId: string): Promise<{
+//     deliveryId: string;
+//     invoiceId: string;
+//   }> => {
+//     console.log(`📍 Récupération des adresses pour le client ${customerId}`);
+    
+//     try {
+//       const response = await api.get(
+//         `/addresses?output_format=XML&filter[id_customer]=[${customerId}]&display=full`
+//       );
+      
+//       const parser = new DOMParser();
+//       const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+//       const addressElements = xmlDoc.querySelectorAll('addresses address');
+      
+//       if (addressElements.length > 0) {
+//         const firstAddressId = addressElements[0].querySelector('id')?.textContent?.trim();
+        
+//         if (firstAddressId) {
+//           console.log(`✅ Adresse trouvée: ID ${firstAddressId}`);
+//           return {
+//             deliveryId: firstAddressId,
+//             invoiceId: firstAddressId
+//           };
+//         }
+//       }
+      
+//       console.warn('⚠️ Aucune adresse trouvée, utilisation des valeurs par défaut');
+//       return {
+//         deliveryId: DEFAULT_CONFIG.ADDRESS_DELIVERY_ID,
+//         invoiceId: DEFAULT_CONFIG.ADDRESS_INVOICE_ID
+//       };
+      
+//     } catch (error) {
+//       console.error('❌ Erreur récupération adresses:', error);
+//       return {
+//         deliveryId: DEFAULT_CONFIG.ADDRESS_DELIVERY_ID,
+//         invoiceId: DEFAULT_CONFIG.ADDRESS_INVOICE_ID
+//       };
+//     }
+//   };
+
+
+/**
+ * ✅ Simplifié : utilise useAuth au lieu de fetchCustomerToken
+ */
+const getCustomerCredentials = () => {
+  const { getCustomerId, getCustomerToken } = useAuth();
+  return {
+    customerId: getCustomerId(),
+    customerToken: getCustomerToken()
+  };
 };
 
 /**
  * Récupère les adresses du client depuis l'API
  */
 const fetchCustomerAddresses = async (customerId: string): Promise<{
-    deliveryId: string;
-    invoiceId: string;
-  }> => {
-    console.log(`📍 Récupération des adresses pour le client ${customerId}`);
+  deliveryId: string;
+  invoiceId: string;
+}> => {
+  console.log(`📍 Récupération des adresses pour le client ${customerId}`);
+  
+  try {
+    const response = await api.get(
+      `/addresses?output_format=XML&filter[id_customer]=[${customerId}]&display=full`
+    );
     
-    try {
-      const response = await api.get(
-        `/addresses?output_format=XML&filter[id_customer]=[${customerId}]&display=full`
-      );
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const addressElements = xmlDoc.querySelectorAll('addresses address');
+    
+    if (addressElements.length > 0) {
+      const firstAddressId = addressElements[0].querySelector('id')?.textContent?.trim();
       
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-      const addressElements = xmlDoc.querySelectorAll('addresses address');
-      
-      if (addressElements.length > 0) {
-        const firstAddressId = addressElements[0].querySelector('id')?.textContent?.trim();
-        
-        if (firstAddressId) {
-          console.log(`✅ Adresse trouvée: ID ${firstAddressId}`);
-          return {
-            deliveryId: firstAddressId,
-            invoiceId: firstAddressId
-          };
-        }
+      if (firstAddressId) {
+        console.log(`✅ Adresse trouvée: ID ${firstAddressId}`);
+        return {
+          deliveryId: firstAddressId,
+          invoiceId: firstAddressId
+        };
       }
-      
-      console.warn('⚠️ Aucune adresse trouvée, utilisation des valeurs par défaut');
-      return {
-        deliveryId: DEFAULT_CONFIG.ADDRESS_DELIVERY_ID,
-        invoiceId: DEFAULT_CONFIG.ADDRESS_INVOICE_ID
-      };
-      
-    } catch (error) {
-      console.error('❌ Erreur récupération adresses:', error);
-      return {
-        deliveryId: DEFAULT_CONFIG.ADDRESS_DELIVERY_ID,
-        invoiceId: DEFAULT_CONFIG.ADDRESS_INVOICE_ID
-      };
     }
-  };
+    
+    console.warn('⚠️ Aucune adresse trouvée, utilisation des valeurs par défaut');
+    return {
+      deliveryId: '1',
+      invoiceId: '1'
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération adresses:', error);
+    return { deliveryId: '1', invoiceId: '1' };
+  }
+};
+
+
 
 // ============================================
 // CRÉATION DU PANIER AVEC PRODUITS (OPTIMISÉ)
@@ -561,16 +618,27 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
   });
   
   try {
-    // 1. Récupérer les informations client
-    const customerId = cartData.customerId || DEFAULT_CONFIG.CUSTOMER_ID;
-    console.log('🔑 Récupération des informations client...');
+    // // 1. Récupérer les informations client
+    // const customerId = cartData.customerId || DEFAULT_CONFIG.CUSTOMER_ID;
+    // console.log('🔑 Récupération des informations client...');
     
-    const [customerToken, addresses] = await Promise.all([
-      fetchCustomerToken(customerId),
-      fetchCustomerAddresses(customerId)
-    ]);
+    // const [customerToken, addresses] = await Promise.all([
+    //   fetchCustomerToken(customerId),
+    //   fetchCustomerAddresses(customerId)
+    // ]);
+    const { getCustomerId, getCustomerToken } = useAuth();
+    const customerId = cartData.customerId || getCustomerId();
+    const customerToken = getCustomerToken();
     
-    console.log('✅ Informations client récupérées');
+    console.log('👤 Client:', { customerId, token: customerToken.substring(0, 8) + '...' });
+    
+    if (!customerToken) {
+      throw new Error('Token client non trouvé. Veuillez vous reconnecter.');
+    }
+    
+    // 2. Récupérer les adresses
+    const addresses = await fetchCustomerAddresses(customerId);
+    console.log('✅ Informations client récupérées:', addresses);
     
     // 2. Créer le panier avec les produits (méthode optimisée)
     let cartId: string;
