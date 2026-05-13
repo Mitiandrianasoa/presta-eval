@@ -18,7 +18,7 @@ const goToCarts = () => {
 };
 
 const goToOrders = () => {
-  router.push('admin/orders');
+  router.push('/admin/orders');
 };
 
 const showBrandsSuppliers = () => {
@@ -83,6 +83,15 @@ const showBrandsSuppliers = () => {
         </svg>
         <span>Clients</span>
       </button>
+      <!-- ✅ SECTION PANIER (NOUVELLE) -->
+      <button @click="goToCarts" class="menu-item main-item cart-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"/>
+          <circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        <span>Paniers</span>
+      </button>
 
       <!-- Liste des commandes -->
       <button @click="goToOrders" class="menu-item main-item orders-item">
@@ -94,16 +103,7 @@ const showBrandsSuppliers = () => {
       </button>
     </div>
 
-    <!-- Liste des carts
-       <button @click="goToOrders" class="menu-item main-item orders-item">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 11H3v2h6v-2zm0-4H3v2h6V7zm6 0v2h6V7h-6zm0 4v2h6v-2h-6z"/>
-          <path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-        </svg>
-        <span>Commandes</span>
-      </button>
-    </div> -->
-
+    
     <div class="divider"></div>
 
     <!-- Menu Configuration -->
