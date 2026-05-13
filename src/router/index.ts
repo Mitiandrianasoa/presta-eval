@@ -2,10 +2,16 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 // Frontoffice
 import HomeView from '../views/frontoffice/HomeView.vue';
-import ProductsView from '../views/frontoffice/product/ProductsView.vue';
-import ProductDetailView from '../views/frontoffice/product/ProductDetailView.vue';
-import LoginView from '../views/frontoffice/auth/LoginView.vue';
-import RegisterView from '../views/frontoffice/auth/RegisterView.vue';
+import ProductsView from '../views/frontoffice/ProductsView.vue';
+import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
+import LoginView from '../views/frontoffice/LoginView.vue';
+import RegisterView from '../views/frontoffice/RegisterView.vue';
+import OrderConfirmationView from '../views/frontoffice/order/OrderConfirmView.vue';
+import OrdersView from '../views/frontoffice/order/OrderView.vue';
+import CartView from '@/views/frontoffice/order/CartView.vue';
+import CheckoutView from '../views/frontoffice/order/CheckoutView.vue';
+import OrderDetailView from '../views/frontoffice/order/OrderDetailView.vue';
+
 
 // Backoffice
 import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
@@ -40,6 +46,24 @@ const routes = [
     name: 'register',
     component: RegisterView 
   },
+   {
+    path: '/order-confirmation',
+    name: 'OrderConfirmation',
+    component: OrderConfirmationView,
+    // meta: { requiresAuth: true }
+  },
+  {
+    path: '/orders',
+    name: 'Orders',
+    component: OrdersView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/order/:id',
+    name: 'OrderDetail',
+    component: OrderDetailView,
+    meta: { requiresAuth: true }
+  },
 
   // Backoffice Routes
   { 
@@ -47,10 +71,20 @@ const routes = [
     name: 'admin',
     component: CatalogView 
   },
+  {
+    path: '/checkout',
+    name: 'Checkout',
+    component: CheckoutView
+  },
   { 
     path: '/admin/config', 
     name: 'admin-config',
     component: ConfigView 
+  },
+  { 
+    path: '/cart', 
+    name: 'admin-cart',
+    component: CartView 
   },
   {
     path: '/admin/import-categories',
@@ -58,7 +92,7 @@ const routes = [
     component: CategoryImportView
   },
   {
-    path: '/orders',
+    path: '/admin/orders',
     name: 'orders',
     component: OrderView
   },
@@ -68,10 +102,10 @@ const routes = [
     path: '/config', 
     redirect: '/admin/config' 
   },
-  { 
-    path: '/order', 
-    redirect: '/orders' 
-  }
+  // { 
+  //   path: '/order', 
+  //   redirect: '/orders' 
+  // }
 ];
 
 export default createRouter({
