@@ -14,7 +14,7 @@ const goToConfig = () => {
 };
 
 const goToOrders = () => {
-  router.push('/orders');
+  router.push('admin/orders');
 };
 
 const showBrandsSuppliers = () => {

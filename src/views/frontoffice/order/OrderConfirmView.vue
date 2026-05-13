@@ -57,7 +57,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import FrontHeader from '../../components/FrontHeader.vue';
+import FrontHeader from '../../../components/FrontHeader.vue';
 
 const orderInfo = ref<any>(null);
 

@@ -6,16 +6,18 @@ import ProductsView from '../views/frontoffice/ProductsView.vue';
 import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
 import LoginView from '../views/frontoffice/LoginView.vue';
 import RegisterView from '../views/frontoffice/RegisterView.vue';
-import OrderConfirmationView from '../views/frontoffice/OrderConfirmView.vue';
-import OrdersView from '../views/frontoffice/OrderView.vue';
+import OrderConfirmationView from '../views/frontoffice/order/OrderConfirmView.vue';
+import OrdersView from '../views/frontoffice/order/OrderView.vue';
+import CartView from '@/views/frontoffice/order/CartView.vue';
+import CheckoutView from '../views/frontoffice/order/CheckoutView.vue';
+import OrderDetailView from '../views/frontoffice/order/OrderDetailView.vue';
+
 
 // Backoffice
 import CatalogView from '../views/backoffice/CatalogView.vue';
 import ConfigView from '../views/backoffice/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/CategoryImportView.vue';
 import OrderView from '../views/backoffice/OrderView.vue';
-import CartView from '@/views/frontoffice/CartView.vue';
-import CheckoutView from '../views/frontoffice/CheckoutView.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -54,7 +56,13 @@ const routes = [
     path: '/orders',
     name: 'Orders',
     component: OrdersView,
-    // meta: { requiresAuth: true }
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/order/:id',
+    name: 'OrderDetail',
+    component: OrderDetailView,
+    meta: { requiresAuth: true }
   },
 
   // Backoffice Routes
@@ -84,7 +92,7 @@ const routes = [
     component: CategoryImportView
   },
   {
-    path: '/orders',
+    path: '/admin/orders',
     name: 'orders',
     component: OrderView
   },
@@ -94,10 +102,10 @@ const routes = [
     path: '/config', 
     redirect: '/admin/config' 
   },
-  { 
-    path: '/order', 
-    redirect: '/orders' 
-  }
+  // { 
+  //   path: '/order', 
+  //   redirect: '/orders' 
+  // }
 ];
 
 export default createRouter({

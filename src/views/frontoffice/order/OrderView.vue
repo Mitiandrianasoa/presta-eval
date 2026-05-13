@@ -42,39 +42,24 @@
             v-for="order in orders" 
             :key="order.id"
             class="order-card"
+            @click="viewOrderDetail(order.id)"
           >
-            <div class="order-header">
-              <div class="order-info">
-                <span class="order-id">Commande #{{ order.id }}</span>
+            <div class="order-left">
+              <div class="order-main-info">
+                <span class="order-id">#{{ order.id }}</span>
                 <span class="order-date">{{ formatDate(order.date_add) }}</span>
               </div>
+              <div class="order-payment-info">
+                <span class="payment-method">{{ order.payment }}</span>
+              </div>
+            </div>
+            
+            <div class="order-right">
               <span class="order-status" :class="getStatusClass(order.current_state)">
                 {{ getStatusLabel(order.current_state) }}
               </span>
-            </div>
-            
-            <div class="order-body">
-              <div class="order-products">
-                <span class="products-label">Nombre Articles :</span>
-                <span class="products-count">{{ parseInt(order.total_products) || 'N/C' }}</span>
-              </div>
-              <div class="order-payment">
-                <span class="payment-label">Paiement :</span>
-                <span class="payment-method">{{ order.payment }}</span>
-              </div>
-              <div class="order-total">
-                <span class="total-label">Total :</span>
-                <span class="total-price">{{ formatPrice(order.total_paid) }}</span>
-              </div>
-            </div>
-            
-            <div class="order-footer">
-              <button 
-                @click="viewOrderDetail(order.id)" 
-                class="detail-btn"
-              >
-                Voir le détail
-              </button>
+              <span class="order-total">{{ formatPrice(order.total_paid) }}</span>
+              <span class="detail-arrow">→</span>
             </div>
           </div>
         </div>
@@ -94,8 +79,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import FrontHeader from '../../components/FrontHeader.vue';
-import api from '../../api/api';
+import FrontHeader from '../../../components/FrontHeader.vue';
+import api from '../../../api/api';
 
 const router = useRouter();
 
@@ -103,7 +88,6 @@ const orders = ref<any[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-// Récupérer le customer ID
 const getCustomerId = (): string => {
   const user = localStorage.getItem('prestashop_user');
   if (user) {
@@ -114,10 +98,9 @@ const getCustomerId = (): string => {
       return '3';
     }
   }
-  return '3'; // Client par défaut
+  return '3';
 };
 
-// Charger les commandes
 const loadOrders = async () => {
   loading.value = true;
   error.value = '';
@@ -155,12 +138,10 @@ const loadOrders = async () => {
   }
 };
 
-// Voir le détail d'une commande
 const viewOrderDetail = (orderId: string) => {
   router.push(`/order/${orderId}`);
 };
 
-// Statuts des commandes
 const getStatusLabel = (stateId: string): string => {
   const statuses: Record<string, string> = {
     '1': 'En attente',
@@ -170,7 +151,7 @@ const getStatusLabel = (stateId: string): string => {
     '5': 'Livrée',
     '6': 'Annulée',
     '7': 'Remboursée',
-    '8': 'Erreur paiement',
+    '8': 'Erreur',
     '13': 'En attente',
   };
   return statuses[stateId] || `Statut ${stateId}`;
@@ -191,22 +172,24 @@ const getStatusClass = (stateId: string): string => {
   return classes[stateId] || 'status-default';
 };
 
-// Utilitaires
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  return new Intl.NumberFormat('fr-EU', {
+  if (isNaN(numPrice)) return '0 €';
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR'
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(numPrice);
 };
 
 const formatDate = (dateStr: string) => {
-  if (!dateStr || dateStr === '0000-00-00 00:00:00') return 'Date inconnue';
-  
+  if (!dateStr || dateStr === '0000-00-00 00:00:00') return '';
   const date = new Date(dateStr);
-  return new Intl.DateTimeFormat('fr-EU', {
+  if (isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
-    month: 'long',
+    month: 'short',
     year: 'numeric'
   }).format(date);
 };
@@ -219,42 +202,45 @@ onMounted(() => {
 <style scoped>
 .orders-page {
   min-height: 100vh;
-  background: var(--bg);
+  background: #f8fafc;
 }
 
 .orders-main {
-  padding: 3rem 0 5rem;
+  padding: 2.5rem 0 4rem;
 }
 
 .page-header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .page-header h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: var(--navy);
-  margin: 0 0 0.4rem;
+  color: #1e293b;
+  margin: 0 0 0.3rem;
+  letter-spacing: -0.02em;
 }
 
 .page-header p {
-  color: var(--muted);
+  color: #64748b;
   margin: 0;
+  font-size: 0.95rem;
 }
 
 /* Loading */
 .loading {
   text-align: center;
-  padding: 4rem;
+  padding: 4rem 1rem;
+  color: #64748b;
 }
 
 .spinner {
-  border: 3px solid var(--border);
-  border-top: 3px solid var(--primary);
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #3b82f6;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 0.8s linear infinite;
+  width: 36px;
+  height: 36px;
+  animation: spin 0.7s linear infinite;
   margin: 0 auto 1rem;
 }
 
@@ -267,114 +253,177 @@ onMounted(() => {
 .error-message {
   background: #fef2f2;
   border: 1px solid #fecaca;
-  border-radius: var(--radius-lg);
-  padding: 3rem;
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
   text-align: center;
 }
 
+.error-content h3 {
+  color: #dc2626;
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.error-content p {
+  color: #7f1d1d;
+  margin: 0 0 1rem;
+}
+
 .retry-btn {
-  margin-top: 1rem;
-  background: var(--primary);
+  background: #3b82f6;
   color: white;
   border: none;
-  padding: 0.75rem 2rem;
-  border-radius: 6px;
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.retry-btn:hover {
+  background: #2563eb;
 }
 
 /* Empty */
 .empty-orders {
   text-align: center;
-  padding: 5rem 2rem;
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .empty-icon {
-  font-size: 4rem;
+  font-size: 3.5rem;
   margin-bottom: 1rem;
 }
 
 .empty-orders h2 {
-  color: var(--navy);
+  color: #1e293b;
   margin-bottom: 0.5rem;
+  font-size: 1.3rem;
 }
 
 .empty-orders p {
-  color: var(--muted);
-  margin-bottom: 2rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
 }
 
 .shop-btn {
   display: inline-block;
-  background: var(--primary);
+  background: #3b82f6;
   color: white;
-  padding: 0.75rem 2rem;
-  border-radius: 6px;
+  padding: 0.7rem 1.75rem;
+  border-radius: 8px;
   text-decoration: none;
   font-weight: 600;
-  transition: background var(--transition);
+  font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .shop-btn:hover {
-  background: var(--primary-dark);
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
-/* Orders List */
+/* Orders List - CARDS COMPACTES */
 .orders-list {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
 .order-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  transition: box-shadow var(--transition), border-color var(--transition);
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 1rem;
 }
 
 .order-card:hover {
-  box-shadow: var(--shadow-md);
   border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+  transform: translateX(2px);
 }
 
-.order-header {
+.order-card:active {
+  transform: scale(0.995);
+}
+
+/* Partie gauche */
+.order-left {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
+  gap: 1.5rem;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
-.order-info {
+.order-main-info {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .order-id {
   font-weight: 700;
-  color: var(--navy);
-  font-size: 1.1rem;
+  color: #1e293b;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
 }
 
 .order-date {
-  font-size: 0.85rem;
-  color: var(--muted);
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
-/* Statuts */
-.order-status {
-  padding: 0.35rem 0.85rem;
-  border-radius: 20px;
+.order-payment-info {
+  display: flex;
+  align-items: center;
+}
+
+.payment-method {
   font-size: 0.8rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Partie droite */
+.order-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.order-total {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+/* Statuts - badges compacts */
+.order-status {
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .status-pending {
@@ -384,17 +433,17 @@ onMounted(() => {
 
 .status-processing {
   background: #dbeafe;
-  color: #1e40af;
+  color: #1d4ed8;
 }
 
 .status-ready {
   background: #e0e7ff;
-  color: #3730a3;
+  color: #4338ca;
 }
 
 .status-shipped {
   background: #f3e8ff;
-  color: #6b21a8;
+  color: #7c3aed;
 }
 
 .status-delivered {
@@ -419,78 +468,44 @@ onMounted(() => {
 
 .status-default {
   background: #f1f5f9;
-  color: #475569;
+  color: #64748b;
 }
 
-.order-body {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+/* Flèche discrète */
+.detail-arrow {
+  color: #cbd5e1;
+  font-size: 1rem;
+  transition: all 0.2s;
 }
 
-.order-products,
-.order-payment,
-.order-total {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.order-card:hover .detail-arrow {
+  color: #3b82f6;
+  transform: translateX(3px);
 }
 
-.products-label,
-.payment-label,
-.total-label {
-  font-size: 0.8rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.products-count,
-.payment-method {
-  font-weight: 500;
-  color: var(--text);
-}
-
-.total-price {
-  font-weight: 700;
-  color: var(--success);
-  font-size: 1.1rem;
-}
-
-.order-footer {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.detail-btn {
-  background: transparent;
-  border: 1.5px solid var(--primary);
-  color: var(--primary);
-  padding: 0.5rem 1.25rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: inherit;
-}
-
-.detail-btn:hover {
-  background: var(--primary-light);
-  border-color: var(--primary-dark);
-}
-
-@media (max-width: 768px) {
-  .order-body {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-  
-  .order-header {
+/* Responsive */
+@media (max-width: 640px) {
+  .order-card {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .order-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .order-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .detail-arrow {
+    display: none;
   }
 }
 </style>

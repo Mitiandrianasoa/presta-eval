@@ -111,8 +111,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import FrontHeader from '../../components/FrontHeader.vue';
-import { processCheckout, getCustomerInfo, getDefaultCarrier } from '../../services/checkout.service';
+import FrontHeader from '../../../components/FrontHeader.vue';
+import { processCheckout, getCustomerInfo, getDefaultCarrier } from '../../../services/checkout.service';
 
 const router = useRouter();
 

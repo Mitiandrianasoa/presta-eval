@@ -183,9 +183,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import FrontHeader from '../../components/FrontHeader.vue';
+import FrontHeader from '../../../components/FrontHeader.vue';
 // Importer le service de checkout
-import { processCheckout } from '../../services/checkout.service';
+import { processCheckout } from '../../../services/checkout.service';
 
 const router = useRouter();
 
