@@ -43,3 +43,32 @@ NEW APP
             - commande
     - list  de mes commandes[Mitia]: 
         - etat
+
+J-2 
+
+
+NEW APP
+- BACK OFFICE[Mitia]
+    - liste:[Mitia]
+        - panier
+        - commandes
+        - paiement effectue
+    - Tableau de board:[Mitia]
+        - Par Jour:
+            - nb commande
+            - montant
+        - General
+        
+- FRONT OFFICE[Tsanta]
+    - page accueil[Tsanta]:
+        - liste customer:
+            - choix utilisateur
+            - anonyme
+    - list produits avec  date_availability_produit
+        - etiquette:
+            - HOT : pour les produits sorties 1j avant  
+            - NEW : pour les produits sorties 1 semaines avant
+    - Recherche Multicritere par produit:
+        - nom  
+        - catégorie 
+        - intervalle de prix
