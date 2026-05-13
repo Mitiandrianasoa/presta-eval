@@ -121,7 +121,7 @@ onMounted(loadData);
 
         <!-- Aucune commande annulée -->
         <div v-else class="empty-state">
-          ✅ Aucune commande annulée. Tout va bien !
+           Aucune commande annulée. Tout va bien !
         </div>
 
         <!-- Détails inline -->

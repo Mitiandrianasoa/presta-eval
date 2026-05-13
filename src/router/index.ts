@@ -20,6 +20,7 @@ import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.v
 import OrderView from '../views/backoffice/order/OrderView.vue';
 import CanceledOrders from '@/components/order/CanceledOrders.vue';
 import CartList from '@/components/order/CartList.vue';
+import PaymentList from '@/components/order/PaymentList.vue';
 
 
 const routes = [
@@ -115,10 +116,10 @@ const routes = [
     path: '/config', 
     redirect: '/admin/config' 
   },
-  // { 
-  //   path: '/order', 
-  //   redirect: '/orders' 
-  // }
+  {
+  path: '/admin/payments',
+  name: 'PaymentList',
+  component: PaymentList}
 ];
 
 export default createRouter({

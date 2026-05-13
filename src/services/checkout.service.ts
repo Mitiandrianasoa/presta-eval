@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   PAYMENT_MODULE: 'ps_cashondelivery',
   CURRENCY_ID: '1',
   LANG_ID: '1',
-  ORDER_STATE: '13',
+  ORDER_STATE: '2',
 };
 
 export interface CartProduct {
@@ -389,7 +389,7 @@ const createOrderWithSchema = async (
     <total_paid_real>${totalProductsWt}</total_paid_real>
     <total_shipping>0</total_shipping>
     <secure_key>${customerToken}</secure_key>
-    <current_state>13</current_state>
+    <current_state>2</current_state>
     <valid>1</valid>
   </order>
 </prestashop>`;
@@ -414,9 +414,9 @@ const createOrderWithSchema = async (
       console.log('✅ Commande créée avec succès!');
       console.log(`   ID Commande: ${orderId}`);
       
-      // ✅ TOUJOURS changer le statut en 13 après création réussie
+      // ✅ TOUJOURS changer le statut en 2 après création réussie
       if (orderId) {
-        await updateOrderState(orderId, '13');
+        await updateOrderState(orderId, '2');
       }
       
       return {
@@ -456,8 +456,8 @@ const createOrderWithSchema = async (
           if (orderCartId === cartId) {
             console.log('✅ Commande trouvée!');
             
-            console.log(`⚠️ Statut actuel: ${orderState}, changement en 13...`);
-            await updateOrderState(orderId!, '13');
+            console.log(`⚠️ Statut actuel: ${orderState}, changement en 2...`);
+            await updateOrderState(orderId!, '2');
             
             return {
               id: orderId,
@@ -490,9 +490,9 @@ const createOrderWithSchema = async (
           if (orderCartId === cartId) {
             console.log('✅ Commande trouvée à la 2ème tentative!');
             
-            // ✅ Forcer le statut à 13
-            if (orderState !== '13') {
-              await updateOrderState(orderId!, '13');
+            // ✅ Forcer le statut à 2
+            if (orderState !== '2') {
+              await updateOrderState(orderId!, '2');
             }
             
             return {
@@ -671,12 +671,12 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       cartData.paymentMethod || DEFAULT_CONFIG.PAYMENT_METHOD
     );
     
-    // ✅ 4. Mettre à jour le statut de la commande en 13
+    // ✅ 4. Mettre à jour le statut de la commande en 2
     if (order.id && order.id !== 'unknown') {
-      console.log(`🔄 Mise à jour du statut de la commande ${order.id} → 13`);
+      console.log(`🔄 Mise à jour du statut de la commande ${order.id} → 2`);
       
       try {
-        await updateOrderState(order.id, '13');
+        await updateOrderState(order.id, '2');
         console.log(`✅ Statut de la commande ${order.id} mis à jour avec succès`);
       } catch (updateError) {
         console.warn(`⚠️ Échec de la mise à jour du statut:`, updateError);
@@ -694,7 +694,7 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       order: {
         id: order.id,
         total: order.total,
-        status: '13' // ✅ Ajout du statut dans la réponse
+        status: '2' // ✅ Ajout du statut dans la réponse
       },
       customerId,
       addresses,
