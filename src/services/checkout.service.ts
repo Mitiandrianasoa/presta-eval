@@ -707,6 +707,72 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
   }
 };
 
+
+//CREATION PANIER UNIQUEMENT 
+export const processCart = async (cartData: CartData): Promise<any> => {
+  console.log('🚀ENREGISTRER LE PANIER UNIQUEMENT PROCESS');
+  console.log('📦 Configuration:', {
+    productsCount: cartData.products.length,
+    customerId: cartData.customerId || DEFAULT_CONFIG.CUSTOMER_ID,
+    paymentMethod: cartData.paymentMethod || DEFAULT_CONFIG.PAYMENT_METHOD
+  });
+  
+  try {
+    const { getCustomerId, getCustomerToken } = useAuth();
+    const customerId = cartData.customerId || getCustomerId();
+    const customerToken = getCustomerToken();
+    
+    console.log('👤 Client:', { customerId, token: customerToken.substring(0, 8) + '...' });
+    
+    if (!customerToken) {
+      throw new Error('Token client non trouvé. Veuillez vous reconnecter.');
+    }
+    
+    // 2. Récupérer les adresses
+    const addresses = await fetchCustomerAddresses(customerId);
+    console.log('✅ Informations client récupérées:', addresses);
+    
+    // 2. Créer le panier avec les produits (méthode optimisée)
+    let cartId: string;
+    
+    try {
+      // Essayer d'abord la méthode optimisée
+      console.log('🎯 Tentative de création optimisée (panier)');
+      cartId = await createCartWithProducts(
+        customerId,
+        customerToken,
+        cartData.products,
+        addresses.deliveryId,
+        addresses.invoiceId
+      );
+    } catch (optimizedError) {
+      // Fallback à la méthode étape par étape
+      console.warn('⚠️ La méthode optimisée a échoué, utilisation du fallback');
+      console.warn('   Erreur:', optimizedError);
+      
+      cartId = await createCartStepByStep(
+        customerId,
+        customerToken,
+        cartData.products,
+        addresses.deliveryId,
+        addresses.invoiceId
+      );
+    }
+    console.log('🎉 Panier enregistré avec succès!');
+    return {
+      success: true,
+      cartId,
+      customerId,
+      addresses,
+      message: 'Panier créé avec succès'
+    };
+  } catch (error: any) {
+    console.error('💥 Erreur fatale lors du checkout:', error);
+    throw new Error(`Erreur checkout: ${error.message || 'Erreur inconnue'}`);
+  }
+};
+
+
 /**
  * Récupérer les informations d'un client par ID
  */
