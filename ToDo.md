@@ -49,11 +49,20 @@ J-2
 
 NEW APP
 - BACK OFFICE[Mitia]
-    - liste:[Mitia]
-        - panier
-        - commandes
-        - paiement effectue
-    - Tableau de board:[Mitia]
+    AFFICHAGE
+        - liste:
+            - panier
+            - commandes 
+                - filtre commande annuler
+            - paiement effectue
+    FUNCTION
+        - service Service
+            - getAllCarts
+            - getAllPayment
+            - getOrdersCanceled
+    INTEGRATION
+        - script API
+    - Tableau de board:
         - Par Jour:
             - nb commande
             - montant

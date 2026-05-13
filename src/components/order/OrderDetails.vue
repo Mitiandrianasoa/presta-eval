@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { orderService, type Order, type OrderState } from '../../services/orderService';
+import { paymentService, PAYMENT_METHODS } from '../../services/paymentService';
+
+// ─── Props & Emits ─────────────────────────────────────────────────────────────
 
 const props = defineProps<{
   orderId: string;
@@ -9,243 +12,309 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
+  (e: 'updated'): void;   // signale au parent qu'il faut recharger
 }>();
 
-const order = ref<Order | null>(null);
-const loading = ref(false);
-const error = ref<string | null>(null);
+// ─── État local ────────────────────────────────────────────────────────────────
 
-const paymentMethods = [
-  'Paiement à la livraison',
-  'Carte bancaire',
-  'Virement',
-  'Chèque',
-];
+const order   = ref<Order | null>(null);
+const loading = ref(false);
+const error   = ref<string | null>(null);
+const saving  = ref(false);
+
+// ─── Chargement ────────────────────────────────────────────────────────────────
 
 const loadOrder = async () => {
   loading.value = true;
-  error.value = null;
+  error.value   = null;
   try {
     order.value = await orderService.fetchOne(props.orderId);
   } catch (e: any) {
     error.value = e.message;
-    console.error(e);
   } finally {
     loading.value = false;
   }
 };
 
+// ─── Actions ──────────────────────────────────────────────────────────────────
+
 const updatePayment = async (newPayment: string) => {
+  saving.value = true;
   try {
-    await orderService.updatePayment(props.orderId, newPayment);
-    alert('Paiement mis à jour ✅');
+    await paymentService.updatePayment(props.orderId, newPayment);
     await loadOrder();
+    emit('updated');
   } catch (e: any) {
-    alert(`Erreur: ${e.message}`);
+    error.value = `Erreur paiement : ${e.message}`;
+  } finally {
+    saving.value = false;
   }
 };
 
-onMounted(() => {
-  loadOrder();
-});
+const updateState = async (newState: string) => {
+  saving.value = true;
+  try {
+    await orderService.updateState(props.orderId, newState);
+    await loadOrder();
+    emit('updated');
+  } catch (e: any) {
+    error.value = `Erreur état : ${e.message}`;
+  } finally {
+    saving.value = false;
+  }
+};
+
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
+
+onMounted(loadOrder);
 </script>
 
 <template>
-  <div class="order-details" v-if="order && !loading">
-    <div class="details-header">
-      <h3>Détails Commande #{{ order.reference }}</h3>
-      <button @click="emit('close')" class="btn-close">✕</button>
+  <!-- Chargement -->
+  <div v-if="loading" class="od-loading">
+    <span class="spinner"></span> Chargement...
+  </div>
+
+  <!-- Contenu -->
+  <div v-else-if="order" class="od-wrapper">
+
+    <!-- En-tête -->
+    <div class="od-header">
+      <div>
+        <span class="od-badge">Commande</span>
+        <h3 class="od-title">#{{ order.reference }}</h3>
+      </div>
+      <button class="od-close" @click="emit('close')" title="Fermer">✕</button>
     </div>
 
-    <!-- Message d'erreur -->
-    <div v-if="error" class="error-box">
-      ❌ {{ error }}
-    </div>
+    <!-- Alerte erreur -->
+    <div v-if="error" class="od-error">⚠️ {{ error }}</div>
+    <div v-if="saving" class="od-saving"> Enregistrement...</div>
 
-    <div class="details-grid">
-      <!-- Section Client -->
-      <div class="detail-section">
-        <h4>👤 Client</h4>
-        <p><strong>Nom:</strong> {{ order.customer_name }}</p>
-        <p><strong>ID Client:</strong> {{ order.id_customer }}</p>
+    <!-- Grille d'infos -->
+    <div class="od-grid">
+
+      <!-- Client -->
+      <div class="od-card">
+        <div class="od-card-icon">👤</div>
+        <h4>Client</h4>
+        <p><span>Nom</span><strong>{{ order.customer_name || '—' }}</strong></p>
+        <p><span>ID</span><strong>#{{ order.id_customer }}</strong></p>
       </div>
 
-      <!-- Section Commande -->
-      <div class="detail-section">
-        <h4>📦 Commande</h4>
-        <p><strong>Référence:</strong> {{ order.reference }}</p>
-        <p><strong>Total:</strong> {{ order.total_paid }} €</p>
-        <p><strong>Date:</strong> {{ new Date(order.date_add).toLocaleDateString('fr-FR') }}</p>
+      <!-- Commande -->
+      <div class="od-card">
+        <div class="od-card-icon"></div>
+        <h4>Commande</h4>
+        <p><span>Référence</span><strong>{{ order.reference }}</strong></p>
+        <p><span>Total</span><strong class="price">{{ paymentService.formatAmount(order.total_paid) }}</strong></p>
+        <p><span>Date</span><strong>{{ new Date(order.date_add).toLocaleDateString('fr-FR') }}</strong></p>
       </div>
 
-      <!-- Section Paiement -->
-      <div class="detail-section">
-        <h4> Paiement</h4>
-        <p><strong>Méthode actuelle:</strong></p>
-        <select 
+      <!-- Paiement -->
+      <div class="od-card">
+        <div class="od-card-icon"></div>
+        <h4>Paiement</h4>
+        <p><span>Méthode</span></p>
+        <select
           :value="order.payment"
           @change="updatePayment(($event.target as HTMLSelectElement).value)"
-          class="payment-select"
+          class="od-select"
+          :disabled="saving"
         >
-          <option value="">-- Sélectionner --</option>
-          <option v-for="method in paymentMethods" :key="method" :value="method">
-            {{ method }}
+          <option value="">— Sélectionner —</option>
+          <option v-for="m in PAYMENT_METHODS" :key="m" :value="m">{{ m }}</option>
+        </select>
+      </div>
+
+      <!-- État -->
+      <div class="od-card">
+        <div class="od-card-icon"></div>
+        <h4>État</h4>
+        <p><span>Actuel</span></p>
+        <select
+          :value="order.current_state"
+          @change="updateState(($event.target as HTMLSelectElement).value)"
+          class="od-select"
+          :disabled="saving"
+        >
+          <option
+            v-for="state in orderService.ensureStateInList(orderStates, order.current_state)"
+            :key="state.id"
+            :value="state.id"
+          >
+            {{ state.name }}
           </option>
         </select>
       </div>
 
-      <!-- Section État -->
-      <div class="detail-section">
-        <h4>État Courant</h4>
-        <p>{{ orderService.getStateLabel(orderStates, order.current_state) }}</p>
+    </div>
+
+    <!-- Tableau articles -->
+    <div v-if="order.items.length > 0" class="od-items">
+      <h4> Articles commandés ({{ order.items.length }})</h4>
+      <div class="od-table-wrapper">
+        <table class="od-table">
+          <thead>
+            <tr>
+              <th>Produit</th>
+              <th>Référence</th>
+              <th>Qté</th>
+              <th>Prix unitaire</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in order.items" :key="item.id">
+              <td>{{ item.product_name }}</td>
+              <td class="ref">{{ item.product_reference }}</td>
+              <td class="center">{{ item.quantity }}</td>
+              <td class="price">{{ paymentService.formatAmount(item.price) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
+    <div v-else class="od-no-items">Aucun article dans cette commande.</div>
 
-    <!-- Items commandés -->
-    <div class="items-section" v-if="order.items.length > 0">
-      <h4>📋 Articles</h4>
-      <table class="items-table">
-        <thead>
-          <tr>
-            <th>Produit</th>
-            <th>Référence</th>
-            <th>Quantité</th>
-            <th>Prix</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in order.items" :key="item.id">
-            <td>{{ item.product_name }}</td>
-            <td>{{ item.product_reference }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ item.price }} €</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Chargement -->
-  <div v-else-if="loading" class="loading">
-    ⏳ Chargement...
   </div>
 </template>
 
 <style scoped>
-.order-details {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+/* ── Conteneur principal ─────────────────────────────────────── */
+.od-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
 }
 
-.details-header {
+/* ── En-tête ────────────────────────────────────────────────── */
+.od-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f2f5;
+}
+.od-badge {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #2196f3;
+  background: #e3f2fd;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.od-title {
+  margin: 6px 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.od-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #aaa;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background .15s, color .15s;
+}
+.od-close:hover { background: #f5f5f5; color: #333; }
+
+/* ── Messages ───────────────────────────────────────────────── */
+.od-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 32px;
+  color: #666;
+  font-size: 1rem;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #2196f3;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.od-error  { background: #fff0f0; border: 1px solid #ffcdd2; color: #c62828; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: .9rem; }
+.od-saving { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: .9rem; }
+
+/* ── Grille de cartes ───────────────────────────────────────── */
+.od-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.od-card {
+  background: #f8f9fb;
+  border-radius: 10px;
+  padding: 16px;
+  border-left: 4px solid #2196f3;
+  position: relative;
+}
+.od-card-icon {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+.od-card h4 {
+  margin: 0 0 10px;
+  font-size: .85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #555;
+}
+.od-card p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 10px;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  font-size: 1.5em;
-  cursor: pointer;
-  color: #999;
-}
-
-.btn-close:hover {
-  color: #333;
-}
-
-h3 {
-  color: #333;
-  margin: 0;
-}
-
-.error-box {
-  background-color: #fee;
-  border: 1px solid #f99;
-  color: #c33;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 20px;
-}
-
-.loading {
-  text-align: center;
-  padding: 20px;
+  margin: 6px 0;
+  font-size: .9rem;
   color: #666;
 }
+.od-card p span { color: #888; }
+.od-card p strong { color: #1a1a2e; }
+.od-card p strong.price { color: #2e7d32; font-size: 1rem; }
 
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.detail-section {
-  background: #f9f9f9;
-  padding: 15px;
-  border-radius: 6px;
-  border-left: 4px solid #2196f3;
-}
-
-.detail-section h4 {
-  margin: 0 0 10px 0;
-  color: #333;
-}
-
-.detail-section p {
-  margin: 8px 0;
-  color: #666;
-}
-
-.detail-section strong {
-  color: #333;
-}
-
-.payment-select {
+/* ── Select ──────────────────────────────────────────────────── */
+.od-select {
   width: 100%;
-  padding: 8px;
+  margin-top: 6px;
+  padding: 8px 10px;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.95em;
+  border-radius: 8px;
+  font-size: .9rem;
+  background: #fff;
+  color: #333;
   cursor: pointer;
+  transition: border-color .2s;
 }
+.od-select:hover:not(:disabled) { border-color: #2196f3; }
+.od-select:disabled { opacity: .6; cursor: default; }
 
-.items-section {
-  margin-top: 30px;
-}
-
-.items-section h4 {
+/* ── Articles ────────────────────────────────────────────────── */
+.od-items h4 {
+  font-size: 1rem;
+  font-weight: 700;
   color: #333;
   margin-bottom: 12px;
 }
-
-.items-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #f9f9f9;
-}
-
-.items-table thead {
-  background-color: #e8e8e8;
-}
-
-.items-table th {
-  padding: 10px;
-  text-align: left;
-  font-weight: 600;
-  color: #333;
-}
-
-.items-table td {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-  color: #666;
-}
+.od-table-wrapper { overflow-x: auto; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+.od-table { width: 100%; border-collapse: collapse; background: #fff; font-size: .9rem; }
+.od-table thead { background: #f0f2f5; }
+.od-table th { padding: 11px 14px; text-align: left; font-weight: 600; color: #444; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+.od-table td { padding: 11px 14px; border-bottom: 1px solid #f0f2f5; color: #555; }
+.od-table tbody tr:last-child td { border-bottom: none; }
+.od-table tbody tr:hover { background: #f8f9fb; }
+.od-table td.ref   { font-family: monospace; color: #888; }
+.od-table td.center { text-align: center; }
+.od-table td.price { color: #2e7d32; font-weight: 600; }
+.od-no-items { color: #999; font-size: .9rem; padding: 12px 0; }
 </style>

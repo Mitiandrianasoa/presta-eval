@@ -18,6 +18,9 @@ import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
 import ConfigView from '../views/backoffice/config/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.vue';
 import OrderView from '../views/backoffice/order/OrderView.vue';
+import CanceledOrders from '@/components/order/CanceledOrders.vue';
+import CartList from '@/components/order/CartList.vue';
+
 
 const routes = [
   // Frontoffice Routes
@@ -95,6 +98,16 @@ const routes = [
     path: '/admin/orders',
     name: 'orders',
     component: OrderView
+  },
+  {
+    path: '/admin/orders/canceled',
+    name: 'canceled-orders',
+    component: CanceledOrders
+  },
+  {
+    path: '/admin/cart',
+    name: 'cart',
+    component: CartList
   },
 
   // Redirect old routes

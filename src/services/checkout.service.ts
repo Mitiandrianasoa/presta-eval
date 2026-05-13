@@ -38,9 +38,6 @@ export interface CartData {
 // FONCTIONS UTILITAIRES
 // ============================================
 
-// /**
-//  * Récupère le token (secure_key) du client depuis l'API
-//  */
 // const fetchCustomerToken = async (customerId: string): Promise<string> => {
 //   console.log(`🔑 Récupération du token pour le client ${customerId}`);
   
@@ -110,17 +107,16 @@ export interface CartData {
 //     }
 //   };
 
-
 /**
  * ✅ Simplifié : utilise useAuth au lieu de fetchCustomerToken
  */
-const getCustomerCredentials = () => {
-  const { getCustomerId, getCustomerToken } = useAuth();
-  return {
-    customerId: getCustomerId(),
-    customerToken: getCustomerToken()
-  };
-};
+// const getCustomerCredentials = () => {
+//   const { getCustomerId, getCustomerToken } = useAuth();
+//   return {
+//     customerId: getCustomerId(),
+//     customerToken: getCustomerToken()
+//   };
+// };
 
 /**
  * Récupère les adresses du client depuis l'API
@@ -163,7 +159,6 @@ const fetchCustomerAddresses = async (customerId: string): Promise<{
     return { deliveryId: '1', invoiceId: '1' };
   }
 };
-
 
 
 // ============================================
