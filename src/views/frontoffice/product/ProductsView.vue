@@ -11,36 +11,114 @@
           <p>Découvrez notre sélection de produits de qualité</p>
         </div>
 
-        <!-- Filtres -->
+        <!-- Filtres multicritères -->
         <div class="filters-section">
-          <div class="search-bar">
+          <!-- Barre de recherche par nom -->
+          <div class="search-bar-wrapper">
+            <i class="fas fa-search search-icon"></i>
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Rechercher un produit..."
+              placeholder="Rechercher un produit par nom..."
               class="search-input"
             />
+            <button 
+              v-if="searchQuery" 
+              @click="searchQuery = ''" 
+              class="clear-search-btn"
+              title="Effacer la recherche"
+            >
+              <i class="fas fa-times"></i>
+            </button>
           </div>
           
           <div class="filter-controls">
-            <select v-model="selectedCategory" class="filter-select">
-              <option value="">Toutes les catégories</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-            </select>
+            <!-- Filtre par catégorie -->
+            <div class="filter-group">
+              <i class="fas fa-tags filter-icon"></i>
+              <select v-model="selectedCategory" class="filter-select">
+                <option value="">Toutes les catégories</option>
+                <option v-for="category in categories" :key="category.id" :value="category.id">
+                  {{ category.name }}
+                </option>
+              </select>
+            </div>
             
-            <select v-model="sortBy" class="filter-select">
-              <option value="name-asc">Nom (A-Z)</option>
-              <option value="name-desc">Nom (Z-A)</option>
-              <option value="price-asc">Prix (croissant)</option>
-              <option value="price-desc">Prix (décroissant)</option>
-            </select>
+            <!-- Intervalle de prix -->
+            <div class="filter-group">
+              <i class="fas fa-money-bill-wave filter-icon"></i>
+              <div class="price-range">
+                <input
+                  v-model.number="priceMin"
+                  type="number"
+                  placeholder="Min"
+                  class="price-input"
+                  min="0"
+                  step="100"
+                />
+                <span class="price-separator">-</span>
+                <input
+                  v-model.number="priceMax"
+                  type="number"
+                  placeholder="Max"
+                  class="price-input"
+                  min="0"
+                  step="100"
+                />
+              </div>
+            </div>
+            
+            <!-- Tri -->
+            <div class="filter-group">
+              <i class="fas fa-sort-amount-down-alt filter-icon"></i>
+              <select v-model="sortBy" class="filter-select">
+                <option value="name-asc">Nom (A-Z)</option>
+                <option value="name-desc">Nom (Z-A)</option>
+                <option value="price-asc">Prix (croissant)</option>
+                <option value="price-desc">Prix (décroissant)</option>
+              </select>
+            </div>
+
+            <!-- Bouton réinitialisation -->
+            <button @click="resetFilters" class="reset-filters-btn" title="Réinitialiser tous les filtres">
+              <i class="fas fa-undo-alt"></i>
+              <span>Réinitialiser</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtres actifs -->
+        <div v-if="hasActiveFilters" class="active-filters">
+          <i class="fas fa-filter active-filters-icon"></i>
+          <span class="active-filters-label">Filtres actifs :</span>
+          <div class="filter-tags">
+            <span v-if="searchQuery" class="filter-tag">
+              <i class="fas fa-search"></i>
+              "{{ searchQuery }}"
+              <button @click="searchQuery = ''" class="remove-filter">
+                <i class="fas fa-times"></i>
+              </button>
+            </span>
+            <span v-if="selectedCategory" class="filter-tag">
+              <i class="fas fa-tag"></i>
+              {{ getCategoryName(selectedCategory) }}
+              <button @click="selectedCategory = ''" class="remove-filter">
+                <i class="fas fa-times"></i>
+              </button>
+            </span>
+            <span v-if="priceMin !== null || priceMax !== null" class="filter-tag">
+              <i class="fas fa-money-bill-wave"></i>
+              {{ formatPriceRange() }}
+              <button @click="clearPriceRange" class="remove-filter">
+                <i class="fas fa-times"></i>
+              </button>
+            </span>
           </div>
         </div>
 
         <!-- Résultats -->
         <div class="results-info">
+          <i class="fas fa-chart-line"></i>
           <span v-if="!loading">
             {{ filteredProducts.length }} produit(s) trouvé(s)
           </span>
@@ -48,13 +126,14 @@
 
         <!-- Loading -->
         <div v-if="loading" class="loading">
-          <div class="spinner"></div>
+          <i class="fas fa-spinner fa-spin"></i>
           <p>Chargement des produits...</p>
         </div>
 
         <!-- Error -->
         <div v-else-if="error" class="error">
-          {{ error }}
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>{{ error }}</p>
         </div>
 
         <!-- Grille des produits -->
@@ -71,8 +150,17 @@
                 :alt="product.name"
                 @error="handleImageError"
               />
-              <div v-if="product.on_sale" class="sale-badge">Promo</div>
+              <div v-if="product.on_sale" class="sale-badge">
+                <i class="fas fa-tag"></i> Promo
+              </div>
+              <div v-if="getAvailabilityBadge(product.available_date) === 'HOT'" class="hot-badge">
+                <i class="fas fa-fire"></i> HOT
+              </div>
+              <div v-else-if="getAvailabilityBadge(product.available_date) === 'NEW'" class="new-badge">
+                <i class="fas fa-star"></i> NEW
+              </div>
             </div>
+            
             <div class="product-info">
               <h3>{{ product.name }}</h3>
               <p class="product-description">
@@ -88,13 +176,13 @@
               </div>
               <div class="product-meta">
                 <span v-if="product.reference" class="reference">
-                  Ref: {{ product.reference }}
+                  <i class="fas fa-barcode"></i> Ref: {{ product.reference }}
                 </span>
                 <span v-if="product.quantity && product.quantity > 0" class="stock available">
-                  En stock
+                  <i class="fas fa-check-circle"></i> En stock
                 </span>
                 <span v-else class="stock unavailable">
-                  Rupture de stock
+                  <i class="fas fa-times-circle"></i> Rupture de stock
                 </span>
               </div>
               <button 
@@ -102,6 +190,7 @@
                 @click.stop="addToCart(product)"
                 :disabled="!product.quantity || product.quantity <= 0"
               >
+                <i class="fas fa-shopping-cart"></i>
                 {{ product.quantity && product.quantity > 0 ? 'Ajouter au panier' : 'Indisponible' }}
               </button>
             </div>
@@ -110,11 +199,12 @@
 
         <!-- Aucun résultat -->
         <div v-else class="no-results">
-          <div class="no-results-icon">🔍</div>
+          <i class="fas fa-search fa-3x"></i>
           <h3>Aucun produit trouvé</h3>
-          <p>Essayez de modifier vos filtres ou votre recherche</p>
+          <p>Aucun produit ne correspond à vos critères de recherche</p>
           <button @click="resetFilters" class="reset-btn">
-            Réinitialiser les filtres
+            <i class="fas fa-undo-alt"></i>
+            Réinitialiser tous les filtres
           </button>
         </div>
       </div>
@@ -131,16 +221,16 @@
           <div>
             <h4>Liens utiles</h4>
             <ul>
-              <li><router-link to="/">Accueil</router-link></li>
-              <li><router-link to="/products">Produits</router-link></li>
-              <li><router-link to="/cart">Panier</router-link></li>
-              <li><router-link to="/orders">Commandes</router-link></li>
+              <li><router-link to="/"><i class="fas fa-home"></i> Accueil</router-link></li>
+              <li><router-link to="/products"><i class="fas fa-box"></i> Produits</router-link></li>
+              <li><router-link to="/cart"><i class="fas fa-shopping-cart"></i> Panier</router-link></li>
+              <li><router-link to="/orders"><i class="fas fa-truck"></i> Commandes</router-link></li>
             </ul>
           </div>
           <div>
             <h4>Contact</h4>
-            <p>contact@prestashop.com</p>
-            <p>+261 00 000 000</p>
+            <p><i class="fas fa-envelope"></i> contact@prestashop.com</p>
+            <p><i class="fas fa-phone"></i> +261 00 000 000</p>
           </div>
         </div>
         <div class="footer-bottom">
@@ -152,7 +242,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../../api/api';
 import FrontHeader from '../../../components/FrontHeader.vue';
@@ -164,40 +254,79 @@ const categories = ref<any[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-// Filtres
+// Filtres multicritères
 const searchQuery = ref('');
 const selectedCategory = ref('');
+const priceMin = ref<number | null>(null);
+const priceMax = ref<number | null>(null);
 const sortBy = ref('name-asc');
+
+// Vérifier si des filtres sont actifs
+const hasActiveFilters = computed(() => {
+  return !!(searchQuery.value || selectedCategory.value || priceMin.value !== null || priceMax.value !== null);
+});
 
 // Panier
 const cart = ref<any[]>([]);
 
-const cartItemCount = computed(() => {
-  return cart.value.reduce((total, item) => total + item.quantity, 0);
-});
+// Obtenir le nom d'une catégorie
+const getCategoryName = (categoryId: string) => {
+  const category = categories.value.find(c => c.id === categoryId);
+  return category ? category.name : categoryId;
+};
+
+// Formater l'affichage de l'intervalle de prix
+const formatPriceRange = () => {
+  if (priceMin.value !== null && priceMax.value !== null) {
+    return `${formatPriceNumber(priceMin.value)} - ${formatPriceNumber(priceMax.value)}`;
+  } else if (priceMin.value !== null) {
+    return `≥ ${formatPriceNumber(priceMin.value)}`;
+  } else if (priceMax.value !== null) {
+    return `≤ ${formatPriceNumber(priceMax.value)}`;
+  }
+  return '';
+};
+
+// Effacer l'intervalle de prix
+const clearPriceRange = () => {
+  priceMin.value = null;
+  priceMax.value = null;
+};
 
 // Produits filtrés et triés
 const filteredProducts = computed(() => {
   let filtered = products.value;
 
-  // Filtrer par recherche
+  // 1. Filtrer par nom (recherche)
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
+    const query = searchQuery.value.toLowerCase().trim();
     filtered = filtered.filter(product => 
-      product.name.toLowerCase().includes(query) ||
-      product.description.toLowerCase().includes(query) ||
-      product.reference.toLowerCase().includes(query)
+      product.name.toLowerCase().includes(query)
     );
   }
 
-  // Filtrer par catégorie
+  // 2. Filtrer par catégorie
   if (selectedCategory.value) {
     filtered = filtered.filter(product => 
       product.id_category_default === selectedCategory.value
     );
   }
 
-  // Trier
+  // 3. Filtrer par intervalle de prix
+  filtered = filtered.filter(product => {
+    const price = parseFloat(product.price);
+    
+    // Vérifier si le prix est valide
+    if (isNaN(price)) return false;
+    
+    // Appliquer les bornes min et max
+    if (priceMin.value !== null && price < priceMin.value) return false;
+    if (priceMax.value !== null && price > priceMax.value) return false;
+    
+    return true;
+  });
+
+  // 4. Trier les résultats
   filtered.sort((a, b) => {
     switch (sortBy.value) {
       case 'name-asc':
@@ -244,18 +373,28 @@ const loadProducts = async () => {
       const productId = el.querySelector('id')?.textContent?.trim() || '';
       const imageId = el.querySelector('associations images image id')?.textContent?.trim()
         || el.querySelector('image id')?.textContent?.trim();
+
+      const dateAdd = el.querySelector('date_add')?.textContent?.trim() || '';
+      
+      // Récupérer le prix
+      let price = el.querySelector('price')?.textContent?.trim() || '0';
+      // Nettoyer le prix (remplacer virgule par point)
+      price = price.replace(',', '.');
+
       return {
         id: productId,
         name: el.querySelector('name')?.textContent?.trim() || '',
         description: el.querySelector('description')?.textContent?.trim() || '',
         description_short: el.querySelector('description_short')?.textContent?.trim() || '',
-        price: el.querySelector('price')?.textContent?.trim() || '',
+        price: price,
         wholesale_price: el.querySelector('wholesale_price')?.textContent?.trim() || '',
         reference: el.querySelector('reference')?.textContent?.trim() || '',
         quantity: stockMap[productId] ?? 0,
         id_category_default: el.querySelector('id_category_default')?.textContent?.trim() || '',
         on_sale: el.querySelector('on_sale')?.textContent?.trim() === '1',
-        image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null
+        image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null,
+        available_date: dateAdd,
+        date_add: dateAdd,
       };
     });
   } catch (err: any) {
@@ -263,6 +402,33 @@ const loadProducts = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const getAvailabilityBadge = (available_date: string): 'HOT' | 'NEW' | null => {
+  if (!available_date || available_date === '0000-00-00') return null;
+  
+  const cleanDate = available_date.split(' ')[0];
+  const productDate = new Date(cleanDate);
+  const now = new Date();
+  
+  if (isNaN(productDate.getTime())) return null;
+  
+  const productDateMidnight = new Date(productDate);
+  productDateMidnight.setHours(0, 0, 0, 0);
+  
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0, 0, 0, 0);
+  
+  const diffTime = todayMidnight.getTime() - productDateMidnight.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays <= 1 && diffDays >= 0) {
+    return 'HOT';
+  } else if (diffDays <= 7 && diffDays > 1) {
+    return 'NEW';
+  }
+  
+  return null;
 };
 
 // Charger les catégories
@@ -276,7 +442,7 @@ const loadCategories = async () => {
     categories.value = Array.from(categoryElements)
       .filter(el => {
         const id = el.querySelector('id')?.textContent?.trim();
-        return id && id !== '1' && id !== '2'; // Exclure "Accueil" et "Racine"
+        return id && id !== '1' && id !== '2';
       })
       .map(el => ({
         id: el.querySelector('id')?.textContent?.trim() || '',
@@ -322,10 +488,11 @@ const addToCart = (product: any) => {
   // Animation feedback
   const button = event?.target as HTMLButtonElement;
   if (button) {
+    const originalText = button.textContent;
     button.textContent = 'Ajouté !';
     button.classList.add('added');
     setTimeout(() => {
-      button.textContent = 'Ajouter au panier';
+      button.textContent = originalText;
       button.classList.remove('added');
     }, 1000);
   }
@@ -336,10 +503,12 @@ const goToProduct = (productId: string) => {
   router.push(`/product/${productId}`);
 };
 
-// Réinitialiser les filtres
+// Réinitialiser tous les filtres
 const resetFilters = () => {
   searchQuery.value = '';
   selectedCategory.value = '';
+  priceMin.value = null;
+  priceMax.value = null;
   sortBy.value = 'name-asc';
 };
 
@@ -352,15 +521,17 @@ const formatPrice = (price: string) => {
   }).format(numPrice);
 };
 
+const formatPriceNumber = (price: number) => {
+  return new Intl.NumberFormat('fr-MG', {
+    style: 'currency',
+    currency: 'MGA'
+  }).format(price);
+};
+
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement;
   img.src = '/placeholder-product.jpg';
 };
-
-// Watchers
-watch([searchQuery, selectedCategory, sortBy], () => {
-  // Les produits sont déjà réactifs via computed
-});
 
 onMounted(() => {
   loadProducts();
@@ -370,6 +541,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Import Font Awesome */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
 .products-page {
   min-height: 100vh;
   background: var(--bg);
@@ -402,33 +576,41 @@ onMounted(() => {
 .filters-section {
   background: var(--surface);
   border: 1px solid var(--border);
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem;
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  align-items: center;
+  box-shadow: var(--shadow-sm);
 }
 
-.search-bar {
-  flex: 1;
-  min-width: 200px;
+.search-bar-wrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 1rem;
 }
 
 .search-input {
   width: 100%;
-  padding: 0.65rem 1rem;
+  padding: 0.75rem 2.5rem 0.75rem 2.5rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.9rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
   color: var(--text);
   background: var(--bg);
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: all var(--transition);
   font-family: inherit;
 }
 
-.search-input::placeholder { color: #94a3b8; }
+.search-input::placeholder { 
+  color: #94a3b8;
+}
 
 .search-input:focus {
   outline: none;
@@ -437,23 +619,59 @@ onMounted(() => {
   background: var(--surface);
 }
 
+.clear-search-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: all var(--transition);
+}
+
+.clear-search-btn:hover {
+  color: var(--error);
+  background: var(--bg-hover);
+}
+
 .filter-controls {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filter-group {
+  flex: 1;
+  min-width: 180px;
+  position: relative;
+}
+
+.filter-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 0.875rem;
+  z-index: 1;
 }
 
 .filter-select {
-  padding: 0.65rem 1rem;
+  width: 100%;
+  padding: 0.65rem 1rem 0.65rem 2.25rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
   font-size: 0.875rem;
   color: var(--text);
-  min-width: 160px;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: all var(--transition);
 }
 
 .filter-select:focus {
@@ -462,31 +680,163 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem 0.2rem 2.25rem;
+}
+
+.price-input {
+  width: 100px;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.price-input:focus {
+  outline: none;
+}
+
+.price-input::placeholder {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.price-separator {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.reset-filters-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.65rem 1.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--transition);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.reset-filters-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+/* ── Active filters ───────────────────────────────────── */
+.active-filters {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: #f0f9ff;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-left: 3px solid var(--primary);
+}
+
+.active-filters-icon {
+  color: var(--primary);
+  font-size: 0.875rem;
+}
+
+.active-filters-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background: white;
+  border: 1px solid #bae6fd;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: var(--navy);
+}
+
+.remove-filter {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #64748b;
+  transition: all var(--transition);
+}
+
+.remove-filter:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
 /* ── Results info ─────────────────────────────────────── */
 .results-info {
   margin-bottom: 1.5rem;
   font-size: 0.875rem;
   color: var(--muted);
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* ── Loading / Error ──────────────────────────────────── */
-.loading {
+.loading, .error {
   text-align: center;
   padding: 4rem;
+}
+
+.loading {
   color: var(--muted);
 }
 
+.loading i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
 .error {
-  text-align: center;
-  padding: 4rem;
   color: var(--error);
+}
+
+.error i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* ── Products grid ────────────────────────────────────── */
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
@@ -521,19 +871,40 @@ onMounted(() => {
 }
 
 .product-card:hover .product-image img {
-  transform: scale(1.04);
+  transform: scale(1.05);
 }
 
-.sale-badge {
+.sale-badge,
+.hot-badge,
+.new-badge {
   position: absolute;
-  top: 10px;
   right: 10px;
-  background: var(--error);
-  color: white;
   padding: 0.2rem 0.65rem;
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sale-badge {
+  top: 10px;
+  background: var(--error);
+  color: white;
+}
+
+.hot-badge {
+  top: 50px;
+  background: #ff4757;
+  color: white;
+}
+
+.new-badge {
+  top: 50px;
+  background: #2ed573;
+  color: white;
 }
 
 .product-info {
@@ -543,7 +914,7 @@ onMounted(() => {
 .product-info h3 {
   margin: 0 0 0.4rem;
   color: var(--navy);
-  font-size: 0.975rem;
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -588,6 +959,15 @@ onMounted(() => {
 
 .reference {
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stock {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .stock.available {
@@ -612,6 +992,10 @@ onMounted(() => {
   cursor: pointer;
   transition: background var(--transition);
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .add-to-cart-btn:hover:not(:disabled) {
@@ -633,8 +1017,9 @@ onMounted(() => {
   padding: 5rem 2rem;
 }
 
-.no-results-icon {
-  font-size: 3.5rem;
+.no-results i {
+  font-size: 3rem;
+  color: var(--muted);
   margin-bottom: 1rem;
 }
 
@@ -660,27 +1045,114 @@ onMounted(() => {
   cursor: pointer;
   transition: background var(--transition);
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .reset-btn:hover {
   background: var(--primary-dark);
 }
 
+/* ── Footer ───────────────────────────────────────────── */
+.front-footer {
+  background: var(--navy);
+  color: white;
+  padding: 3rem 0 1.5rem;
+  margin-top: auto;
+}
+
+.front-footer a {
+  color: #e2e8f0;
+  text-decoration: none;
+  transition: color var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.front-footer a:hover {
+  color: white;
+}
+
+.front-footer h3, 
+.front-footer h4 {
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.front-footer ul {
+  list-style: none;
+  padding: 0;
+}
+
+.front-footer li {
+  margin-bottom: 0.5rem;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+/* ── Container ────────────────────────────────────────── */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ── CSS Variables ────────────────────────────────────── */
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --navy: #0f172a;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --success: #10b981;
+  --error: #ef4444;
+  --bg-hover: #f1f5f9;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.1);
+  --transition: 0.2s ease;
+}
+
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 768px) {
-  .page-header h1 { font-size: 1.6rem; }
+  .page-header h1 { 
+    font-size: 1.6rem; 
+  }
 
   .filters-section {
-    flex-direction: column;
-    align-items: stretch;
+    padding: 1rem;
   }
 
   .filter-controls {
     flex-direction: column;
   }
 
-  .filter-select {
+  .filter-group {
     width: 100%;
+  }
+
+  .reset-filters-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .products-grid {
