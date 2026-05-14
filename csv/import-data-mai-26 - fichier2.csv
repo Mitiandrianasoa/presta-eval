@@ -1,6 +1,6 @@
-reference,specificité,karazany,stock_initial,prix_vente_ttc
+reference,specificite,karazany,stock_initial,prix_vente_ttc
 T_01,taille,ngoza,13,"12,5"
-T_01,taille,kely,10,15
+T_01,taille,kely,10,"15,0"
 P_01,couleur,mainty,5,"23,49"
 P_01,couleur,fotsy,3,"18,99"
 C_03,,,10,

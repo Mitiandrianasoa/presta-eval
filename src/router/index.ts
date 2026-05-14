@@ -14,6 +14,7 @@ import OrderDetailView from '../views/frontoffice/order/OrderDetailView.vue';
 
 
 // Backoffice
+import ImportView from '../views/backoffice/import/ImportView.vue';
 import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
 import ConfigView from '../views/backoffice/config/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.vue';
@@ -96,7 +97,11 @@ const routes = [
     name: 'orders',
     component: OrderView
   },
-
+  {
+    path: '/import',
+    name: 'import',
+    component: ImportView
+  },
   // Redirect old routes
   { 
     path: '/config', 
