@@ -9,6 +9,7 @@ import LoginView from '../views/frontoffice/auth/LoginView.vue';
 import RegisterView from '../views/frontoffice/auth/RegisterView.vue';
 
 // Backoffice
+import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
 import ConfigView from '../views/backoffice/config/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.vue';
@@ -61,11 +62,11 @@ const routes = [
     name: 'admin',
     component: CatalogView,
   },
-  // {
-  //   path: '/admin/dashboard',
-  //   name: 'admin-dashboard',
-  //   component: DashboardView,
-  // },
+  {
+    path: '/admin/dashboard',
+    name: 'admin-dashboard',
+    component: DashboardView,
+  },
   {
     path: '/admin/config',
     name: 'admin-config',
