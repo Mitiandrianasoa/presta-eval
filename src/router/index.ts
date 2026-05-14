@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
 // Frontoffice
+import UserPickerView from '../views/frontoffice/UserpickerView.vue'; // Nouvelle page d'accueil
 import HomeView from '../views/frontoffice/HomeView.vue';
 import ProductsView from '../views/frontoffice/ProductsView.vue';
 import ProductDetailView from '../views/frontoffice/ProductDetailView.vue';
@@ -15,72 +16,78 @@ import OrderView from '../views/backoffice/OrderView.vue';
 import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 
 const routes = [
-  // Frontoffice Routes
-  { 
-    path: '/', 
-    name: 'home',
-    component: HomeView 
-  },
-  { 
-    path: '/products', 
-    name: 'products',
-    component: ProductsView 
-  },
-  { 
-    path: '/product/:id', 
-    name: 'product-detail',
-    component: ProductDetailView 
-  },
-  { 
-    path: '/login', 
-    name: 'login',
-    component: LoginView 
-  },
-  { 
-    path: '/register', 
-    name: 'register',
-    component: RegisterView 
+  // ── Frontoffice Routes ─────────────────────────────────────────────────────
+
+  // Page d'accueil : sélection de l'utilisateur (pré-sélection, pas encore logué)
+  {
+    path: '/',
+    name: 'user-picker',
+    component: UserPickerView,
   },
 
-  // Backoffice Routes
-  { 
-    path: '/admin', 
+  // Boutique principale (ancienne HomeView)
+  {
+    path: '/home',
+    name: 'home',
+    component: HomeView,
+  },
+
+  {
+    path: '/products',
+    name: 'products',
+    component: ProductsView,
+  },
+  {
+    path: '/product/:id',
+    name: 'product-detail',
+    component: ProductDetailView,
+  },
+
+  // Login : formulaire email (pré-rempli) + mot de passe → connexion complète
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: RegisterView,
+  },
+
+  // ── Backoffice Routes ──────────────────────────────────────────────────────
+  {
+    path: '/admin',
     name: 'admin',
-    component: CatalogView 
+    component: CatalogView,
   },
   {
     path: '/admin/dashboard',
     name: 'admin-dashboard',
-    component: DashboardView
+    component: DashboardView,
   },
-  { 
-    path: '/admin/config', 
+  {
+    path: '/admin/config',
     name: 'admin-config',
-    component: ConfigView 
+    component: ConfigView,
   },
   {
     path: '/admin/import-categories',
     name: 'import-categories',
-    component: CategoryImportView
+    component: CategoryImportView,
   },
   {
     path: '/orders',
     name: 'orders',
-    component: OrderView
+    component: OrderView,
   },
 
-  // Redirect old routes
-  { 
-    path: '/config', 
-    redirect: '/admin/config' 
-  },
-  { 
-    path: '/order', 
-    redirect: '/orders' 
-  }
+  // ── Redirections ───────────────────────────────────────────────────────────
+  { path: '/config', redirect: '/admin/config' },
+  { path: '/order', redirect: '/orders' },
 ];
 
 export default createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 });
