@@ -4,14 +4,14 @@
 
 export const API_CONFIG = {
   // Clé d'authentification PrestaShop
-  AUTH_KEY: 'bqHTFCOOgQIPEq03m6yZTUZt6iyhAwVG',
+  AUTH_KEY: 'Y5FARITT7HA5X45HN3GRYBWZQF3MMFEJ',
   
-  // Endpoints
-  ENDPOINTS: {
-    ORDERS: '/orders',
-    ORDER_STATES: '/order_states',
-    PRODUCTS: '/products',
-    CUSTOMERS: '/customers',
-    CATEGORIES: '/categories',
-  },
+  // // Endpoints
+  // ENDPOINTS: {
+  //   ORDERS: '/orders',
+  //   ORDER_STATES: '/order_states',
+  //   PRODUCTS: '/products',
+  //   CUSTOMERS: '/customers',
+  //   CATEGORIES: '/categories',
+  // },
 };

@@ -12,7 +12,6 @@ import CartView from '@/views/frontoffice/order/CartView.vue';
 import CheckoutView from '../views/frontoffice/order/CheckoutView.vue';
 import OrderDetailView from '../views/frontoffice/order/OrderDetailView.vue';
 
-
 // Backoffice
 import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
 import ConfigView from '../views/backoffice/config/ConfigView.vue';
@@ -21,6 +20,7 @@ import OrderView from '../views/backoffice/order/OrderView.vue';
 import CanceledOrders from '@/components/order/CanceledOrders.vue';
 import CartList from '@/components/order/CartList.vue';
 import PaymentList from '@/components/order/PaymentList.vue';
+import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
 
 
 const routes = [
@@ -94,6 +94,11 @@ const routes = [
     path: '/admin/import-categories',
     name: 'import-categories',
     component: CategoryImportView
+  },
+   {
+    path: '/admin/import',
+    name: 'import',
+    component: ImportProduits
   },
   {
     path: '/admin/orders',
