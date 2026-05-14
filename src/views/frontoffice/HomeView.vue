@@ -34,6 +34,13 @@
                 :alt="product.name"
                 @error="handleImageError"
               />
+              <div v-if="product.on_sale" class="sale-badge">Promo</div>
+              <div v-if="getAvailabilityBadge(product.available_date) === 'HOT'" class="hot-badge">
+                HOT
+              </div>
+              <div v-else-if="getAvailabilityBadge(product.available_date) === 'NEW'" class="new-badge">
+                NEW
+              </div>
             </div>
             <div class="product-info">
               <h3>{{ product.name }}</h3>
@@ -161,6 +168,9 @@ const loadFeaturedProducts = async () => {
       const productId = el.querySelector('id')?.textContent?.trim() || '';
       const imageId = el.querySelector('associations images image id')?.textContent?.trim()
         || el.querySelector('image id')?.textContent?.trim();
+      // Récupérer date_add (date de création du produit)
+      const dateAdd = el.querySelector('date_add')?.textContent?.trim() || '';
+      
       return {
         id: productId,
         name: el.querySelector('name')?.textContent?.trim() || '',
@@ -169,7 +179,10 @@ const loadFeaturedProducts = async () => {
         price: el.querySelector('price')?.textContent?.trim() || '',
         reference: el.querySelector('reference')?.textContent?.trim() || '',
         quantity: stockMap[productId] ?? 0,
-        image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null
+        on_sale: el.querySelector('on_sale')?.textContent?.trim() === '1',
+        image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null,
+        available_date: dateAdd,
+        date_add: dateAdd
       };
     });
   } catch (err: any) {
@@ -217,6 +230,41 @@ const loadCart = () => {
 // Sauvegarder le panier dans localStorage
 const saveCart = () => {
   localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
+};
+
+// Fonction pour déterminer le badge de disponibilité (HOT/NEW)
+const getAvailabilityBadge = (available_date: string): 'HOT' | 'NEW' | null => {
+  // Ignorer les dates invalides
+  if (!available_date || available_date === '0000-00-00') return null;
+  
+  const cleanDate = available_date.split(' ')[0];
+  const productDate = new Date(cleanDate);
+  const now = new Date();
+  
+  // Vérifier si la date est valide
+  if (isNaN(productDate.getTime())) return null;
+  
+  // Remettre à minuit pour comparer uniquement les jours
+  const productDateMidnight = new Date(productDate);
+  productDateMidnight.setHours(0, 0, 0, 0);
+  
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0, 0, 0, 0);
+  
+  // Calculer la différence en jours
+  const diffTime = todayMidnight.getTime() - productDateMidnight.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  // HOT : sorti aujourd'hui ou hier (0 ou 1 jour)
+  if (diffDays <= 1 && diffDays >= 0) {
+    return 'HOT';
+  }
+  // NEW : sorti entre 2 et 7 jours
+  else if (diffDays <= 7 && diffDays > 1) {
+    return 'NEW';
+  }
+  
+  return null;
 };
 
 // Ajouter au panier
@@ -372,8 +420,9 @@ onMounted(() => {
 
 .product-image {
   height: 200px;
-  overflow: hidden;
+  overflow: visible;
   background: var(--bg);
+  position: relative;
 }
 
 .product-image img {
@@ -385,6 +434,46 @@ onMounted(() => {
 
 .product-card:hover .product-image img {
   transform: scale(1.04);
+}
+
+/* Badges pour produits */
+.sale-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--error);
+  color: white;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 3;
+}
+
+.hot-badge {
+  position: absolute;
+  top: 35px;
+  right: 10px;
+  background: #ff4757;
+  color: white;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.new-badge {
+  position: absolute;
+  top: 35px;
+  right: 10px;
+  background: #2ed573;
+  color: white;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 2;
 }
 
 .product-info {
