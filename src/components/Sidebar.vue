@@ -24,6 +24,11 @@ const showBrandsSuppliers = () => {
 const goToImport = () => {
   router.push('/import');
 };
+
+const goToDashboard = () => {
+  router.push('/admin/dashboard');
+
+};
 </script>
 
 <template>
@@ -40,6 +45,20 @@ const goToImport = () => {
     </div>
 
     <div class="sidebar-menu">
+
+      <!-- Dashboard -->
+
+      <button @click="goToDashboard" class="menu-item main-item dashboard-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9" rx="1"/>
+          <rect x="14" y="3" width="7" height="5" rx="1"/>
+          <rect x="14" y="12" width="7" height="9" rx="1"/>
+          <rect x="3" y="16" width="7" height="5" rx="1"/>
+        </svg>
+        <span>Dashboard</span>
+      </button>
+
+
       <!-- Tous les produits -->
       <button @click="$emit('show-products')" class="menu-item main-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
