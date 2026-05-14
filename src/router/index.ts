@@ -9,6 +9,7 @@ import LoginView from '../views/frontoffice/auth/LoginView.vue';
 import RegisterView from '../views/frontoffice/auth/RegisterView.vue';
 
 // Backoffice
+import ImportView from '../views/backoffice/import/ImportView.vue';
 import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
 import ConfigView from '../views/backoffice/config/ConfigView.vue';
@@ -73,19 +74,24 @@ const routes = [
     component: ConfigView,
   },
   {
+    path: '/import',
+    name: 'admin-import',
+    component: ImportView,
+  },
+  {
     path: '/admin/import-categories',
     name: 'import-categories',
     component: CategoryImportView,
   },
   {
-    path: '/orders',
+    path: '/admin/orders',
     name: 'orders',
     component: OrderView,
   },
 
   // ── Redirections ───────────────────────────────────────────────────────────
   { path: '/config', redirect: '/admin/config' },
-  { path: '/order', redirect: '/orders' },
+  { path: '/order', redirect: '/admin/orders' },
 ];
 
 export default createRouter({

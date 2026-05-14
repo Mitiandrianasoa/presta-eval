@@ -10,11 +10,11 @@ const emit = defineEmits(['select-category', 'show-categories', 'show-products',
 const showConfig = ref(false);
 
 const goToConfig = () => {
-  router.push('/config');
+  router.push('/admin/config');
 };
 
 const goToOrders = () => {
-  router.push('admin/orders');
+  router.push('/admin/orders');
 };
 
 const showBrandsSuppliers = () => {
