@@ -20,6 +20,13 @@ import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.v
 import OrderView from '../views/backoffice/order/OrderView.vue';
 import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 import ImportView from '../views/backoffice/import/ImportView.vue';
+import CanceledOrders from '@/components/order/CanceledOrders.vue';
+import CartList from '@/components/order/CartList.vue';
+import PaymentList from '@/components/order/PaymentList.vue';
+import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
+import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
+import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
+import ImportPhoto from '@/views/backoffice/import/ImportPhoto.vue';
 
 const routes = [
   // ── Frontoffice Routes ─────────────────────────────────────────────────────
@@ -112,14 +119,52 @@ const routes = [
     name: 'import-categories',
     component: CategoryImportView,
   },
+  //IMPORT 
+   {
+    path: '/admin/import',
+    name: 'import',
+    component: ImportProduits
+  },
+  {
+    path: '/admin/import/declinaisons',
+    name: 'import-declinaisons',
+    component: ImportDeclinaison
+  },
+  {
+    path: '/admin/import/order',
+    name: 'import-order',
+    component: ImportOrder
+  },
+   {
+    path: '/admin/import/photos',
+    name: 'import-photos',
+    component: ImportPhoto
+  },
   {
     path: '/admin/orders',
     name: 'orders',
     component: OrderView,
   },
+  {
+    path: '/admin/orders/canceled',
+    name: 'canceled-orders',
+    component: CanceledOrders
+  },
+  {
+    path: '/admin/cart',
+    name: 'cart',
+    component: CartList
+  },
 
-  // ── Redirections ───────────────────────────────────────────────────────────
-  { path: '/config', redirect: '/admin/config' },
+  // Redirect old routes
+  { 
+    path: '/config', 
+    redirect: '/admin/config' 
+  },
+  {
+  path: '/admin/payments',
+  name: 'PaymentList',
+  component: PaymentList}
 ];
 
 export default createRouter({

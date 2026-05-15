@@ -204,11 +204,11 @@ export const updateResource = async (
     const modifiedXml = serializer.serializeToString(xmlDoc);
     
     console.log('📄 XML après modification:', modifiedXml);
-    console.log(`3️⃣  Envoi du PUT vers /${endpoint}/${id}?output_format=JSON`);
+    console.log(`3️⃣  Envoi du PUT vers /${endpoint}/${id}?output_format=XML`);
     
     // 6. ENVOYER le PUT avec le XML complet
     const putResponse = await api.put(
-      `/${endpoint}/${id}?output_format=JSON`,
+      `/${endpoint}/${id}?output_format=XML`,
       modifiedXml,
       {
         headers: {
@@ -330,11 +330,11 @@ export const createResourceWithBlankSchema = async (
     const filledXml = serializer.serializeToString(blankXmlDoc);
     
     console.log('📄 XML final prêt à envoyer:', filledXml);
-    console.log(`5️⃣  Envoi du POST vers /${endpoint}?output_format=JSON`);
+    console.log(`5️⃣  Envoi du POST vers /${endpoint}?output_format=XML`);
     
     // 8. ENVOYER le POST
     const postResponse = await api.post(
-      `/${endpoint}?output_format=JSON`,
+      `/${endpoint}?output_format=XML`,
       filledXml,
       {
         headers: {

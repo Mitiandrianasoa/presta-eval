@@ -20,6 +20,9 @@
           <router-link to="/products" class="continue-shopping-btn">
             Continuer mes achats
           </router-link>
+          <!-- <button @click="startCart" class="confirm-btn">
+            Enregistrer le panier
+          </button> -->
         </div>
 
         <!-- État : Panier avec des articles -->
@@ -70,7 +73,20 @@
               <div class="item-total">
                 {{ formatPrice((parseFloat(item.price) * item.quantity).toString()) }}
               </div>
+              
             </div>
+            <button @click="startCart" class="confirm-btn" :disabled="isProcessing || cartSaved">
+              <span v-if="isProcessing" class="btn-content">
+                <span class="mini-spinner"></span>
+                Enregistrement...
+              </span>
+              <span v-else-if="cartSaved">
+                Panier enregistré ✓
+              </span>
+              <span v-else>
+                Enregistrer le panier
+              </span>
+            </button>
           </div>
 
           <!-- Résumé de la commande -->
@@ -146,6 +162,7 @@
             <div v-if="checkoutError" class="checkout-error">
                 {{ checkoutError }}
             </div>
+            
             </div>
         </div>
       </div>
@@ -185,7 +202,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
 // Importer le service de checkout
-import { processCheckout } from '../../../services/checkout.service';
+import { processCart, processCheckout } from '../../../services/checkout.service';
 import { useAuth } from '../../../services/useAuth';
 const router = useRouter();
 
@@ -197,6 +214,7 @@ const isCartLoaded = ref(false);
 const isProcessing = ref(false);
 const checkoutError = ref('');
 const showConfirmModal = ref(false);
+const cartSaved = ref(false);
 const { getCustomerId, isLoggedIn } = useAuth();
 
 // // Vérifier si l'utilisateur est connecté
@@ -287,6 +305,51 @@ const proceedToCheckout = () => {
   // Afficher la modal de confirmation
   showConfirmModal.value = true;
 };
+
+// Lancer le processus de checkout
+const startCart = async () => {
+  showConfirmModal.value = false;
+  isProcessing.value = true;
+  checkoutError.value = '';
+  
+  try {
+    const customerId = getCustomerId();
+    
+    // Construire les données pour le checkout
+    const cartData = {
+      products: cart.value.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        name: item.name,
+        price: item.price,
+        image_url: item.image_url
+      })),
+      customerId: customerId,
+      paymentMethod: 'paiement_livraison'
+    };
+    
+    console.log('🚀 ENREGISTRER LE PANIER', {
+      productsCount: cartData.products.length,
+      customerId: cartData.customerId
+    });
+    
+    // Appeler le service de checkout
+    const result = await processCart(cartData);
+    
+    console.log('✅ PANIER checkout:', result);
+    if (result && result.success) {
+      cartSaved.value = true;
+    }
+    
+    
+  } catch (err: any) {
+    console.error('❌ Erreur checkout:', err);
+    checkoutError.value = err.message || 'Une erreur est survenue lors du traitement';
+  } finally {
+    isProcessing.value = false;
+  }
+};
+
 
 // Lancer le processus de checkout
 const startCheckout = async () => {

@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   PAYMENT_MODULE: 'ps_cashondelivery',
   CURRENCY_ID: '1',
   LANG_ID: '1',
-  ORDER_STATE: '13',
+  ORDER_STATE: '2',//PAYER 13 Awaiting for cash delivery 
 };
 
 export interface CartProduct {
@@ -38,9 +38,6 @@ export interface CartData {
 // FONCTIONS UTILITAIRES
 // ============================================
 
-// /**
-//  * Récupère le token (secure_key) du client depuis l'API
-//  */
 // const fetchCustomerToken = async (customerId: string): Promise<string> => {
 //   console.log(`🔑 Récupération du token pour le client ${customerId}`);
   
@@ -110,17 +107,16 @@ export interface CartData {
 //     }
 //   };
 
-
 /**
  * ✅ Simplifié : utilise useAuth au lieu de fetchCustomerToken
  */
-const getCustomerCredentials = () => {
-  const { getCustomerId, getCustomerToken } = useAuth();
-  return {
-    customerId: getCustomerId(),
-    customerToken: getCustomerToken()
-  };
-};
+// const getCustomerCredentials = () => {
+//   const { getCustomerId, getCustomerToken } = useAuth();
+//   return {
+//     customerId: getCustomerId(),
+//     customerToken: getCustomerToken()
+//   };
+// };
 
 /**
  * Récupère les adresses du client depuis l'API
@@ -163,7 +159,6 @@ const fetchCustomerAddresses = async (customerId: string): Promise<{
     return { deliveryId: '1', invoiceId: '1' };
   }
 };
-
 
 
 // ============================================
@@ -419,9 +414,9 @@ const createOrderWithSchema = async (
       console.log('✅ Commande créée avec succès!');
       console.log(`   ID Commande: ${orderId}`);
       
-      // ✅ TOUJOURS changer le statut en 13 après création réussie
+      // ✅ TOUJOURS changer le statut en 2 après création réussie
       if (orderId) {
-        await updateOrderState(orderId, '13');
+        await updateOrderState(orderId, '2');
       }
       
       return {
@@ -461,8 +456,8 @@ const createOrderWithSchema = async (
           if (orderCartId === cartId) {
             console.log('✅ Commande trouvée!');
             
-            console.log(`⚠️ Statut actuel: ${orderState}, changement en 13...`);
-            await updateOrderState(orderId!, '13');
+            console.log(`⚠️ Statut actuel: ${orderState}, changement en 2...`);
+            await updateOrderState(orderId!, '2');
             
             return {
               id: orderId,
@@ -495,9 +490,9 @@ const createOrderWithSchema = async (
           if (orderCartId === cartId) {
             console.log('✅ Commande trouvée à la 2ème tentative!');
             
-            // ✅ Forcer le statut à 13
-            if (orderState !== '13') {
-              await updateOrderState(orderId!, '13');
+            // ✅ Forcer le statut à 2
+            if (orderState !== '2') {
+              await updateOrderState(orderId!, '2');
             }
             
             return {
@@ -676,12 +671,12 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       cartData.paymentMethod || DEFAULT_CONFIG.PAYMENT_METHOD
     );
     
-    // ✅ 4. Mettre à jour le statut de la commande en 13
+    // ✅ 4. Mettre à jour le statut de la commande en 2
     if (order.id && order.id !== 'unknown') {
-      console.log(`🔄 Mise à jour du statut de la commande ${order.id} → 13`);
+      console.log(`🔄 Mise à jour du statut de la commande ${order.id} → 2`);
       
       try {
-        await updateOrderState(order.id, '13');
+        await updateOrderState(order.id, '2');
         console.log(`✅ Statut de la commande ${order.id} mis à jour avec succès`);
       } catch (updateError) {
         console.warn(`⚠️ Échec de la mise à jour du statut:`, updateError);
@@ -699,7 +694,7 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       order: {
         id: order.id,
         total: order.total,
-        status: '13' // ✅ Ajout du statut dans la réponse
+        status: '2' // ✅ Ajout du statut dans la réponse
       },
       customerId,
       addresses,
@@ -711,6 +706,72 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     throw new Error(`Erreur checkout: ${error.message || 'Erreur inconnue'}`);
   }
 };
+
+
+//CREATION PANIER UNIQUEMENT 
+export const processCart = async (cartData: CartData): Promise<any> => {
+  console.log('🚀ENREGISTRER LE PANIER UNIQUEMENT PROCESS');
+  console.log('📦 Configuration:', {
+    productsCount: cartData.products.length,
+    customerId: cartData.customerId || DEFAULT_CONFIG.CUSTOMER_ID,
+    paymentMethod: cartData.paymentMethod || DEFAULT_CONFIG.PAYMENT_METHOD
+  });
+  
+  try {
+    const { getCustomerId, getCustomerToken } = useAuth();
+    const customerId = cartData.customerId || getCustomerId();
+    const customerToken = getCustomerToken();
+    
+    console.log('👤 Client:', { customerId, token: customerToken.substring(0, 8) + '...' });
+    
+    if (!customerToken) {
+      throw new Error('Token client non trouvé. Veuillez vous reconnecter.');
+    }
+    
+    // 2. Récupérer les adresses
+    const addresses = await fetchCustomerAddresses(customerId);
+    console.log('✅ Informations client récupérées:', addresses);
+    
+    // 2. Créer le panier avec les produits (méthode optimisée)
+    let cartId: string;
+    
+    try {
+      // Essayer d'abord la méthode optimisée
+      console.log('🎯 Tentative de création optimisée (panier)');
+      cartId = await createCartWithProducts(
+        customerId,
+        customerToken,
+        cartData.products,
+        addresses.deliveryId,
+        addresses.invoiceId
+      );
+    } catch (optimizedError) {
+      // Fallback à la méthode étape par étape
+      console.warn('⚠️ La méthode optimisée a échoué, utilisation du fallback');
+      console.warn('   Erreur:', optimizedError);
+      
+      cartId = await createCartStepByStep(
+        customerId,
+        customerToken,
+        cartData.products,
+        addresses.deliveryId,
+        addresses.invoiceId
+      );
+    }
+    console.log('🎉 Panier enregistré avec succès!');
+    return {
+      success: true,
+      cartId,
+      customerId,
+      addresses,
+      message: 'Panier créé avec succès'
+    };
+  } catch (error: any) {
+    console.error('💥 Erreur fatale lors du checkout:', error);
+    throw new Error(`Erreur checkout: ${error.message || 'Erreur inconnue'}`);
+  }
+};
+
 
 /**
  * Récupérer les informations d'un client par ID
