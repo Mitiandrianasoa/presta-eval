@@ -23,7 +23,7 @@ const routes = [
   // Page d'accueil : sélection de l'utilisateur (pré-sélection, pas encore logué)
   {
     path: '/',
-    name: 'user-picker',
+    name: '/user-picker',
     component: UserPickerView,
   },
 

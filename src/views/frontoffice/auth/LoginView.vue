@@ -68,7 +68,7 @@ const error = ref('');
 // Vérifier si l'utilisateur est déjà connecté
 onMounted(() => {
   if (sessionStorage.getItem('prestashop_token') && sessionStorage.getItem('prestashop_user')) {
-    router.push('/');
+    router.push('/admin/dashboard');
   }
 });
 
@@ -117,7 +117,7 @@ const handleLogin = async () => {
     sessionStorage.setItem('prestashop_token', secureKey);
     sessionStorage.setItem('prestashop_user', JSON.stringify(user));
 
-    router.push('/');
+    router.push('/admin/dashboard');
 
   } catch (err: any) {
     error.value = `Erreur: ${err.message}`;
