@@ -21,7 +21,7 @@ import CanceledOrders from '@/components/order/CanceledOrders.vue';
 import CartList from '@/components/order/CartList.vue';
 import PaymentList from '@/components/order/PaymentList.vue';
 import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
-
+import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -95,10 +95,16 @@ const routes = [
     name: 'import-categories',
     component: CategoryImportView
   },
+  //IMPORT 
    {
     path: '/admin/import',
     name: 'import',
     component: ImportProduits
+  },
+  {
+    path: '/admin/import/declinaisons',
+    name: 'import-declinaisons',
+    component: ImportDeclinaison
   },
   {
     path: '/admin/orders',
