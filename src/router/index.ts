@@ -20,6 +20,8 @@ import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.v
 import OrderView from '../views/backoffice/order/OrderView.vue';
 import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 import ImportView from '../views/backoffice/import/ImportView.vue';
+import CartList from '../components/order/CartList.vue';
+import PayementList from '../components/order/PayementList.vue';
 
 const routes = [
   // ── Frontoffice Routes ─────────────────────────────────────────────────────
@@ -116,6 +118,16 @@ const routes = [
     path: '/admin/orders',
     name: 'orders',
     component: OrderView,
+  },
+  {
+    path: '/admin/carts',
+    name: 'admin-carts',
+    component: CartList,
+  },
+  {
+    path: '/admin/payments',
+    name: 'admin-payments',
+    component: PayementList,
   },
 
   // ── Redirections ───────────────────────────────────────────────────────────
