@@ -122,7 +122,7 @@ const routes = [
   //IMPORT 
    {
     path: '/admin/import',
-    name: 'import',
+    name: 'admin-import',
     component: ImportProduits
   },
   {
@@ -152,7 +152,7 @@ const routes = [
   },
   {
     path: '/admin/cart',
-    name: 'cart',
+    name: 'admin-cart',
     component: CartList
   },
 
@@ -163,7 +163,7 @@ const routes = [
   },
   {
   path: '/admin/payments',
-  name: 'PaymentList',
+  name: 'payment-list',
   component: PaymentList}
 ];
 
