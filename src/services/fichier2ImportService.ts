@@ -1,5 +1,6 @@
 import api from '../api/api';
 import { parseFlexiblePrice } from './csvParserUtils';
+import { resetAllData } from './resetService';
 
 export interface ImportLog {
   level: 'info' | 'success' | 'warning' | 'error';
@@ -13,6 +14,8 @@ export interface ImportResult {
 }
 
 const XML_HEADERS = { 'Content-Type': 'application/xml; charset=utf-8' };
+const parseXml = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
+const xtext = (node: Element | Document, tag: string) => node.querySelector(tag)?.textContent?.trim() || '';
 
 // ---------------------------------------------------------------------------
 // Utilitaires
@@ -39,7 +42,9 @@ function tryExtractId(data: any, entityName: string): number {
     if (entity?.id) return parseInt(String(entity.id));
   }
   if (typeof data === 'string') {
-    const m = data.match(/\bid="(\d+)"/) || data.match(/<id>(\d+)<\/id>/);
+    const m = data.match(/\bid="(\d+)"/)
+           || data.match(/<id><!\[CDATA\[(\d+)\]\]><\/id>/)
+           || data.match(/<id>(\d+)<\/id>/);
     if (m) return parseInt(m[1]);
   }
   return 0;
@@ -53,57 +58,50 @@ async function postEntity(url: string, xml: string, entityName: string): Promise
   throw new Error(body.slice(0, 300));
 }
 
-function extractLang1(field: any): string {
-  if (typeof field === 'string') return field;
-  if (Array.isArray(field)) {
-    const l = field.find(f => String(f.id) === '1') || field[0];
-    return l?.value || '';
-  }
-  return '';
-}
-
 // ---------------------------------------------------------------------------
 // Produit
 // ---------------------------------------------------------------------------
 async function findProductByRef(reference: string): Promise<{ id: number; price: number; idTaxGroup: number } | null> {
   const listRes = await api.get(
-    `/products?filter[reference]=${encodeURIComponent(reference)}&output_format=JSON`,
+    `/products?filter[reference]=${encodeURIComponent(reference)}&output_format=XML&display=[id]`,
     { validateStatus: () => true }
   );
-  const products = listRes.data?.products;
-  if (!Array.isArray(products) || products.length === 0) return null;
+  const productEl = parseXml(listRes.data).querySelector('product');
+  if (!productEl) return null;
+  const id = parseInt(xtext(productEl, 'id'));
+  if (!id) return null;
 
-  const id = parseInt(String(products[0].id));
-  const detailRes = await api.get(`/products/${id}?output_format=JSON`, { validateStatus: () => true });
-  const p = detailRes.data?.product;
+  const detailRes = await api.get(`/products/${id}?output_format=XML`, { validateStatus: () => true });
+  const p = parseXml(detailRes.data).querySelector('product');
   if (!p) return null;
-  return { id, price: parseFloat(p.price) || 0, idTaxGroup: parseInt(String(p.id_tax_rules_group)) || 0 };
+  return { id, price: parseFloat(xtext(p, 'price')) || 0, idTaxGroup: parseInt(xtext(p, 'id_tax_rules_group')) || 0 };
 }
 
 async function getTaxRate(idTaxGroup: number): Promise<number> {
   if (!idTaxGroup) return 0;
-  const r = await api.get(`/tax_rules?filter[id_tax_rules_group]=${idTaxGroup}&output_format=JSON`, { validateStatus: () => true });
-  const rules = r.data?.tax_rules;
-  if (!Array.isArray(rules) || rules.length === 0) return 0;
-  const idTax = parseInt(String(rules[0].id_tax));
+  const r = await api.get(
+    `/tax_rules?filter[id_tax_rules_group]=${idTaxGroup}&output_format=XML&display=[id,id_tax]`,
+    { validateStatus: () => true }
+  );
+  const ruleEl = parseXml(r.data).querySelector('tax_rule');
+  if (!ruleEl) return 0;
+  const idTax = parseInt(xtext(ruleEl, 'id_tax'));
   if (!idTax) return 0;
-  const t = await api.get(`/taxes/${idTax}?output_format=JSON`, { validateStatus: () => true });
-  return parseFloat(t.data?.tax?.rate) || 0;
+  const t = await api.get(`/taxes/${idTax}?output_format=XML`, { validateStatus: () => true });
+  return parseFloat(xtext(parseXml(t.data), 'rate')) || 0;
 }
 
 // ---------------------------------------------------------------------------
-// Groupes d'attributs (specificite → product_option)
+// Groupes d'attributs
 // ---------------------------------------------------------------------------
 async function loadAttrGroups(): Promise<Map<string, number>> {
   const map = new Map<string, number>();
-  const res = await api.get('/product_options?display=full&output_format=JSON', { validateStatus: () => true });
-  const groups = res.data?.product_options;
-  if (Array.isArray(groups)) {
-    for (const g of groups) {
-      const name = extractLang1(g.name);
-      if (name) map.set(name.toLowerCase(), parseInt(String(g.id)));
-    }
-  }
+  const res = await api.get('/product_options?display=full&output_format=XML', { validateStatus: () => true });
+  parseXml(res.data).querySelectorAll('product_option').forEach(el => {
+    const id = parseInt(xtext(el, 'id'));
+    const name = el.querySelector('name language')?.textContent?.trim() || '';
+    if (name && id) map.set(name.toLowerCase(), id);
+  });
   return map;
 }
 
@@ -120,21 +118,19 @@ function xmlAttrGroup(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Valeurs d'attributs (karazany → product_option_value)
+// Valeurs d'attributs
 // ---------------------------------------------------------------------------
 async function loadAttrValues(idGroup: number): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   const res = await api.get(
-    `/product_option_values?filter[id_attribute_group]=${idGroup}&display=full&output_format=JSON`,
+    `/product_option_values?filter[id_attribute_group]=${idGroup}&display=full&output_format=XML`,
     { validateStatus: () => true }
   );
-  const values = res.data?.product_option_values;
-  if (Array.isArray(values)) {
-    for (const v of values) {
-      const name = extractLang1(v.name);
-      if (name) map.set(name.toLowerCase(), parseInt(String(v.id)));
-    }
-  }
+  parseXml(res.data).querySelectorAll('product_option_value').forEach(el => {
+    const id = parseInt(xtext(el, 'id'));
+    const name = el.querySelector('name language')?.textContent?.trim() || '';
+    if (name && id) map.set(name.toLowerCase(), id);
+  });
   return map;
 }
 
@@ -150,24 +146,22 @@ function xmlAttrValue(name: string, idGroup: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Combinaisons (product + valeur d'attribut)
+// Combinaisons
 // ---------------------------------------------------------------------------
 async function loadCombinations(idProduct: number): Promise<Map<number, number>> {
-  // attrValueId → combinationId
   const map = new Map<number, number>();
   const res = await api.get(
-    `/combinations?filter[id_product]=${idProduct}&display=full&output_format=JSON`,
+    `/combinations?filter[id_product]=${idProduct}&display=full&output_format=XML`,
     { validateStatus: () => true }
   );
-  const combos = res.data?.combinations;
-  if (Array.isArray(combos)) {
-    for (const c of combos) {
-      const vals = c.associations?.product_option_values;
-      if (Array.isArray(vals) && vals.length > 0) {
-        map.set(parseInt(String(vals[0].id)), parseInt(String(c.id)));
-      }
+  parseXml(res.data).querySelectorAll('combination').forEach(el => {
+    const comboId = parseInt(xtext(el, 'id'));
+    const valIdEl = el.querySelector('product_option_values product_option_value id');
+    if (valIdEl) {
+      const valId = parseInt(valIdEl.textContent?.trim() || '0');
+      if (valId && comboId) map.set(valId, comboId);
     }
-  }
+  });
   return map;
 }
 
@@ -194,18 +188,16 @@ function xmlCombination(idProduct: number, reference: string, karazany: string, 
 // ---------------------------------------------------------------------------
 async function getStockAvailableId(idProduct: number, idProductAttribute: number): Promise<number> {
   const res = await api.get(
-    `/stock_availables?filter[id_product]=[${idProduct}]&filter[id_product_attribute]=[${idProductAttribute}]&output_format=JSON`,
+    `/stock_availables?filter[id_product]=[${idProduct}]&filter[id_product_attribute]=[${idProductAttribute}]&output_format=XML`,
     { validateStatus: () => true }
   );
-  const items = res.data?.stock_availables;
-  if (!Array.isArray(items) || items.length === 0) return 0;
-  return parseInt(String(items[0].id));
+  const el = parseXml(res.data).querySelector('stock_available');
+  return el ? parseInt(xtext(el, 'id')) : 0;
 }
 
 async function updateStock(id: number, idProduct: number, idProductAttribute: number, qty: number): Promise<void> {
-  // GET complet requis : PrestaShop fait un PUT full-replace, les champs absents sont remis à 0
-  const getRes = await api.get(`/stock_availables/${id}?output_format=JSON`, { validateStatus: () => true });
-  const sa = getRes.data?.stock_available ?? {};
+  const getRes = await api.get(`/stock_availables/${id}?output_format=XML`, { validateStatus: () => true });
+  const sa = parseXml(getRes.data).querySelector('stock_available');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -213,15 +205,15 @@ async function updateStock(id: number, idProduct: number, idProductAttribute: nu
     <id><![CDATA[${id}]]></id>
     <id_product><![CDATA[${idProduct}]]></id_product>
     <id_product_attribute><![CDATA[${idProductAttribute}]]></id_product_attribute>
-    <id_shop><![CDATA[${sa.id_shop || '1'}]]></id_shop>
-    <id_shop_group><![CDATA[${sa.id_shop_group || '0'}]]></id_shop_group>
+    <id_shop><![CDATA[${sa ? xtext(sa, 'id_shop') || '1' : '1'}]]></id_shop>
+    <id_shop_group><![CDATA[${sa ? xtext(sa, 'id_shop_group') || '0' : '0'}]]></id_shop_group>
     <quantity><![CDATA[${qty}]]></quantity>
-    <depends_on_stock><![CDATA[${sa.depends_on_stock || '0'}]]></depends_on_stock>
-    <out_of_stock><![CDATA[${sa.out_of_stock || '2'}]]></out_of_stock>
-    <location><![CDATA[${sa.location || ''}]]></location>
+    <depends_on_stock><![CDATA[${sa ? xtext(sa, 'depends_on_stock') || '0' : '0'}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${sa ? xtext(sa, 'out_of_stock') || '2' : '2'}]]></out_of_stock>
+    <location><![CDATA[${sa ? xtext(sa, 'location') || '' : ''}]]></location>
   </stock_available>
 </prestashop>`;
-  await api.put(`/stock_availables/${id}?output_format=JSON`, xml, { headers: XML_HEADERS, validateStatus: () => true });
+  await api.put(`/stock_availables/${id}?output_format=XML`, xml, { headers: XML_HEADERS, validateStatus: () => true });
 }
 
 // ---------------------------------------------------------------------------
@@ -269,14 +261,9 @@ export async function importFichier2(
   log('info', `Début de l'import fichier2 — ${rows.length} ligne(s) détectée(s)`);
   if (rows.length > 0) log('info', `Colonnes : ${Object.keys(rows[0]).join(' | ')}`);
 
-  // Charger les groupes d'attributs existants une seule fois
   log('info', 'Chargement des groupes d\'attributs existants…');
-  const attrGroupMap = await loadAttrGroups(); // nom → id
-
-  // Cache des valeurs d'attributs par groupe : groupId → Map(nom → id)
+  const attrGroupMap = await loadAttrGroups();
   const attrValueCache = new Map<number, Map<string, number>>();
-
-  // Cache des combinaisons par produit : productId → Map(attrValueId → comboId)
   const comboCache = new Map<number, Map<number, number>>();
 
   for (let i = 0; i < rows.length; i++) {
@@ -311,15 +298,15 @@ export async function importFichier2(
       let idProductAttribute = 0;
 
       if (specificite && karazany) {
-        // ── 2. Groupe d'attribut (specificite) ──
+        // ── 2. Groupe d'attribut ──
         let idGroup = attrGroupMap.get(specificite.toLowerCase());
         if (!idGroup) {
-          idGroup = await createAttrGroup(specificite);
+          idGroup = await postEntity('/product_options?output_format=XML', xmlAttrGroup(specificite), 'product_option');
           attrGroupMap.set(specificite.toLowerCase(), idGroup);
           log('success', `Groupe d'attribut "${specificite}" créé → ID ${idGroup}`);
         }
 
-        // ── 3. Valeur d'attribut (karazany) ──
+        // ── 3. Valeur d'attribut ──
         if (!attrValueCache.has(idGroup)) {
           attrValueCache.set(idGroup, await loadAttrValues(idGroup));
         }
@@ -327,7 +314,7 @@ export async function importFichier2(
         let idAttrValue = valueMap.get(karazany.toLowerCase());
         if (!idAttrValue) {
           idAttrValue = await postEntity(
-            '/product_option_values?output_format=JSON',
+            '/product_option_values?output_format=XML',
             xmlAttrValue(karazany, idGroup),
             'product_option_value'
           );
@@ -343,7 +330,7 @@ export async function importFichier2(
         let idCombo = combMap.get(idAttrValue);
         if (!idCombo) {
           idCombo = await postEntity(
-            '/combinations?output_format=JSON',
+            '/combinations?output_format=XML',
             xmlCombination(product.id, ref, karazany, idAttrValue),
             'combination'
           );
@@ -368,7 +355,7 @@ export async function importFichier2(
         const taxRate = await getTaxRate(product.idTaxGroup);
         const priceHT = taxRate > 0 ? priceTTC / (1 + taxRate / 100) : priceTTC;
         await api.post(
-          '/specific_prices?output_format=JSON',
+          '/specific_prices?output_format=XML',
           xmlSpecificPrice(product.id, idProductAttribute, priceHT),
           { headers: XML_HEADERS, validateStatus: () => true }
         );
@@ -379,8 +366,9 @@ export async function importFichier2(
 
       successCount++;
     } catch (err: any) {
-      log('error', `Ligne ${rowNum} ${label} : ${err.message || 'Erreur inconnue'}`);
-      errorCount++;
+      log('error', `Ligne ${rowNum} ${label} : ${err.message || 'Erreur inconnue'} — import annulé`);
+      await resetAllData((msg) => log('warning', msg));
+      return { logs, successCount: 0, errorCount: 1 };
     }
   }
 
@@ -390,9 +378,4 @@ export async function importFichier2(
   );
 
   return { logs, successCount, errorCount };
-
-  // ── Fonctions locales ──
-  function createAttrGroup(name: string) {
-    return postEntity('/product_options?output_format=JSON', xmlAttrGroup(name), 'product_option');
-  }
 }

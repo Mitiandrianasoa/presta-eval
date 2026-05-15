@@ -1,5 +1,6 @@
 import api from '../api/api';
 import { parseFlexibleDate, parseFlexiblePrice } from './csvParserUtils';
+import { resetAllData } from './resetService';
 
 export interface ImportLog {
   level: 'info' | 'success' | 'warning' | 'error';
@@ -13,6 +14,8 @@ export interface ImportResult {
 }
 
 const XML_HEADERS = { 'Content-Type': 'application/xml; charset=utf-8' };
+const parseXml = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
+const xtext = (node: Element | Document, tag: string) => node.querySelector(tag)?.textContent?.trim() || '';
 
 // ---------------------------------------------------------------------------
 // Utilitaires
@@ -39,7 +42,9 @@ function tryExtractId(data: any, entityName: string): number {
     if (entity?.id) return parseInt(String(entity.id));
   }
   if (typeof data === 'string') {
-    const m = data.match(/\bid="(\d+)"/) || data.match(/<id>(\d+)<\/id>/);
+    const m = data.match(/\bid="(\d+)"/)
+           || data.match(/<id><!\[CDATA\[(\d+)\]\]><\/id>/)
+           || data.match(/<id>(\d+)<\/id>/);
     if (m) return parseInt(m[1]);
   }
   return 0;
@@ -55,7 +60,6 @@ async function postEntity(url: string, xml: string, entityName: string): Promise
 
 // ---------------------------------------------------------------------------
 // Parsing de la colonne achat
-// Format : [("T_01";3;"ngoza"),("M_03";1;"")]
 // ---------------------------------------------------------------------------
 export interface AchatItem {
   ref: string;
@@ -65,7 +69,6 @@ export interface AchatItem {
 
 export function parseAchat(raw: string): AchatItem[] {
   const items: AchatItem[] = [];
-  // Matches (ref ; qty ; karazany) avec ou sans guillemets
   const regex = /\(\s*"?([^";)\s][^";)]*?)"?\s*;\s*(\d+)\s*;\s*"?([^";)]*?)"?\s*\)/g;
   let m: RegExpExecArray | null;
   while ((m = regex.exec(raw)) !== null) {
@@ -75,30 +78,23 @@ export function parseAchat(raw: string): AchatItem[] {
 }
 
 // ---------------------------------------------------------------------------
-// Pays (récupéré une seule fois)
+// Pays
 // ---------------------------------------------------------------------------
 let cachedCountryId: number | null = null;
 
 async function getCountryId(): Promise<number> {
   if (cachedCountryId !== null) return cachedCountryId;
-  // Essayer Madagascar (MG) en premier
-  const mgRes = await api.get('/countries?filter[iso_code]=MG&output_format=JSON', { validateStatus: () => true });
-  const mg = mgRes.data?.countries;
-  if (Array.isArray(mg) && mg.length > 0) {
-    cachedCountryId = parseInt(String(mg[0].id));
-    return cachedCountryId;
-  }
-  // Sinon France (FR)
-  const frRes = await api.get('/countries?filter[iso_code]=FR&output_format=JSON', { validateStatus: () => true });
-  const fr = frRes.data?.countries;
-  if (Array.isArray(fr) && fr.length > 0) {
-    cachedCountryId = parseInt(String(fr[0].id));
-    return cachedCountryId;
-  }
-  // Dernier recours : premier pays actif
-  const allRes = await api.get('/countries?filter[active]=1&output_format=JSON', { validateStatus: () => true });
-  const all = allRes.data?.countries;
-  cachedCountryId = Array.isArray(all) && all.length > 0 ? parseInt(String(all[0].id)) : 8;
+  const mgRes = await api.get('/countries?filter[iso_code]=MG&output_format=XML&display=[id]', { validateStatus: () => true });
+  const mgEl = parseXml(mgRes.data).querySelector('country');
+  if (mgEl) { cachedCountryId = parseInt(xtext(mgEl, 'id')); return cachedCountryId; }
+
+  const frRes = await api.get('/countries?filter[iso_code]=FR&output_format=XML&display=[id]', { validateStatus: () => true });
+  const frEl = parseXml(frRes.data).querySelector('country');
+  if (frEl) { cachedCountryId = parseInt(xtext(frEl, 'id')); return cachedCountryId; }
+
+  const allRes = await api.get('/countries?filter[active]=1&output_format=XML&display=[id]', { validateStatus: () => true });
+  const allEl = parseXml(allRes.data).querySelector('country');
+  cachedCountryId = allEl ? parseInt(xtext(allEl, 'id')) : 8;
   return cachedCountryId;
 }
 
@@ -107,14 +103,11 @@ async function getCountryId(): Promise<number> {
 // ---------------------------------------------------------------------------
 async function findCustomerByEmail(email: string): Promise<number> {
   const res = await api.get(
-    `/customers?filter[email]=${encodeURIComponent(email)}&output_format=JSON`,
+    `/customers?filter[email]=${encodeURIComponent(email)}&output_format=XML&display=[id]`,
     { validateStatus: () => true }
   );
-  const customers = res.data?.customers;
-  if (Array.isArray(customers) && customers.length > 0) {
-    return parseInt(String(customers[0].id));
-  }
-  return 0;
+  const el = parseXml(res.data).querySelector('customer');
+  return el ? parseInt(xtext(el, 'id')) : 0;
 }
 
 function splitNom(nom: string): { firstname: string; lastname: string } {
@@ -157,7 +150,7 @@ async function createAddress(idCustomer: number, adresse: string, firstname: str
     <postcode><![CDATA[00000]]></postcode>
   </address>
 </prestashop>`;
-  return postEntity('/addresses?output_format=JSON', xml, 'address');
+  return postEntity('/addresses?output_format=XML', xml, 'address');
 }
 
 // ---------------------------------------------------------------------------
@@ -172,131 +165,72 @@ interface ProductInfo {
 
 async function findProductByRef(reference: string): Promise<ProductInfo | null> {
   const listRes = await api.get(
-    `/products?filter[reference]=${encodeURIComponent(reference)}&output_format=JSON`,
+    `/products?filter[reference]=${encodeURIComponent(reference)}&output_format=XML&display=[id]`,
     { validateStatus: () => true }
   );
-  const products = listRes.data?.products;
-  if (!Array.isArray(products) || products.length === 0) return null;
-  const id = parseInt(String(products[0].id));
-  const detailRes = await api.get(`/products/${id}?output_format=JSON`, { validateStatus: () => true });
-  const p = detailRes.data?.product;
+  const listEl = parseXml(listRes.data).querySelector('product');
+  if (!listEl) return null;
+  const id = parseInt(xtext(listEl, 'id'));
+  if (!id) return null;
+
+  const detailRes = await api.get(`/products/${id}?output_format=XML`, { validateStatus: () => true });
+  const p = parseXml(detailRes.data).querySelector('product');
   if (!p) return null;
-  const name = Array.isArray(p.name) ? (p.name.find((n: any) => String(n.id) === '1')?.value || p.name[0]?.value || reference) : String(p.name || reference);
-  return { id, name, priceHT: parseFloat(p.price) || 0, idTaxGroup: parseInt(String(p.id_tax_rules_group)) || 0 };
+  const name = p.querySelector('name language')?.textContent?.trim() || reference;
+  return { id, name, priceHT: parseFloat(xtext(p, 'price')) || 0, idTaxGroup: parseInt(xtext(p, 'id_tax_rules_group')) || 0 };
 }
 
 async function getTaxRate(idTaxGroup: number): Promise<number> {
   if (!idTaxGroup) return 0;
-  const r = await api.get(`/tax_rules?filter[id_tax_rules_group]=${idTaxGroup}&output_format=JSON`, { validateStatus: () => true });
-  const rules = r.data?.tax_rules;
-  if (!Array.isArray(rules) || rules.length === 0) return 0;
-  const idTax = parseInt(String(rules[0].id_tax));
+  const r = await api.get(
+    `/tax_rules?filter[id_tax_rules_group]=${idTaxGroup}&output_format=XML&display=[id,id_tax]`,
+    { validateStatus: () => true }
+  );
+  const ruleEl = parseXml(r.data).querySelector('tax_rule');
+  if (!ruleEl) return 0;
+  const idTax = parseInt(xtext(ruleEl, 'id_tax'));
   if (!idTax) return 0;
-  const t = await api.get(`/taxes/${idTax}?output_format=JSON`, { validateStatus: () => true });
-  return parseFloat(t.data?.tax?.rate) || 0;
+  const t = await api.get(`/taxes/${idTax}?output_format=XML`, { validateStatus: () => true });
+  return parseFloat(xtext(parseXml(t.data), 'rate')) || 0;
 }
 
 async function findCombinationId(idProduct: number, karazany: string): Promise<number> {
   if (!karazany) return 0;
   const res = await api.get(
-    `/combinations?filter[id_product]=${idProduct}&display=full&output_format=JSON`,
+    `/combinations?filter[id_product]=${idProduct}&display=full&output_format=XML`,
     { validateStatus: () => true }
   );
-  const combos = res.data?.combinations;
-  if (!Array.isArray(combos)) return 0;
+  const combos = Array.from(parseXml(res.data).querySelectorAll('combination'));
   for (const c of combos) {
-    // Vérifier si une des valeurs d'attribut correspond à karazany
-    const vals = c.associations?.product_option_values;
-    if (!Array.isArray(vals)) continue;
-    for (const v of vals) {
-      const vRes = await api.get(`/product_option_values/${v.id}?output_format=JSON`, { validateStatus: () => true });
-      const vName = vRes.data?.product_option_value?.name;
-      const name = Array.isArray(vName)
-        ? (vName.find((n: any) => String(n.id) === '1')?.value || vName[0]?.value || '')
-        : String(vName || '');
-      if (name.toLowerCase() === karazany.toLowerCase()) return parseInt(String(c.id));
+    const valIds = Array.from(c.querySelectorAll('product_option_values product_option_value id'));
+    for (const v of valIds) {
+      const vid = v.textContent?.trim() || '';
+      if (!vid) continue;
+      const vRes = await api.get(`/product_option_values/${vid}?output_format=XML`, { validateStatus: () => true });
+      const name = parseXml(vRes.data).querySelector('product_option_value name language')?.textContent?.trim() || '';
+      if (name.toLowerCase() === karazany.toLowerCase()) return parseInt(xtext(c, 'id'));
     }
   }
   return 0;
 }
 
 async function getEffectivePrice(idProduct: number, idProductAttribute: number, idTaxGroup: number): Promise<{ ht: number; ttc: number }> {
-  // Chercher un specific_price pour ce produit+combinaison
   const spRes = await api.get(
-    `/specific_prices?filter[id_product]=${idProduct}&filter[id_product_attribute]=${idProductAttribute}&output_format=JSON`,
+    `/specific_prices?filter[id_product]=${idProduct}&filter[id_product_attribute]=${idProductAttribute}&output_format=XML`,
     { validateStatus: () => true }
   );
-  const sps = spRes.data?.specific_prices;
-  if (Array.isArray(sps) && sps.length > 0) {
-    const ht = parseFloat(sps[0].price) || 0;
+  const spEl = parseXml(spRes.data).querySelector('specific_price');
+  if (spEl) {
+    const ht = parseFloat(xtext(spEl, 'price')) || 0;
     if (ht > 0) {
       const rate = await getTaxRate(idTaxGroup);
       return { ht, ttc: ht * (1 + rate / 100) };
     }
   }
-  // Prix de base du produit
-  const detailRes = await api.get(`/products/${idProduct}?output_format=JSON`, { validateStatus: () => true });
-  const ht = parseFloat(detailRes.data?.product?.price) || 0;
+  const detailRes = await api.get(`/products/${idProduct}?output_format=XML`, { validateStatus: () => true });
+  const ht = parseFloat(xtext(parseXml(detailRes.data), 'price')) || 0;
   const rate = await getTaxRate(idTaxGroup);
   return { ht, ttc: ht * (1 + rate / 100) };
-}
-
-// ---------------------------------------------------------------------------
-// Stock
-// ---------------------------------------------------------------------------
-async function decreaseStock(idProduct: number, idProductAttribute: number, qty: number, log: (msg: string) => void): Promise<void> {
-  const res = await api.get(
-    `/stock_availables?filter[id_product]=[${idProduct}]&filter[id_product_attribute]=[${idProductAttribute}]&display=full&output_format=JSON`,
-    { validateStatus: () => true }
-  );
-  const items = res.data?.stock_availables;
-  if (!Array.isArray(items) || items.length === 0) {
-    log(`Stock introuvable pour produit ID ${idProduct} (attr ${idProductAttribute})`);
-    return;
-  }
-  const sa = items[0];
-  const stockId = parseInt(String(sa.id));
-  const currentQty = parseInt(String(sa.quantity)) || 0;
-  const newQty = Math.max(0, currentQty - qty);
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
-  <stock_available>
-    <id><![CDATA[${stockId}]]></id>
-    <id_product><![CDATA[${idProduct}]]></id_product>
-    <id_product_attribute><![CDATA[${idProductAttribute}]]></id_product_attribute>
-    <id_shop><![CDATA[${sa.id_shop || '1'}]]></id_shop>
-    <id_shop_group><![CDATA[${sa.id_shop_group || '0'}]]></id_shop_group>
-    <quantity><![CDATA[${newQty}]]></quantity>
-    <depends_on_stock><![CDATA[${sa.depends_on_stock || '0'}]]></depends_on_stock>
-    <out_of_stock><![CDATA[${sa.out_of_stock || '2'}]]></out_of_stock>
-    <location><![CDATA[${sa.location || ''}]]></location>
-  </stock_available>
-</prestashop>`;
-  await api.put(`/stock_availables/${stockId}?output_format=JSON`, xml, { headers: XML_HEADERS, validateStatus: () => true });
-  log(`Stock produit ID ${idProduct}${idProductAttribute ? ` (combo ${idProductAttribute})` : ''} : ${currentQty} → ${newQty}`);
-}
-
-// ---------------------------------------------------------------------------
-// Paiement
-// ---------------------------------------------------------------------------
-async function createOrderPayment(orderId: number, amount: number, dateAdd: string): Promise<void> {
-  const orderRes = await api.get(`/orders/${orderId}?output_format=JSON`, { validateStatus: () => true });
-  const reference = orderRes.data?.order?.reference;
-  if (!reference) return;
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
-  <order_payment>
-    <order_reference><![CDATA[${reference}]]></order_reference>
-    <id_currency><![CDATA[1]]></id_currency>
-    <amount><![CDATA[${amount.toFixed(6)}]]></amount>
-    <payment_method><![CDATA[Paiement à la livraison]]></payment_method>
-    <conversion_rate><![CDATA[1.000000]]></conversion_rate>
-    <date_add><![CDATA[${dateAdd} 00:00:00]]></date_add>
-  </order_payment>
-</prestashop>`;
-  await api.post('/order_payments?output_format=JSON', xml, { headers: XML_HEADERS, validateStatus: () => true });
 }
 
 // ---------------------------------------------------------------------------
@@ -306,10 +240,10 @@ let cachedCarrierId: number | null = null;
 
 async function getDefaultCarrierId(): Promise<number> {
   if (cachedCarrierId !== null) return cachedCarrierId;
-  const res = await api.get('/carriers?filter[active]=1&display=full&output_format=JSON', { validateStatus: () => true });
-  const carriers = res.data?.carriers;
-  if (Array.isArray(carriers) && carriers.length > 0) {
-    cachedCarrierId = parseInt(String(carriers[0].id));
+  const res = await api.get('/carriers?filter[active]=1&display=full&output_format=XML', { validateStatus: () => true });
+  const el = parseXml(res.data).querySelector('carrier');
+  if (el) {
+    cachedCarrierId = parseInt(xtext(el, 'id'));
     return cachedCarrierId;
   }
   cachedCarrierId = 1;
@@ -323,16 +257,11 @@ let cachedOrderStates: Array<{ id: number; name: string }> | null = null;
 
 async function loadOrderStates(): Promise<Array<{ id: number; name: string }>> {
   if (cachedOrderStates) return cachedOrderStates;
-  const res = await api.get('/order_states?display=full&output_format=JSON', { validateStatus: () => true });
-  const states = res.data?.order_states;
-  if (!Array.isArray(states)) { cachedOrderStates = []; return []; }
-  cachedOrderStates = states.map((s: any) => {
-    const nameField = s.name;
-    const name = Array.isArray(nameField)
-      ? (nameField.find((n: any) => String(n.id) === '1')?.value || nameField[0]?.value || '')
-      : String(nameField || '');
-    return { id: parseInt(String(s.id)), name };
-  });
+  const res = await api.get('/order_states?display=full&output_format=XML', { validateStatus: () => true });
+  cachedOrderStates = Array.from(parseXml(res.data).querySelectorAll('order_state')).map(s => ({
+    id: parseInt(xtext(s, 'id')),
+    name: s.querySelector('name language')?.textContent?.trim() || '',
+  }));
   return cachedOrderStates;
 }
 
@@ -341,25 +270,79 @@ async function findOrderStateId(etat: string): Promise<number> {
   const states = await loadOrderStates();
   const norm = etat.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-  // Correspondance exacte
   let found = states.find(s =>
     s.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') === norm
   );
   if (found) return found.id;
 
-  // Correspondance partielle
   found = states.find(s => {
     const sNorm = s.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     return sNorm.includes(norm) || norm.includes(sNorm);
   });
   if (found) return found.id;
 
-  // Mots-clés
   if (norm.includes('accept') || norm.includes('pay')) return states.find(s => s.name.toLowerCase().includes('accept'))?.id ?? 2;
   if (norm.includes('erreur') || norm.includes('error')) return states.find(s => s.name.toLowerCase().includes('err'))?.id ?? 8;
   if (norm.includes('attente') || norm.includes('wait')) return states.find(s => s.name.toLowerCase().includes('attente'))?.id ?? 1;
 
-  return 1; // défaut
+  return 1;
+}
+
+// ---------------------------------------------------------------------------
+// Stock
+// ---------------------------------------------------------------------------
+async function decreaseStock(idProduct: number, idProductAttribute: number, qty: number, log: (msg: string) => void): Promise<void> {
+  const res = await api.get(
+    `/stock_availables?filter[id_product]=[${idProduct}]&filter[id_product_attribute]=[${idProductAttribute}]&display=full&output_format=XML`,
+    { validateStatus: () => true }
+  );
+  const el = parseXml(res.data).querySelector('stock_available');
+  if (!el) {
+    log(`Stock introuvable pour produit ID ${idProduct} (attr ${idProductAttribute})`);
+    return;
+  }
+  const stockId = parseInt(xtext(el, 'id'));
+  const currentQty = parseInt(xtext(el, 'quantity')) || 0;
+  const newQty = Math.max(0, currentQty - qty);
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_available>
+    <id><![CDATA[${stockId}]]></id>
+    <id_product><![CDATA[${idProduct}]]></id_product>
+    <id_product_attribute><![CDATA[${idProductAttribute}]]></id_product_attribute>
+    <id_shop><![CDATA[${xtext(el, 'id_shop') || '1'}]]></id_shop>
+    <id_shop_group><![CDATA[${xtext(el, 'id_shop_group') || '0'}]]></id_shop_group>
+    <quantity><![CDATA[${newQty}]]></quantity>
+    <depends_on_stock><![CDATA[${xtext(el, 'depends_on_stock') || '0'}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${xtext(el, 'out_of_stock') || '2'}]]></out_of_stock>
+    <location><![CDATA[${xtext(el, 'location') || ''}]]></location>
+  </stock_available>
+</prestashop>`;
+  await api.put(`/stock_availables/${stockId}?output_format=XML`, xml, { headers: XML_HEADERS, validateStatus: () => true });
+  log(`Stock produit ID ${idProduct}${idProductAttribute ? ` (combo ${idProductAttribute})` : ''} : ${currentQty} → ${newQty}`);
+}
+
+// ---------------------------------------------------------------------------
+// Paiement
+// ---------------------------------------------------------------------------
+async function createOrderPayment(orderId: number, amount: number, dateAdd: string): Promise<void> {
+  const orderRes = await api.get(`/orders/${orderId}?output_format=XML`, { validateStatus: () => true });
+  const reference = xtext(parseXml(orderRes.data), 'reference');
+  if (!reference) return;
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <order_payment>
+    <order_reference><![CDATA[${reference}]]></order_reference>
+    <id_currency><![CDATA[1]]></id_currency>
+    <amount><![CDATA[${amount.toFixed(6)}]]></amount>
+    <payment_method><![CDATA[Paiement à la livraison]]></payment_method>
+    <conversion_rate><![CDATA[1.000000]]></conversion_rate>
+    <date_add><![CDATA[${dateAdd} 00:00:00]]></date_add>
+  </order_payment>
+</prestashop>`;
+  await api.post('/order_payments?output_format=XML', xml, { headers: XML_HEADERS, validateStatus: () => true });
 }
 
 // ---------------------------------------------------------------------------
@@ -418,7 +401,7 @@ function xmlOrder(
   dateAdd: string,
   lines: OrderLine[]
 ): string {
-  const totalHT = lines.reduce((s, l) => s + l.priceHT * l.qty, 0);
+  const totalHT  = lines.reduce((s, l) => s + l.priceHT  * l.qty, 0);
   const totalTTC = lines.reduce((s, l) => s + l.priceTTC * l.qty, 0);
 
   const rowsXml = lines.map(l => `
@@ -470,9 +453,6 @@ function xmlOrder(
 </prestashop>`;
 }
 
-// ---------------------------------------------------------------------------
-// Création de commande — tolère les warnings PHP (code 15) du module gamification
-// ---------------------------------------------------------------------------
 async function createOrder(
   idCustomer: number,
   idAddress: number,
@@ -483,32 +463,28 @@ async function createOrder(
   lines: OrderLine[]
 ): Promise<number> {
   const xml = xmlOrder(idCustomer, idAddress, idCart, idCarrier, stateId, dateAdd, lines);
-  const res = await api.post('/orders?output_format=JSON', xml, {
+  const res = await api.post('/orders?output_format=XML', xml, {
     headers: { 'Content-Type': 'application/xml; charset=utf-8' },
     validateStatus: () => true,
   });
 
-  // Succès normal
   const id = tryExtractId(res.data, 'order');
   if (id > 0) return id;
 
-  // PrestaShop retourne parfois des warnings PHP (code 15) même quand la commande
-  // est créée (ex: hook déprécié dans le module gamification).
-  // Dans ce cas on cherche la commande via l'ID du panier.
-  const errors = res.data?.errors;
-  const onlyPhpWarnings = Array.isArray(errors) && errors.every((e: any) => e.code === 15);
-  if (onlyPhpWarnings) {
-    const findRes = await api.get(
-      `/orders?filter[id_cart]=${idCart}&output_format=JSON`,
-      { validateStatus: () => true }
-    );
-    const orders = findRes.data?.orders;
-    if (Array.isArray(orders) && orders.length > 0) {
-      return parseInt(String(orders[0].id));
+  // Warnings PHP (code 15) : hook déprécié du module gamification — la commande est créée quand même
+  if (typeof res.data === 'string') {
+    const errEls = Array.from(parseXml(res.data).querySelectorAll('error'));
+    const onlyWarnings = errEls.length > 0 && errEls.every(e => xtext(e, 'code') === '15');
+    if (onlyWarnings) {
+      const findRes = await api.get(
+        `/orders?filter[id_cart]=${idCart}&output_format=XML&display=[id]`,
+        { validateStatus: () => true }
+      );
+      const orderEl = parseXml(findRes.data).querySelector('order');
+      if (orderEl) return parseInt(xtext(orderEl, 'id'));
     }
   }
 
-  // Vraie erreur
   const body = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
   throw new Error(body.slice(0, 300));
 }
@@ -524,10 +500,9 @@ export async function importFichier3(
   let successCount = 0;
   let errorCount = 0;
 
-  // Réinitialiser les caches entre les imports
-  cachedCountryId = null;
+  cachedCountryId  = null;
   cachedOrderStates = null;
-  cachedCarrierId = null;
+  cachedCarrierId  = null;
 
   function log(level: ImportLog['level'], message: string) {
     const entry: ImportLog = { level, message };
@@ -539,12 +514,12 @@ export async function importFichier3(
   if (rows.length > 0) log('info', `Colonnes : ${Object.keys(rows[0]).join(' | ')}`);
 
   log('info', 'Chargement des états de commande et du transporteur…');
-  const states = await loadOrderStates();
+  const states    = await loadOrderStates();
   const idCarrier = await getDefaultCarrierId();
   log('info', `${states.length} état(s) disponible(s) — transporteur par défaut ID ${idCarrier}`);
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+    const row    = rows[i];
     const rowNum = i + 1;
 
     const dateRaw  = col(row, 'date', 'Date');
@@ -572,13 +547,13 @@ export async function importFichier3(
     }
 
     try {
-      // ── 1. Client (email unique) ──
+      // ── 1. Client ──
       let idCustomer = await findCustomerByEmail(email);
       if (idCustomer > 0) {
         log('info', `Ligne ${rowNum} : client "${email}" déjà existant → ID ${idCustomer}`);
       } else {
         idCustomer = await postEntity(
-          '/customers?output_format=JSON',
+          '/customers?output_format=XML',
           xmlCustomer(firstname, lastname, email, pwd),
           'customer'
         );
@@ -590,7 +565,7 @@ export async function importFichier3(
       log('success', `Ligne ${rowNum} : adresse "${adresse}" créée → ID ${idAddress}`);
 
       // ── 3. Résoudre les produits ──
-      const cartRows: CartRow[] = [];
+      const cartRows: CartRow[]     = [];
       const orderLines: OrderLine[] = [];
 
       for (const item of items) {
@@ -605,32 +580,34 @@ export async function importFichier3(
 
         cartRows.push({ idProduct: product.id, idProductAttribute, qty: item.qty, idAddress });
         orderLines.push({ idProduct: product.id, idProductAttribute, name: product.name, qty: item.qty, priceHT: ht, priceTTC: ttc });
-
         log('info', `  → "${item.ref}"${item.karazany ? ` (${item.karazany})` : ''} × ${item.qty} — ${ttc.toFixed(2)} TTC/u`);
       }
 
       if (cartRows.length === 0) {
         log('error', `Ligne ${rowNum} : aucun produit valide dans le panier — ignorée`);
         errorCount++;
-        continue;
+        log('error', `Ligne ${rowNum} : aucun produit valide — import annulé`);
+        await resetAllData((msg) => log('warning', msg));
+        return { logs, successCount: 0, errorCount: 1 };
       }
 
       // ── 4. Panier ──
       const idCart = await postEntity(
-        '/carts?output_format=JSON',
+        '/carts?output_format=XML',
         xmlCart(idCustomer, idAddress, dateAdd, cartRows),
         'cart'
       );
+      rollbackCartId = idCart;
       log('success', `Ligne ${rowNum} : panier créé → ID ${idCart}`);
 
       // ── 5. Commande ou panier uniquement ──
       if (!etat) {
-        // État vide = dans le panier, pas encore commandé
         log('info', `Ligne ${rowNum} (${email}) : état vide → panier conservé sans commande`);
       } else {
-        const stateId = await findOrderStateId(etat);
+        const stateId  = await findOrderStateId(etat);
         const totalTTC = orderLines.reduce((s, l) => s + l.priceTTC * l.qty, 0);
-        const idOrder = await createOrder(idCustomer, idAddress, idCart, idCarrier, stateId, dateAdd, orderLines);
+        const idOrder  = await createOrder(idCustomer, idAddress, idCart, idCarrier, stateId, dateAdd, orderLines);
+
         log('success', `Ligne ${rowNum} (${email}) : commande créée → ID ${idOrder} (état "${etat}" → ID état ${stateId})`);
 
         // ── 6. Décrémenter le stock ──
@@ -649,8 +626,9 @@ export async function importFichier3(
 
       successCount++;
     } catch (err: any) {
-      log('error', `Ligne ${rowNum} (${email}) : ${err.message || 'Erreur inconnue'}`);
-      errorCount++;
+      log('error', `Ligne ${rowNum} (${email}) : ${err.message || 'Erreur inconnue'} — import annulé`);
+      await resetAllData((msg) => log('warning', msg));
+      return { logs, successCount: 0, errorCount: 1 };
     }
   }
 

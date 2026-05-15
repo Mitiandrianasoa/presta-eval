@@ -1,5 +1,6 @@
 import api from '../api/api';
 import { parseFlexibleDate, parseFlexiblePrice, parseTaxRate, slugify } from './csvParserUtils';
+import { resetAllData } from './resetService';
 
 export interface ImportLog {
   level: 'info' | 'success' | 'warning' | 'error';
@@ -29,10 +30,10 @@ function tryExtractId(data: any, entityName: string): number {
 
   // XML en chaîne : id="5" ou <id>5</id>
   if (typeof data === 'string') {
-    const attrMatch = data.match(/\bid="(\d+)"/);
-    if (attrMatch) return parseInt(attrMatch[1]);
-    const tagMatch = data.match(/<id>(\d+)<\/id>/);
-    if (tagMatch) return parseInt(tagMatch[1]);
+    const m = data.match(/\bid="(\d+)"/)
+           || data.match(/<id><!\[CDATA\[(\d+)\]\]><\/id>/)
+           || data.match(/<id>(\d+)<\/id>/);
+    if (m) return parseInt(m[1]);
   }
 
   return 0;
@@ -155,19 +156,19 @@ function xmlProduct(
 // Appels API individuels
 // ---------------------------------------------------------------------------
 async function createCategory(name: string): Promise<number> {
-  return postEntity('/categories?output_format=JSON', xmlCategory(name), 'category');
+  return postEntity('/categories?output_format=XML', xmlCategory(name), 'category');
 }
 
 async function createTaxRuleGroup(name: string): Promise<number> {
-  return postEntity('/tax_rule_groups?output_format=JSON', xmlTaxRuleGroup(name), 'tax_rule_group');
+  return postEntity('/tax_rule_groups?output_format=XML', xmlTaxRuleGroup(name), 'tax_rule_group');
 }
 
 async function createTax(rate: number): Promise<number> {
-  return postEntity('/taxes?output_format=JSON', xmlTax(rate), 'tax');
+  return postEntity('/taxes?output_format=XML', xmlTax(rate), 'tax');
 }
 
 async function createTaxRule(idGroup: number, idTax: number): Promise<void> {
-  await api.post('/tax_rules?output_format=JSON', xmlTaxRule(idGroup, idTax), {
+  await api.post('/tax_rules?output_format=XML', xmlTaxRule(idGroup, idTax), {
     headers: XML_HEADERS,
     validateStatus: () => true,
   });
@@ -183,7 +184,7 @@ async function createProduct(
   availableDate: string
 ): Promise<number> {
   return postEntity(
-    '/products?output_format=JSON',
+    '/products?output_format=XML',
     xmlProduct(name, reference, price, wholesalePrice, idCategory, idTaxGroup, availableDate),
     'product'
   );
@@ -266,8 +267,9 @@ export async function importFichier1(
       categoryMap.set(name, id);
       log('success', `Catégorie "${name}" créée → ID ${id}`);
     } catch (err: any) {
-      log('error', `Catégorie "${name}" : ${apiError(err)}`);
-      errorCount++;
+      log('error', `Catégorie "${name}" : ${apiError(err)} — import annulé`);
+      await resetAllData((msg) => log('warning', msg));
+      return { logs, successCount: 0, errorCount: 1 };
     }
   }
 
@@ -299,8 +301,9 @@ export async function importFichier1(
 
       taxGroupMap.set(rate, groupId);
     } catch (err: any) {
-      log('error', `Taxe ${rate}% : ${apiError(err)}`);
-      errorCount++;
+      log('error', `Taxe ${rate}% : ${apiError(err)} — import annulé`);
+      await resetAllData((msg) => log('warning', msg));
+      return { logs, successCount: 0, errorCount: 1 };
     }
   }
 
@@ -348,8 +351,9 @@ export async function importFichier1(
       log('success', `Ligne ${rowNum} : "${name}" (réf. ${reference || '—'}, HT ${priceHT.toFixed(4)}, TTC ${priceTTC}) → ID ${pid}`);
       successCount++;
     } catch (err: any) {
-      log('error', `Ligne ${rowNum} ("${name}") : ${apiError(err)}`);
-      errorCount++;
+      log('error', `Ligne ${rowNum} ("${name}") : ${apiError(err)} — import annulé`);
+      await resetAllData((msg) => log('warning', msg));
+      return { logs, successCount: 0, errorCount: 1 };
     }
   }
 
