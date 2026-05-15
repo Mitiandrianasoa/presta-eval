@@ -20,9 +20,6 @@
           <router-link to="/products" class="continue-shopping-btn">
             Continuer mes achats
           </router-link>
-          <!-- <button @click="startCart" class="confirm-btn">
-            Enregistrer le panier
-          </button> -->
         </div>
 
         <!-- État : Panier avec des articles -->
@@ -73,102 +70,88 @@
               <div class="item-total">
                 {{ formatPrice((parseFloat(item.price) * item.quantity).toString()) }}
               </div>
-              
             </div>
-            <button @click="startCart" class="confirm-btn" :disabled="isProcessing || cartSaved">
-              <span v-if="isProcessing" class="btn-content">
-                <span class="mini-spinner"></span>
-                Enregistrement...
-              </span>
-              <span v-else-if="cartSaved">
-                Panier enregistré ✓
-              </span>
-              <span v-else>
-                Enregistrer le panier
-              </span>
-            </button>
           </div>
 
           <!-- Résumé de la commande -->
-            <div class="cart-summary">
+          <div class="cart-summary">
             <h2>Résumé de la commande</h2>
             
             <!-- Liste des articles -->
             <div class="summary-items">
-                <div
+              <div
                 v-for="item in cart"
                 :key="'summary-' + item.id"
                 class="summary-item"
-                >
+              >
                 <div class="summary-item-info">
-                    <span class="summary-item-name">{{ item.name }}</span>
-                    <span class="summary-item-quantity">x{{ item.quantity }}</span>
+                  <span class="summary-item-name">{{ item.name }}</span>
+                  <span class="summary-item-quantity">x{{ item.quantity }}</span>
                 </div>
                 <span class="summary-item-total">
-                    {{ formatPrice((parseFloat(item.price) * item.quantity).toString()) }}
+                  {{ formatPrice((parseFloat(item.price) * item.quantity).toString()) }}
                 </span>
-                </div>
+              </div>
             </div>
             
             <div class="summary-divider"></div>
             
             <!-- Totaux -->
             <div class="summary-line">
-                <span>Sous-total ({{ cartItemCount }} article(s))</span>
-                <span>{{ formatPrice(cartTotal.toString()) }}</span>
+              <span>Sous-total ({{ cartItemCount }} article(s))</span>
+              <span>{{ formatPrice(cartTotal.toString()) }}</span>
             </div>
             
             <div class="summary-line">
-                <span>Livraison</span>
-                <span class="free-shipping">Gratuite</span>
+              <span>Livraison</span>
+              <span class="free-shipping">Gratuite</span>
             </div>
             
             <div class="summary-line total">
-                <span>Total estimé</span>
-                <span>{{ formatPrice(cartTotal.toString()) }}</span>
+              <span>Total estimé</span>
+              <span>{{ formatPrice(cartTotal.toString()) }}</span>
             </div>
             
             <!-- Message si non connecté -->
             <div v-if="!isLoggedIn" class="login-notice">
-                <p>Connectez-vous pour finaliser votre commande</p>
-                <router-link to="/login?redirect=/cart" class="login-link">
+              <p>Connectez-vous pour finaliser votre commande</p>
+              <router-link to="/login?redirect=/cart" class="login-link">
                 Se connecter
-                </router-link>
+              </router-link>
             </div>
             
             <!-- ✅ BOUTON DE PAIEMENT -->
             <button 
-                class="checkout-btn" 
-                @click="proceedToCheckout"
-                :disabled="isProcessing || cart.length === 0"
+              class="checkout-btn" 
+              @click="proceedToCheckout"
+              :disabled="isProcessing || cart.length === 0"
             >
-                <span v-if="isProcessing" class="btn-content">
+              <span v-if="isProcessing" class="btn-content">
                 <span class="mini-spinner"></span>
                 Traitement en cours...
-                </span>
-                <span v-else>
+              </span>
+              <span v-else>
                 {{ isLoggedIn ? 'Procéder au paiement' : 'Se connecter pour commander' }}
-                </span>
+              </span>
             </button>
             
             <!-- Information de paiement -->
             <p class="checkout-info">
-                <span v-if="isLoggedIn">
+              <span v-if="isLoggedIn">
                 ✓ Paiement à la livraison
-                </span>
+              </span>
             </p>
             
             <!-- Message d'erreur -->
             <div v-if="checkoutError" class="checkout-error">
-                {{ checkoutError }}
+              {{ checkoutError }}
             </div>
-            
-            </div>
+          </div>
         </div>
       </div>
     </main>
 
-    <!-- Modal de confirmation (optionnel mais recommandé) -->
+    <!-- Modal de confirmation -->
     <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">
       <div class="modal-content" @click.stop>
         <h3>Confirmer la commande</h3>
@@ -186,7 +169,6 @@
       </div>
     </div>
 
-   
     <footer class="front-footer">
       <div class="container">
         <div class="footer-bottom">
@@ -201,9 +183,9 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
-// Importer le service de checkout
-import { processCart, processCheckout } from '../../../services/checkout.service';
+import { processCheckout } from '../../../services/checkout.service';
 import { useAuth } from '../../../services/useAuth';
+
 const router = useRouter();
 
 // État du panier
@@ -214,30 +196,7 @@ const isCartLoaded = ref(false);
 const isProcessing = ref(false);
 const checkoutError = ref('');
 const showConfirmModal = ref(false);
-const cartSaved = ref(false);
 const { getCustomerId, isLoggedIn } = useAuth();
-
-// // Vérifier si l'utilisateur est connecté
-// const isLoggedIn = computed(() => {
-//   const token = localStorage.getItem('prestashop_token');
-//   const user = localStorage.getItem('prestashop_user');
-//   return !!(token && user);
-// });
-
-// Récupérer l'ID du client connecté
-// const getCustomerId = (): string => {
-//   const user = localStorage.getItem('prestashop_user');
-//   if (user) {
-//     try {
-//       const userData = JSON.parse(user);
-//       return userData.id || '1';
-//     } catch (err) {
-//       return '1';
-//     }
-//   }
-//   return '1'; // Client par défaut
-// };
-
 
 // Calculs du panier
 const cartItemCount = computed(() => {
@@ -297,7 +256,6 @@ const proceedToCheckout = () => {
   }
   
   if (!isLoggedIn.value) {
-    // Rediriger vers la page de connexion
     router.push('/login?redirect=/cart');
     return;
   }
@@ -305,51 +263,6 @@ const proceedToCheckout = () => {
   // Afficher la modal de confirmation
   showConfirmModal.value = true;
 };
-
-// Lancer le processus de checkout
-const startCart = async () => {
-  showConfirmModal.value = false;
-  isProcessing.value = true;
-  checkoutError.value = '';
-  
-  try {
-    const customerId = getCustomerId();
-    
-    // Construire les données pour le checkout
-    const cartData = {
-      products: cart.value.map(item => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        name: item.name,
-        price: item.price,
-        image_url: item.image_url
-      })),
-      customerId: customerId,
-      paymentMethod: 'paiement_livraison'
-    };
-    
-    console.log('🚀 ENREGISTRER LE PANIER', {
-      productsCount: cartData.products.length,
-      customerId: cartData.customerId
-    });
-    
-    // Appeler le service de checkout
-    const result = await processCart(cartData);
-    
-    console.log('✅ PANIER checkout:', result);
-    if (result && result.success) {
-      cartSaved.value = true;
-    }
-    
-    
-  } catch (err: any) {
-    console.error('❌ Erreur checkout:', err);
-    checkoutError.value = err.message || 'Une erreur est survenue lors du traitement';
-  } finally {
-    isProcessing.value = false;
-  }
-};
-
 
 // Lancer le processus de checkout
 const startCheckout = async () => {
@@ -427,7 +340,6 @@ onMounted(() => {
   loadCart();
 });
 </script>
-
 
 <style scoped>
 /* Styles pour le bouton de checkout */
@@ -554,21 +466,10 @@ onMounted(() => {
   font-size: 1.3rem;
 }
 
-.modal-info {
-  background: #f8fafc;
-  padding: 1.25rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-}
-
-.modal-info p {
-  margin: 0.5rem 0;
-  font-size: 0.95rem;
-}
-
 .modal-actions {
   display: flex;
   gap: 1rem;
+  margin-top: 2rem;
 }
 
 .cancel-btn, .confirm-btn {
@@ -602,187 +503,7 @@ onMounted(() => {
   background: #15803d;
 }
 
-
-/* Nouveaux styles pour le checkout */
-.checkout-btn {
-  width: 100%;
-  padding: 1rem;
-  background: var(--success);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 1.5rem;
-  font-family: inherit;
-  position: relative;
-  overflow: hidden;
-}
-
-.checkout-btn:hover:not(:disabled) {
-  background: #15803d;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.checkout-btn:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
-.mini-spinner {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.checkout-info {
-  text-align: center;
-  font-size: 0.85rem;
-  margin-top: 0.75rem;
-  color: var(--muted);
-}
-
-.checkout-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: var(--error);
-  padding: 0.75rem;
-  border-radius: 6px;
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.login-notice {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
-  text-align: center;
-}
-
-.login-notice p {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.9rem;
-  color: var(--navy);
-}
-
-.login-link {
-  display: inline-block;
-  background: var(--primary);
-  color: white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: background 0.3s ease;
-}
-
-.login-link:hover {
-  background: var(--primary-dark);
-}
-
-/* Modal de confirmation */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 12px;
-  max-width: 450px;
-  width: 90%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.modal-content h3 {
-  color: var(--navy);
-  margin: 0 0 1rem 0;
-  font-size: 1.3rem;
-}
-
-.modal-content p {
-  color: var(--text);
-  margin: 0.5rem 0;
-  font-size: 0.95rem;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.cancel-btn, .confirm-btn {
-  flex: 1;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: inherit;
-}
-
-.cancel-btn {
-  background: #f1f5f9;
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-
-.cancel-btn:hover {
-  background: #e2e8f0;
-}
-
-.confirm-btn {
-  background: var(--success);
-  color: white;
-  border: none;
-}
-
-.confirm-btn:hover {
-  background: #15803d;
-}
-
-.free-shipping {
-  color: var(--success);
-  font-weight: 600;
-}
-
-/* Styles de base, vous pouvez les adapter à votre charte graphique */
+/* Styles de base */
 .cart-page {
   min-height: 100vh;
   background: var(--bg);
@@ -974,18 +695,16 @@ onMounted(() => {
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
-/* ── Résumé : liste des articles ─────────────────────── */
 .summary-items {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
-  max-height: 300px;           /* Hauteur max avec scroll si beaucoup d'articles */
-  overflow-y: auto;            /* Scroll si la liste est longue */
-  padding-right: 0.5rem;       /* Espace pour le scroll */
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
 }
 
-/* Personnalisation de la scrollbar (optionnel mais joli) */
 .summary-items::-webkit-scrollbar {
   width: 4px;
 }
@@ -1004,10 +723,9 @@ onMounted(() => {
   align-items: flex-start;
   gap: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px dashed var(--border); /* Ligne en pointillé pour séparer */
+  border-bottom: 1px dashed var(--border);
 }
 
-/* Pas de bordure sur le dernier élément */
 .summary-item:last-child {
   padding-bottom: 0;
   border-bottom: none;
@@ -1018,7 +736,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   flex: 1;
-  min-width: 0; /* Pour que le texte puisse être tronqué */
+  min-width: 0;
 }
 
 .summary-item-name {
@@ -1026,7 +744,6 @@ onMounted(() => {
   font-weight: 500;
   color: var(--text);
   line-height: 1.4;
-  /* Tronquer le texte si trop long */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1042,39 +759,13 @@ onMounted(() => {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--navy);
-  white-space: nowrap; /* Empêche le prix de passer à la ligne */
+  white-space: nowrap;
 }
 
-/* Ligne de séparation */
 .summary-divider {
   height: 1px;
   background: var(--border);
   margin-bottom: 1.25rem;
-}
-.checkout-btn {
-  width: 100%;
-  padding: 0.9rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition);
-  margin-top: 1.5rem;
-  font-family: inherit;
-}
-.checkout-btn:hover:not(:disabled) { background: var(--primary-dark); }
-.checkout-btn:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-}
-.checkout-disclaimer {
-  font-size: 0.75rem;
-  color: var(--muted);
-  text-align: center;
-  margin-top: 0.75rem;
 }
 
 /* Responsive */
