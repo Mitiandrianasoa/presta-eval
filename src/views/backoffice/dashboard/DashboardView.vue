@@ -1,6 +1,11 @@
 <template>
   <div class="dashboard-layout">
-    <Sidebar />
+    <Sidebar
+      @show-products="goToAdmin('products')"
+      @show-categories="goToAdmin('categories')"
+      @show-stock="goToAdmin('stock')"
+      @show-customers="goToAdmin('customers')"
+    />
     <div class="dashboard">
       <div class="dashboard-header">
         <div class="header-text">
@@ -162,8 +167,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '../../../api/api';
 import Sidebar from '../../../components/Sidebar.vue';
+
+const router = useRouter();
+
+const goToAdmin = (view: string) => router.push(`/admin?view=${view}`);
 
 const loading = ref(false);
 const error = ref('');

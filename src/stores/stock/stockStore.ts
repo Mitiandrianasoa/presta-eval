@@ -10,6 +10,7 @@ export interface Stock {
   id_product_attribute: string;
   quantity: number;
   product_name?: string;
+  combination_name?: string;
 }
 
 // Nouvelle interface pour les mouvements de stock
@@ -35,12 +36,14 @@ export const useStockStore = defineStore('stock', {
       this.loading = true;
       this.error = null;
       try {
-        const [sRes, pRes] = await Promise.all([
-          api.get('/stock_availables?output_format=XML&display=full&limit=5000'),
-          api.get('/products?output_format=XML&display=[id,name]&limit=5000'),
+        const [sRes, pRes, cRes, ovRes] = await Promise.all([
+          api.get('/stock_availables?output_format=XML&display=full&limit=5000',          { validateStatus: () => true }),
+          api.get('/products?output_format=XML&display=[id,name]&limit=5000',             { validateStatus: () => true }),
+          api.get('/combinations?output_format=XML&display=full&limit=5000',              { validateStatus: () => true }),
+          api.get('/product_option_values?output_format=XML&display=full&limit=5000',     { validateStatus: () => true }),
         ]);
 
-        // Parser les produits
+        // Produits : id → nom
         const productMap: Record<string, string> = {};
         parse(pRes.data).querySelectorAll('product').forEach(el => {
           const id = text(el, 'id');
@@ -48,14 +51,36 @@ export const useStockStore = defineStore('stock', {
           productMap[id] = name;
         });
 
+        // Valeurs d'attribut : id → nom (ngoza, kely…)
+        const optionValueMap: Record<string, string> = {};
+        parse(ovRes.data).querySelectorAll('product_option_value').forEach(el => {
+          const id   = text(el, 'id');
+          const name = el.querySelector('name language')?.textContent?.trim() || '';
+          optionValueMap[id] = name;
+        });
+
+        // Combinaisons : id_combination → nom concaténé des valeurs
+        const combinationNameMap: Record<string, string> = {};
+        parse(cRes.data).querySelectorAll('combination').forEach(el => {
+          const id = text(el, 'id');
+          const valueIds = Array.from(el.querySelectorAll('product_option_values product_option_value id'))
+            .map(v => v.textContent?.trim() || '');
+          const names = valueIds.map(vid => optionValueMap[vid]).filter(Boolean);
+          if (names.length > 0) combinationNameMap[id] = names.join(' / ');
+        });
+
         // Parser les stocks
-        this.stocks = Array.from(parse(sRes.data).querySelectorAll('stock_available')).map(el => ({
-          id: text(el, 'id'),
-          id_product: text(el, 'id_product'),
-          id_product_attribute: text(el, 'id_product_attribute'),
-          quantity: parseInt(text(el, 'quantity')) || 0,
-          product_name: productMap[text(el, 'id_product')] || 'Produit inconnu',
-        }));
+        this.stocks = Array.from(parse(sRes.data).querySelectorAll('stock_available')).map(el => {
+          const idAttr = text(el, 'id_product_attribute');
+          return {
+            id: text(el, 'id'),
+            id_product: text(el, 'id_product'),
+            id_product_attribute: idAttr,
+            quantity: parseInt(text(el, 'quantity')) || 0,
+            product_name: productMap[text(el, 'id_product')] || 'Produit inconnu',
+            combination_name: idAttr !== '0' ? (combinationNameMap[idAttr] || `Déclinaison #${idAttr}`) : undefined,
+          };
+        });
       } catch (e: any) {
         this.error = `Erreur : ${e.message}`;
         console.error(e);

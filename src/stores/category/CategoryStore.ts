@@ -15,7 +15,7 @@ export const useCategoryStore = defineStore('category', {
     async fetchAll() {
       this.loading = true;
       try {
-        const res = await api.get('/categories?output_format=XML&display=full&limit=1000');
+        const res = await api.get('/categories?output_format=XML&display=full&limit=1000', { validateStatus: () => true });
 
         console.log('📡 [fetchAll] Type de res.data     :', typeof res.data);
         console.log('📡 [fetchAll] Content-Type reçu    :', res.headers?.['content-type']);

@@ -1,15 +1,17 @@
 <!-- views/CatalogView.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import Sidebar from '../../../components/Sidebar.vue';
 import ProductList from '../../../components/product/productList.vue';
 import CategoryList from '../../../components/category/CategoryList.vue';
 import StockList from '../../../components/stock/StockList.vue';
 import CustomerList from '../../../components/customer/CustomerList.vue';
 
+const route = useRoute();
 const currentView = ref<'products' | 'categories' | 'stock' | 'customers'>('products');
 const selectedCategory = ref<number | null>(null);
-const isAuthenticated = ref(false);
+const isAuthenticated = ref(!!sessionStorage.getItem('admin_auth'));
 const currentUser = ref<{ name: string; username: string } | null>(null);
 const username = ref('admin');
 const password = ref('admin123');
@@ -27,6 +29,8 @@ const handleLogin = () => {
   if (match) {
     isAuthenticated.value = true;
     currentUser.value = { name: match.name, username: match.username };
+    sessionStorage.setItem('admin_auth', match.username);
+    sessionStorage.setItem('admin_user', JSON.stringify({ name: match.name, username: match.username }));
   } else {
     error.value = 'Identifiants incorrects';
   }
@@ -35,7 +39,22 @@ const handleLogin = () => {
 const handleLogout = () => {
   isAuthenticated.value = false;
   currentUser.value = null;
+  sessionStorage.removeItem('admin_auth');
+  sessionStorage.removeItem('admin_user');
 };
+
+onMounted(() => {
+  // Restaurer l'utilisateur depuis sessionStorage
+  const savedUser = sessionStorage.getItem('admin_user');
+  if (savedUser) {
+    try { currentUser.value = JSON.parse(savedUser); } catch { /* ignore */ }
+  }
+  // Appliquer le query param ?view=
+  const view = route.query.view as string;
+  if (view && ['products', 'categories', 'stock', 'customers'].includes(view)) {
+    currentView.value = view as typeof currentView.value;
+  }
+});
 
 const handleKeyPress = (event: KeyboardEvent) => {
   if (event.key === 'Enter') {

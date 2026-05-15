@@ -242,6 +242,64 @@ async function getEffectivePrice(idProduct: number, idProductAttribute: number, 
 }
 
 // ---------------------------------------------------------------------------
+// Stock
+// ---------------------------------------------------------------------------
+async function decreaseStock(idProduct: number, idProductAttribute: number, qty: number, log: (msg: string) => void): Promise<void> {
+  const res = await api.get(
+    `/stock_availables?filter[id_product]=[${idProduct}]&filter[id_product_attribute]=[${idProductAttribute}]&display=full&output_format=JSON`,
+    { validateStatus: () => true }
+  );
+  const items = res.data?.stock_availables;
+  if (!Array.isArray(items) || items.length === 0) {
+    log(`Stock introuvable pour produit ID ${idProduct} (attr ${idProductAttribute})`);
+    return;
+  }
+  const sa = items[0];
+  const stockId = parseInt(String(sa.id));
+  const currentQty = parseInt(String(sa.quantity)) || 0;
+  const newQty = Math.max(0, currentQty - qty);
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_available>
+    <id><![CDATA[${stockId}]]></id>
+    <id_product><![CDATA[${idProduct}]]></id_product>
+    <id_product_attribute><![CDATA[${idProductAttribute}]]></id_product_attribute>
+    <id_shop><![CDATA[${sa.id_shop || '1'}]]></id_shop>
+    <id_shop_group><![CDATA[${sa.id_shop_group || '0'}]]></id_shop_group>
+    <quantity><![CDATA[${newQty}]]></quantity>
+    <depends_on_stock><![CDATA[${sa.depends_on_stock || '0'}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${sa.out_of_stock || '2'}]]></out_of_stock>
+    <location><![CDATA[${sa.location || ''}]]></location>
+  </stock_available>
+</prestashop>`;
+  await api.put(`/stock_availables/${stockId}?output_format=JSON`, xml, { headers: XML_HEADERS, validateStatus: () => true });
+  log(`Stock produit ID ${idProduct}${idProductAttribute ? ` (combo ${idProductAttribute})` : ''} : ${currentQty} → ${newQty}`);
+}
+
+// ---------------------------------------------------------------------------
+// Paiement
+// ---------------------------------------------------------------------------
+async function createOrderPayment(orderId: number, amount: number, dateAdd: string): Promise<void> {
+  const orderRes = await api.get(`/orders/${orderId}?output_format=JSON`, { validateStatus: () => true });
+  const reference = orderRes.data?.order?.reference;
+  if (!reference) return;
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <order_payment>
+    <order_reference><![CDATA[${reference}]]></order_reference>
+    <id_currency><![CDATA[1]]></id_currency>
+    <amount><![CDATA[${amount.toFixed(6)}]]></amount>
+    <payment_method><![CDATA[Paiement à la livraison]]></payment_method>
+    <conversion_rate><![CDATA[1.000000]]></conversion_rate>
+    <date_add><![CDATA[${dateAdd} 00:00:00]]></date_add>
+  </order_payment>
+</prestashop>`;
+  await api.post('/order_payments?output_format=JSON', xml, { headers: XML_HEADERS, validateStatus: () => true });
+}
+
+// ---------------------------------------------------------------------------
 // Transporteur par défaut
 // ---------------------------------------------------------------------------
 let cachedCarrierId: number | null = null;
@@ -571,8 +629,22 @@ export async function importFichier3(
         log('info', `Ligne ${rowNum} (${email}) : état vide → panier conservé sans commande`);
       } else {
         const stateId = await findOrderStateId(etat);
+        const totalTTC = orderLines.reduce((s, l) => s + l.priceTTC * l.qty, 0);
         const idOrder = await createOrder(idCustomer, idAddress, idCart, idCarrier, stateId, dateAdd, orderLines);
         log('success', `Ligne ${rowNum} (${email}) : commande créée → ID ${idOrder} (état "${etat}" → ID état ${stateId})`);
+
+        // ── 6. Décrémenter le stock ──
+        for (const line of orderLines) {
+          await decreaseStock(line.idProduct, line.idProductAttribute, line.qty, (msg) => log('info', `  ↓ ${msg}`));
+        }
+
+        // ── 7. Enregistrer le paiement ──
+        try {
+          await createOrderPayment(idOrder, totalTTC, dateAdd);
+          log('success', `Ligne ${rowNum} : paiement enregistré (${totalTTC.toFixed(2)} TTC)`);
+        } catch (payErr: any) {
+          log('warning', `Ligne ${rowNum} : paiement non enregistré — ${payErr.message}`);
+        }
       }
 
       successCount++;

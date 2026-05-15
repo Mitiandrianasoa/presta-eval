@@ -178,6 +178,7 @@ function xmlCombination(idProduct: number, reference: string, karazany: string, 
     <id_product><![CDATA[${idProduct}]]></id_product>
     <reference><![CDATA[${reference}-${karazany}]]></reference>
     <price><![CDATA[0]]></price>
+    <minimal_quantity><![CDATA[1]]></minimal_quantity>
     <quantity><![CDATA[0]]></quantity>
     <associations>
       <product_option_values>
@@ -193,7 +194,7 @@ function xmlCombination(idProduct: number, reference: string, karazany: string, 
 // ---------------------------------------------------------------------------
 async function getStockAvailableId(idProduct: number, idProductAttribute: number): Promise<number> {
   const res = await api.get(
-    `/stock_availables?filter[id_product]=${idProduct}&filter[id_product_attribute]=${idProductAttribute}&output_format=JSON`,
+    `/stock_availables?filter[id_product]=[${idProduct}]&filter[id_product_attribute]=[${idProductAttribute}]&output_format=JSON`,
     { validateStatus: () => true }
   );
   const items = res.data?.stock_availables;
@@ -202,13 +203,22 @@ async function getStockAvailableId(idProduct: number, idProductAttribute: number
 }
 
 async function updateStock(id: number, idProduct: number, idProductAttribute: number, qty: number): Promise<void> {
+  // GET complet requis : PrestaShop fait un PUT full-replace, les champs absents sont remis à 0
+  const getRes = await api.get(`/stock_availables/${id}?output_format=JSON`, { validateStatus: () => true });
+  const sa = getRes.data?.stock_available ?? {};
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <stock_available>
     <id><![CDATA[${id}]]></id>
     <id_product><![CDATA[${idProduct}]]></id_product>
     <id_product_attribute><![CDATA[${idProductAttribute}]]></id_product_attribute>
+    <id_shop><![CDATA[${sa.id_shop || '1'}]]></id_shop>
+    <id_shop_group><![CDATA[${sa.id_shop_group || '0'}]]></id_shop_group>
     <quantity><![CDATA[${qty}]]></quantity>
+    <depends_on_stock><![CDATA[${sa.depends_on_stock || '0'}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${sa.out_of_stock || '2'}]]></out_of_stock>
+    <location><![CDATA[${sa.location || ''}]]></location>
   </stock_available>
 </prestashop>`;
   await api.put(`/stock_availables/${id}?output_format=JSON`, xml, { headers: XML_HEADERS, validateStatus: () => true });

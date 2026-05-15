@@ -29,7 +29,7 @@ export const useCustomerStore = defineStore('customer', {
       this.loading = true;
       this.error = null;
       try {
-        const res = await api.get('/customers?output_format=XML&display=full&limit=5000');
+        const res = await api.get('/customers?output_format=XML&display=full&limit=5000', { validateStatus: () => true });
         this.customers = Array.from(parse(res.data).querySelectorAll('customer')).map(el => ({
           id: text(el, 'id'),
           email: text(el, 'email'),

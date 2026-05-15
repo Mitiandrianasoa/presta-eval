@@ -130,10 +130,18 @@ function xmlProduct(
     <price><![CDATA[${price.toFixed(6)}]]></price>${wholesale}
     <available_date><![CDATA[${availableDate}]]></available_date>
     <active><![CDATA[1]]></active>
+    <state><![CDATA[1]]></state>
+    <product_type><![CDATA[standard]]></product_type>
+    <visibility><![CDATA[both]]></visibility>
+    <available_for_order><![CDATA[1]]></available_for_order>
+    <online_only><![CDATA[0]]></online_only>
+    <minimal_quantity><![CDATA[1]]></minimal_quantity>
     <name><language id="1"><![CDATA[${name}]]></language></name>
     <link_rewrite><language id="1"><![CDATA[${slug}]]></language></link_rewrite>
     <description><language id="1"><![CDATA[]]></language></description>
     <description_short><language id="1"><![CDATA[]]></language></description_short>
+    <meta_title><language id="1"><![CDATA[${name}]]></language></meta_title>
+    <meta_description><language id="1"><![CDATA[]]></language></meta_description>
     <associations>
       <categories>
         <category><id><![CDATA[${idCategory}]]></id></category>
@@ -319,9 +327,11 @@ export async function importFichier1(
       continue;
     }
 
-    const price = parseFlexiblePrice(priceRaw);
+    const priceTTC = parseFlexiblePrice(priceRaw);
     const wholesalePrice = purchaseRaw ? parseFlexiblePrice(purchaseRaw) : 0;
     const taxRate = parseTaxRate(taxRaw);
+    // HT = prix_ttc × (1 − taxe/100)
+    const priceHT = taxRate > 0 ? priceTTC * (1 - taxRate / 100) : priceTTC;
     const availableDate = parseFlexibleDate(dateRaw);
     const idCategory = categoryMap.get(catName) ?? 0;
     const idTaxGroup = taxGroupMap.get(taxRate) ?? 0;
@@ -334,8 +344,8 @@ export async function importFichier1(
     }
 
     try {
-      const pid = await createProduct(name, reference, price, wholesalePrice, idCategory, idTaxGroup, availableDate);
-      log('success', `Ligne ${rowNum} : "${name}" (réf. ${reference || '—'}, prix ${price}) → ID ${pid}`);
+      const pid = await createProduct(name, reference, priceHT, wholesalePrice, idCategory, idTaxGroup, availableDate);
+      log('success', `Ligne ${rowNum} : "${name}" (réf. ${reference || '—'}, HT ${priceHT.toFixed(4)}, TTC ${priceTTC}) → ID ${pid}`);
       successCount++;
     } catch (err: any) {
       log('error', `Ligne ${rowNum} ("${name}") : ${apiError(err)}`);

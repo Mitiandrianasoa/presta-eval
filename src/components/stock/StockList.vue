@@ -149,7 +149,7 @@ const getStockClass = (quantity: number) => {
             <td>{{ stock.id }}</td>
             <td>{{ stock.id_product }}</td>
             <td class="product-name">{{ stock.product_name || 'Produit inconnu' }}</td>
-            <td>{{ stock.id_product_attribute || '-' }}</td>
+            <td>{{ stock.combination_name || (stock.id_product_attribute !== '0' ? `#${stock.id_product_attribute}` : '-') }}</td>
             <td>
               <div v-if="editingStock === stock.id" class="edit-quantity">
                 <input

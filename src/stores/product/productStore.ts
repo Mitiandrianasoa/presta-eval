@@ -57,10 +57,12 @@ export const useProductStore = defineStore('product', {
         let url = '/products?output_format=XML&display=full&limit=1000';
         if (categoryId) url += `&filter[id_category_default]=${categoryId}`;
 
-        const [pRes, cRes, sRes] = await Promise.all([
-          api.get(url),
-          api.get('/categories?output_format=XML&display=[id,name]&limit=1000'),
-          api.get('/stock_availables?output_format=XML&display=full&limit=1000'),
+        const [pRes, cRes, sRes, trRes, tRes] = await Promise.all([
+          api.get(url,                                                                    { validateStatus: () => true }),
+          api.get('/categories?output_format=XML&display=[id,name]&limit=1000',          { validateStatus: () => true }),
+          api.get('/stock_availables?output_format=XML&display=full&limit=1000',         { validateStatus: () => true }),
+          api.get('/tax_rules?display=full&output_format=XML&limit=1000',                { validateStatus: () => true }),
+          api.get('/taxes?display=full&output_format=XML&limit=1000',                    { validateStatus: () => true }),
         ]);
 
         const catMap: Record<string, string> = {};
@@ -78,22 +80,48 @@ export const useProductStore = defineStore('product', {
           }
         });
 
-        this.products = Array.from(parse(pRes.data).querySelectorAll('product')).map(el => {
+        // id_tax → taux réel
+        const idTaxToRate: Record<string, number> = {};
+        parse(tRes.data).querySelectorAll('tax').forEach(el => {
+          const id   = text(el, 'id');
+          const rate = parseFloat(text(el, 'rate')) || 0;
+          if (id && rate > 0) idTaxToRate[id] = rate;
+        });
+
+        // id_tax_rules_group → taux réel
+        const taxRateMap: Record<string, number> = {};
+        parse(trRes.data).querySelectorAll('tax_rule').forEach(el => {
+          const groupId = text(el, 'id_tax_rules_group');
+          const idTax   = text(el, 'id_tax');
+          if (groupId && idTax && idTaxToRate[idTax]) {
+            taxRateMap[groupId] = idTaxToRate[idTax];
+          }
+        });
+
+        const productEls = Array.from(parse(pRes.data).querySelectorAll('product'));
+        this.products = productEls.map(el => {
           const id    = text(el, 'id');
           const imgId = text(el, 'id_default_image')
                      || el.querySelector('associations images image id')?.textContent?.trim()
                      || '';
+          const priceHT    = parseFloat(text(el, 'price')) || 0;
+          const idTaxGroup = text(el, 'id_tax_rules_group');
+          const taxRate    = taxRateMap[idTaxGroup] || 0;
+          // TTC = HT / (1 − taxe/100) — inverse de la formule d'import
+          const priceTTC   = taxRate > 0 ? priceHT / (1 - taxRate / 100) : priceHT;
+
           return {
             id,
             name:                lang(el, 'name'),
-            price:               text(el, 'price'),
+            price:               priceHT.toFixed(2),
             reference:           text(el, 'reference'),
             id_category_default: text(el, 'id_category_default'),
+            id_tax_rules_group:  idTaxGroup,
             active:              text(el, 'active'),
             category:            catMap[text(el, 'id_category_default')] || '—',
             stock:               stockMap[id] ?? 0,
             stock_available_id:  stockIdMap[id] || '',
-            price_ttc:           (parseFloat(text(el, 'price')) * 1.2).toFixed(2),
+            price_ttc:           priceTTC.toFixed(2),
             img:                 imgId ? `/api/images/products/${id}/${imgId}/small_default` : null,
           };
         });

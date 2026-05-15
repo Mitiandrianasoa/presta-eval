@@ -2,12 +2,12 @@
 <template>
   <div class="import-layout">
     <Sidebar
-      @show-products="handleNavigation"
-      @show-categories="handleNavigation"
-      @show-stock="handleNavigation"
-      @show-customers="handleNavigation"
-      @show-brands-suppliers="handleNavigation"
-      @show-import="handleNavigation"
+      @show-products="() => handleNavigation('products')"
+      @show-categories="() => handleNavigation('categories')"
+      @show-stock="() => handleNavigation('stock')"
+      @show-customers="() => handleNavigation('customers')"
+      @show-brands-suppliers="() => handleNavigation('products')"
+      @show-import="() => handleNavigation('import')"
     />
 
     <div class="import-container">
@@ -511,8 +511,12 @@ function logIcon(level: ImportLog['level']): string {
   return icons[level] ?? 'ℹ';
 }
 
-const handleNavigation = (event: string) => {
-  console.log('Navigation:', event);
+const handleNavigation = (view: string) => {
+  if (view === 'import') {
+    router.push('/import');
+  } else {
+    router.push(`/admin?view=${view}`);
+  }
 };
 
 const triggerFileInput = (type: string) => {

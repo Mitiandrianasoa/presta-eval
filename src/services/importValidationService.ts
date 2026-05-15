@@ -63,7 +63,14 @@ export function validateFichier1(rows: Record<string, any>[], filename = 'Fichie
     return errors;
   }
 
-  const REQUIRED = ['nom', 'reference', 'prix_ttc', 'taxe', 'categorie', 'date_availability_produit'];
+  const REQUIRED: RequiredCol[] = [
+    { primary: 'nom',                      aliases: ['name'] },
+    { primary: 'reference',                aliases: ['ref'] },
+    { primary: 'prix_ttc',                 aliases: ['prix', 'price'] },
+    { primary: 'taxe',                     aliases: ['taux', 'tva', 'tax'] },
+    { primary: 'categorie',                aliases: ['category', 'cat'] },
+    { primary: 'date_availability_produit', aliases: ['date_produit', 'date'] },
+  ];
   errors.push(...checkColumns(Object.keys(rows[0]), REQUIRED, filename));
 
   for (let i = 0; i < rows.length; i++) {
@@ -121,7 +128,10 @@ export function validateFichier2(rows: Record<string, any>[], filename = 'Fichie
     return errors;
   }
 
-  const REQUIRED = ['reference', 'stock_initial'];
+  const REQUIRED: RequiredCol[] = [
+    { primary: 'reference',    aliases: ['ref'] },
+    { primary: 'stock_initial', aliases: ['stock', 'qty', 'quantite'] },
+  ];
   errors.push(...checkColumns(Object.keys(rows[0]), REQUIRED, filename));
 
   for (let i = 0; i < rows.length; i++) {
@@ -172,7 +182,14 @@ export function validateFichier3(rows: Record<string, any>[], filename = 'Fichie
     return errors;
   }
 
-  const REQUIRED = ['date', 'nom', 'email', 'pwd', 'adresse', 'achat'];
+  const REQUIRED: RequiredCol[] = [
+    { primary: 'date',    aliases: ['date_add'] },
+    { primary: 'nom',     aliases: ['name'] },
+    { primary: 'email',   aliases: ['mail'] },
+    { primary: 'pwd',     aliases: ['password', 'mot_de_passe', 'mdp'] },
+    { primary: 'adresse', aliases: ['address', 'addr'] },
+    { primary: 'achat',   aliases: ['commande', 'order'] },
+  ];
   errors.push(...checkColumns(Object.keys(rows[0]), REQUIRED, filename));
 
   for (let i = 0; i < rows.length; i++) {
