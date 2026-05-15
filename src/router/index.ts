@@ -17,13 +17,16 @@ import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
 import ConfigView from '../views/backoffice/config/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.vue';
 import OrderView from '../views/backoffice/order/OrderView.vue';
-import CanceledOrders from '@/components/order/CanceledOrders.vue';
-import CartList from '@/components/order/CartList.vue';
-import PaymentList from '@/components/order/PaymentList.vue';
-import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
-import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
-import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
-import ImportPhoto from '@/views/backoffice/import/ImportPhoto.vue';
+// import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
+// import ImportView from '../views/backoffice/import/ImportView.vue';
+import CanceledOrders from '../components/order/CanceledOrders.vue';
+import CartList from '../components/order/CartList.vue';
+import PaymentList from '../components/order/PaymentList.vue';
+
+import ImportProduits from '../views/backoffice/import/ImportProduits.vue';
+import ImportDeclinaison from '../views/backoffice/import/ImportDeclinaison.vue';
+import ImportOrder from '../views/backoffice/import/ImportOrder.vue';
+import ImportPhoto from '../views/backoffice/import/ImportPhoto.vue';
 
 const routes = [
   // Frontoffice Routes

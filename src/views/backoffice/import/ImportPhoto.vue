@@ -1,7 +1,6 @@
 <template>
   <div class="import-container">
     <h2>Importateur PrestaShop - Photos Produits (ZIP)</h2>
-    
     <div class="upload-zone">
       <input 
         type="file" 

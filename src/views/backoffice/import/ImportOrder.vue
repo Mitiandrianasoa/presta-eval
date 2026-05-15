@@ -1,7 +1,6 @@
 <template>
   <div class="import-container">
     <h2>Importateur PrestaShop - Fichier 3 (Commandes)</h2>
-    
     <div class="upload-zone">
       <input type="file" accept=".csv" @change="handleFileUpload" />
       <button :disabled="!csvData.length || isImporting" @click="lancerImportation" class="btn-import">

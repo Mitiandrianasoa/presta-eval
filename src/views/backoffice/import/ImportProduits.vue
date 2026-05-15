@@ -119,20 +119,20 @@ const handleFileUpload = (event) => {
         // Formule: HT = TTC / (1 + taux/100)
         let prixHt;
         if (tauxDecimal > 0 && prixTtc > 0) {
-          prixHt = prixTtc / (1 + (tauxDecimal / 100));
+          prixHt = prixTtc * (1 - (tauxDecimal / 100));
         } else {
           prixHt = prixTtc; // Si pas de taxe, HT = TTC
         }
         
         // ✅ ÉTAPE 6: Arrondir à 6 décimales (format PrestaShop)
-        const prixHtFormate = prixHt.toFixed(6);
+        const prixHtFormate = prixHt;
         
         console.log('💰 Calcul prix:', {
           reference: row.reference,
           prix_ttc: prixTtc,
           taux: tauxDecimal,
           prix_ht_calcule: prixHtFormate,
-          verification: `HT ${prixHtFormate} * ${(1 + tauxDecimal/100)} = ${(parseFloat(prixHtFormate) * (1 + tauxDecimal/100)).toFixed(2)}`
+          verification: `HT ${prixHtFormate} * ${(1 - tauxDecimal/100)} = ${(parseFloat(prixHtFormate) * (1 - tauxDecimal/100)).toFixed(2)}`
         });
 
         // ✅ ÉTAPE 7: Normalisation de la date
