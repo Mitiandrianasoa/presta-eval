@@ -162,8 +162,8 @@ const initials = (firstname: string, lastname: string) =>
 
 onMounted(async () => {
   // Si déjà complètement logué, aller directement à /home
-  const token = localStorage.getItem('prestashop_token');
-  const user = localStorage.getItem('prestashop_user');
+  const token = sessionStorage.getItem('prestashop_token');
+  const user = sessionStorage.getItem('prestashop_user');
   if (token && user) {
     router.push('/home');
     return;
@@ -211,7 +211,7 @@ const handleContinue = () => {
   } else {
     // Utilisateur réel : stocker la pré-sélection (email) pour pré-remplir LoginView
     sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
-    router.push('/home');
+    router.push('/login');
   }
 };
 </script>

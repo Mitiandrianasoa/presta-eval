@@ -1,53 +1,92 @@
 <template>
   <div class="login-page">
-    <div class="login-container">
-      <div class="login-form">
+    <FrontHeader />
+
+    <div class="login-wrap">
+      <div class="login-container">
+
+        <!-- Header -->
         <div class="login-header">
+          <div class="user-avatar" v-if="preselectedUser && preselectedUser.id !== 'anon'">
+            {{ initials(preselectedUser.firstname, preselectedUser.lastname) }}
+          </div>
           <h1>Connexion</h1>
-          <p>Accédez à votre compte</p>
+          <p v-if="preselectedUser && preselectedUser.id !== 'anon'">
+            Entrez votre mot de passe pour continuer en tant que
+            <strong>{{ preselectedUser.firstname }} {{ preselectedUser.lastname }}</strong>
+          </p>
+          <p v-else>Connectez-vous à votre compte</p>
         </div>
 
-        <form @submit.prevent="handleLogin" class="form">
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              placeholder="votre@email.com"
-              required
-              class="form-input"
-            />
-          </div>
+        <!-- Formulaire -->
+        <div class="form-group">
+          <label for="email">Adresse e-mail</label>
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            placeholder="exemple@email.com"
+            class="form-input"
+            :readonly="!!preselectedUser && preselectedUser.id !== 'anon'"
+            autocomplete="email"
+          />
+          <router-link to="/" class="change-user-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            Changer d'utilisateur
+          </router-link>
+        </div>
 
-          <div class="form-group">
-            <label for="password">Mot de passe</label>
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <div class="password-wrap">
             <input
               id="password"
               v-model="password"
-              type="password"
-              placeholder="Votre mot de passe"
-              required
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="••••••••"
               class="form-input"
+              autocomplete="current-password"
+              @keyup.enter="handleLogin"
             />
+            <button class="toggle-password" type="button" @click="showPassword = !showPassword">
+              <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
           </div>
-
-          <div v-if="error" class="error-message">
-            {{ error }}
-          </div>
-
-          <button type="submit" class="login-btn" :disabled="loading">
-            <span v-if="loading">Connexion...</span>
-            <span v-else>Se connecter</span>
-          </button>
-        </form>
-
-        <div class="login-footer">
-          <p>Pas encore de compte ?</p>
-          <router-link to="/register" class="register-link">
-            S'inscrire
-          </router-link>
         </div>
+
+        <!-- Bouton connexion -->
+        <button
+          class="login-btn"
+          :disabled="!email || !password || connecting"
+          @click="handleLogin"
+        >
+          <span v-if="connecting">
+            <span class="spinner spinner-white"></span> Connexion…
+          </span>
+          <span v-else>Se connecter</span>
+        </button>
+
+        <!-- Lien register -->
+        <p class="register-link">
+          Pas encore de compte ?
+          <router-link to="/register">Créer un compte</router-link>
+        </p>
+
       </div>
     </div>
   </div>
@@ -56,74 +95,74 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../../../api/api';
+import FrontHeader from '../../../components/FrontHeader.vue';
 
 const router = useRouter();
 
-const email = ref('');
-const password = ref('');
-const loading = ref(false);
-const error = ref('');
+interface Customer {
+  id: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  active: string;
+}
 
-// Vérifier si l'utilisateur est déjà connecté
+const email        = ref('');
+const password     = ref('');
+const showPassword = ref(false);
+const connecting   = ref(false);
+const preselectedUser = ref<Customer | null>(null);
+
+const initials = (firstname: string, lastname: string) =>
+  ((firstname?.[0] || '?') + (lastname?.[0] || '?')).toUpperCase();
+
 onMounted(() => {
-  if (sessionStorage.getItem('prestashop_token') && sessionStorage.getItem('prestashop_user')) {
-    router.push('/admin/dashboard');
+  // Déjà connecté → aller à /home
+  const token = sessionStorage.getItem('prestashop_token');
+  const user  = sessionStorage.getItem('prestashop_user');
+  if (token && user) {
+    router.push('/home');
+    return;
+  }
+
+  // Récupérer l'utilisateur pré-sélectionné depuis UserPickerView
+  const raw = sessionStorage.getItem('prestashop_preselected_user');
+  if (raw) {
+    try {
+      const parsed: Customer = JSON.parse(raw);
+      preselectedUser.value = parsed;
+      if (parsed.id !== 'anon') {
+        email.value = parsed.email;
+      }
+    } catch {
+      // JSON invalide, on ignore
+    }
+  }
+
+  // Rien en sessionStorage → retour à la sélection
+  if (!preselectedUser.value) {
+    router.push('/');
   }
 });
 
-const handleLogin = async () => {
-  loading.value = true;
-  error.value = '';
+const handleLogin = () => {
+  if (!email.value || !password.value || !preselectedUser.value) return;
+  connecting.value = true;
 
-  try {
-    // 1. Chercher le customer par email dans PrestaShop
-    const response = await api.get(
-      `/customers?output_format=XML&display=full&filter[email]=[${email.value}]`
-    );
-    const parser = new DOMParser();
-    const xmlDoc  = parser.parseFromString(response.data, 'text/xml');
-    const customerEl = xmlDoc.querySelector('customer');
+  // On connecte directement avec l'utilisateur pré-sélectionné
+  // sans vérifier le mot de passe
+  const token = btoa(
+    JSON.stringify({ user: preselectedUser.value, exp: Date.now() + 24 * 60 * 60 * 1000 })
+  );
+  sessionStorage.setItem('prestashop_token', token);
+  sessionStorage.setItem('prestashop_user', JSON.stringify(preselectedUser.value));
 
-    if (!customerEl) {
-      error.value = 'Email non trouvé';
-      return;
-    }
+  // Nettoyer la pré-sélection
+  sessionStorage.removeItem('prestashop_preselected_user');
 
-    // 2. Vérifier que le compte est actif
-    const active = customerEl.querySelector('active')?.textContent?.trim();
-    if (active !== '1') {
-      error.value = 'Compte désactivé';
-      return;
-    }
-
-    // 3. Récupérer le secure_key PrestaShop — c'est le vrai token du customer
-    const secureKey = customerEl.querySelector('secure_key')?.textContent?.trim() || '';
-    if (!secureKey) {
-      error.value = 'Impossible de récupérer le token PrestaShop';
-      return;
-    }
-
-    // 4. Construire l'objet utilisateur
-    const user = {
-      id:        customerEl.querySelector('id')?.textContent?.trim()        || '',
-      email:     customerEl.querySelector('email')?.textContent?.trim()     || '',
-      firstname: customerEl.querySelector('firstname')?.textContent?.trim() || '',
-      lastname:  customerEl.querySelector('lastname')?.textContent?.trim()  || '',
-      phone:     customerEl.querySelector('phone')?.textContent?.trim()     || '',
-    };
-
-    // 5. Stocker le secure_key comme token de session + données utilisateur
-    sessionStorage.setItem('prestashop_token', secureKey);
-    sessionStorage.setItem('prestashop_user', JSON.stringify(user));
-
-    router.push('/admin/dashboard');
-
-  } catch (err: any) {
-    error.value = `Erreur: ${err.message}`;
-  } finally {
-    loading.value = false;
-  }
+  setTimeout(() => {
+    router.push('/home');
+  }, 400);
 };
 </script>
 
@@ -132,11 +171,18 @@ const handleLogin = async () => {
   min-height: 100vh;
   background: var(--bg);
   display: flex;
+  flex-direction: column;
+}
+
+.login-wrap {
+  flex: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
 }
 
+/* ── Card ─────────────────────────────────────────────── */
 .login-container {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -147,19 +193,29 @@ const handleLogin = async () => {
   padding: 2.5rem;
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
-}
-
+/* ── Header ───────────────────────────────────────────── */
 .login-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
+}
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.875rem;
 }
 
 .login-header h1 {
   color: var(--navy);
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0 0 0.4rem;
@@ -167,59 +223,102 @@ const handleLogin = async () => {
 
 .login-header p {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   margin: 0;
+  line-height: 1.5;
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
+.login-header p strong { color: var(--text); }
 
+/* ── Form ─────────────────────────────────────────────── */
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  margin-bottom: 1rem;
 }
 
 .form-group label {
-  font-weight: 500;
-  color: var(--text);
-  font-size: 0.875rem;
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.01em;
 }
 
 .form-input {
-  padding: 0.7rem 0.875rem;
+  width: 100%;
+  padding: 0.65rem 0.875rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.9rem;
   font-family: inherit;
   color: var(--text);
   background: var(--bg);
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
 }
-
-.form-input::placeholder { color: #94a3b8; }
 
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   background: var(--surface);
 }
 
-.error-message {
-  background: var(--error-bg);
-  color: var(--error);
-  border: 1px solid #fecaca;
-  padding: 0.7rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  text-align: center;
+.form-input[readonly] {
+  background: var(--surface);
+  color: var(--muted);
+  cursor: default;
 }
 
+.form-input::placeholder { color: #94a3b8; }
+
+/* ── Change user link ─────────────────────────────────── */
+.change-user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--primary);
+  text-decoration: none;
+  margin-top: 0.4rem;
+  transition: opacity 0.15s;
+}
+
+.change-user-link:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+/* ── Password toggle ──────────────────────────────────── */
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap .form-input {
+  padding-right: 2.5rem;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.toggle-password:hover { color: var(--text); }
+
+/* ── Login button ─────────────────────────────────────── */
 .login-btn {
+  width: 100%;
+  margin-top: 0.5rem;
   background: var(--primary);
   color: white;
   border: none;
@@ -228,38 +327,57 @@ const handleLogin = async () => {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: background 0.15s;
   font-family: inherit;
-  margin-top: 0.25rem;
 }
 
 .login-btn:hover:not(:disabled) { background: var(--primary-dark); }
 
-.login-btn:disabled { opacity: 0.65; cursor: not-allowed; }
-
-.login-footer {
-  text-align: center;
-  margin-top: 1.75rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
+.login-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.login-footer p {
-  color: var(--muted);
-  margin: 0 0 0.4rem;
-  font-size: 0.875rem;
-}
-
+/* ── Register link ────────────────────────────────────── */
 .register-link {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 1.25rem;
+  margin-bottom: 0;
+}
+
+.register-link a {
   color: var(--primary);
   text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.register-link:hover { text-decoration: underline; }
+.register-link a:hover { text-decoration: underline; }
+
+/* ── Spinner ──────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #cbd5e1;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+
+.spinner-white {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 @media (max-width: 480px) {
-  .login-container { padding: 1.75rem 1.5rem; }
+  .login-container { padding: 1.75rem 1.25rem; }
 }
 </style>
