@@ -244,7 +244,7 @@ onMounted(() => {
   loadCarrierInfo();
   
   // Vérifier si l'utilisateur est connecté
-  if (!localStorage.getItem('prestashop_token')) {
+  if (!sessionStorage.getItem('prestashop_token')) {
     router.push('/login?redirect=/checkout');
   }
 });

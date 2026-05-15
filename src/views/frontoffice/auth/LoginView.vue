@@ -94,10 +94,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
 
 const router = useRouter();
+const route  = useRoute();
 
 interface Customer {
   id: string;
@@ -139,9 +140,10 @@ onMounted(() => {
     }
   }
 
-  // Rien en sessionStorage → retour à la sélection
+  // Rien en sessionStorage → retour à la sélection (en conservant le redirect)
   if (!preselectedUser.value) {
-    router.push('/');
+    const redirectTo = route.query.redirect as string;
+    router.push(redirectTo ? `/?redirect=${encodeURIComponent(redirectTo)}` : '/');
   }
 });
 
@@ -160,8 +162,9 @@ const handleLogin = () => {
   // Nettoyer la pré-sélection
   sessionStorage.removeItem('prestashop_preselected_user');
 
+  const redirectTo = (route.query.redirect as string) || '/home';
   setTimeout(() => {
-    router.push('/home');
+    router.push(redirectTo);
   }, 400);
 };
 </script>

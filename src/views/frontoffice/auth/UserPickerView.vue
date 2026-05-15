@@ -129,10 +129,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import api from '../../../api/api';
 
 const router = useRouter();
+const route  = useRoute();
 
 interface Customer {
   id: string;
@@ -161,11 +162,12 @@ const initials = (firstname: string, lastname: string) =>
   ((firstname?.[0] || '?') + (lastname?.[0] || '?')).toUpperCase();
 
 onMounted(async () => {
-  // Si déjà complètement logué, aller directement à /home
+  // Si déjà complètement logué, aller directement à la destination
   const token = sessionStorage.getItem('prestashop_token');
   const user = sessionStorage.getItem('prestashop_user');
   if (token && user) {
-    router.push('/home');
+    const redirectTo = (route.query.redirect as string) || '/home';
+    router.push(redirectTo);
     return;
   }
   await loadUsers();
@@ -204,14 +206,14 @@ const selectAnon = () => {
 const handleContinue = () => {
   if (!selected.value) return;
 
+  const redirect = route.query.redirect as string;
+
   if (selected.value.id === 'anon') {
-    // Utilisateur anonyme : stocker en sessionStorage et aller sur /home
     sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
-    router.push('/home');
+    router.push(redirect || '/home');
   } else {
-    // Utilisateur réel : stocker la pré-sélection (email) pour pré-remplir LoginView
     sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
-    router.push('/login');
+    router.push(redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login');
   }
 };
 </script>
