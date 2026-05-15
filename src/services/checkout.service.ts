@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   PAYMENT_MODULE: 'ps_cashondelivery',
   CURRENCY_ID: '1',
   LANG_ID: '1',
-  ORDER_STATE: '2',
+  ORDER_STATE: '2',//PAYER 13 Awaiting for cash delivery 
 };
 
 export interface CartProduct {
@@ -389,7 +389,7 @@ const createOrderWithSchema = async (
     <total_paid_real>${totalProductsWt}</total_paid_real>
     <total_shipping>0</total_shipping>
     <secure_key>${customerToken}</secure_key>
-    <current_state>2</current_state>
+    <current_state>13</current_state>
     <valid>1</valid>
   </order>
 </prestashop>`;

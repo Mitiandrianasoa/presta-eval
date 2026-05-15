@@ -18,12 +18,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost/ETUDE/prestashop_edition_classic_version_8.2.6',
+        target: 'http://localhost/ETUDE/prestashop',
         changeOrigin: true,
         // ✅ Pas de rewrite : le chemin /api/... doit rester inchangé
         // ✅ Ajouter l'authentification pour que PrestaShop accepte la requête
         headers: {
-          'Authorization': 'Basic ' + Buffer.from('Y5FARITT7HA5X45HN3GRYBWZQF3MMFEJ:').toString('base64')
+          'Authorization': 'Basic ' + Buffer.from('XH2WM6KI15W9WXR4AB92KGVMALT6YXDY:').toString('base64')
         }
       }
     }

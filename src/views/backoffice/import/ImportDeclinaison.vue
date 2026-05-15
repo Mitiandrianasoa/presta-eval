@@ -144,9 +144,12 @@ const obtenirOuCreerGroupeAttribut = async (nomGroupe, registreRollback) => {
   if (!nomGroupe) return null;
   
   const cacheKey = nomGroupe.toLowerCase();
-  if (cacheGroupesAttributs[cacheKey]) return cacheGroupesAttributs[cacheKey];
+  if (cacheGroupesAttributs[cacheKey]) {
+    console.log(`📦 Cache: groupe "${nomGroupe}" = ${cacheGroupesAttributs[cacheKey]}`);
+    return cacheGroupesAttributs[cacheKey];
+  }
 
-  // Recherche
+  // Recherche du groupe existant
   try {
     const res = await api.get(`/product_options?filter[name]=${encodeURIComponent(nomGroupe)}&display=[id]`);
     const parser = new DOMParser();
@@ -155,6 +158,7 @@ const obtenirOuCreerGroupeAttribut = async (nomGroupe, registreRollback) => {
     if (groups.length > 0) {
       const id = groups[0].getElementsByTagName("id")[0]?.textContent?.trim();
       if (id) {
+        console.log(`✅ Groupe "${nomGroupe}" trouvé (ID: ${id})`);
         cacheGroupesAttributs[cacheKey] = id;
         return id;
       }
@@ -163,18 +167,48 @@ const obtenirOuCreerGroupeAttribut = async (nomGroupe, registreRollback) => {
     console.warn(`⚠️ Recherche groupe "${nomGroupe}":`, e);
   }
 
-  // Création avec createResourceWithBlankSchema
-  const result = await createResourceWithBlankSchema('product_options', {
-    is_color_group: '0',
-    group_type: 'select',
-    name: nomGroupe,
-    public_name: nomGroupe
-  });
+  // ✅ Création avec XML multilingue CORRECT
+  try {
+    const xmlGroupe = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <product_option>
+    <is_color_group><![CDATA[0]]></is_color_group>
+    <group_type><![CDATA[select]]></group_type>
+    <name>
+      <language id="1"><![CDATA[${nomGroupe}]]></language>
+      <language id="2"><![CDATA[${nomGroupe}]]></language>
+    </name>
+    <public_name>
+      <language id="1"><![CDATA[${nomGroupe}]]></language>
+      <language id="2"><![CDATA[${nomGroupe}]]></language>
+    </public_name>
+  </product_option>
+</prestashop>`;
 
-  const newId = result?.id || extractIdFromXml(result);
-  cacheGroupesAttributs[cacheKey] = newId;
-  registreRollback.push({ type: 'product_option', id: newId });
-  return newId;
+    console.log('📄 XML groupe:', xmlGroupe);
+
+    const response = await api.post('/product_options', xmlGroupe, {
+      headers: { 'Content-Type': 'application/xml; charset=utf-8' }
+    });
+
+    console.log('📥 Status création groupe:', response.status);
+    console.log('📥 Réponse:', response.data);
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, "application/xml");
+    const newId = xmlDoc.getElementsByTagName("id")[0]?.textContent?.trim();
+
+    if (!newId) throw new Error(`ID non trouvé pour le groupe: ${nomGroupe}`);
+
+    console.log(`✅ Groupe "${nomGroupe}" créé (ID: ${newId})`);
+    cacheGroupesAttributs[cacheKey] = newId;
+    registreRollback.push({ type: 'product_option', id: newId });
+    return newId;
+
+  } catch (error) {
+    console.error(`❌ Échec création groupe "${nomGroupe}":`, error);
+    throw error;
+  }
 };
 
 // 4. ÉTAPE 2 : Obtenir/Créer le Karazany (product_option_value) → id_attribute

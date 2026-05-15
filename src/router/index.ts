@@ -22,6 +22,8 @@ import CartList from '@/components/order/CartList.vue';
 import PaymentList from '@/components/order/PaymentList.vue';
 import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
 import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
+import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
+import ImportPhoto from '@/views/backoffice/import/ImportPhoto.vue';
 
 const routes = [
   // Frontoffice Routes
@@ -105,6 +107,16 @@ const routes = [
     path: '/admin/import/declinaisons',
     name: 'import-declinaisons',
     component: ImportDeclinaison
+  },
+  {
+    path: '/admin/import/order',
+    name: 'import-order',
+    component: ImportOrder
+  },
+   {
+    path: '/admin/import/photos',
+    name: 'import-photos',
+    component: ImportPhoto
   },
   {
     path: '/admin/orders',
