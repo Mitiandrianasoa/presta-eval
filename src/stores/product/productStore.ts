@@ -108,7 +108,7 @@ export const useProductStore = defineStore('product', {
           const idTaxGroup = text(el, 'id_tax_rules_group');
           const taxRate    = taxRateMap[idTaxGroup] || 0;
           // TTC = HT / (1 − taxe/100) — inverse de la formule d'import
-          const priceTTC   = taxRate > 0 ? priceHT / (1 - taxRate / 100) : priceHT;
+          const priceTTC   = taxRate > 0 ? priceHT * (1 + taxRate / 100) : priceHT;
 
           return {
             id,

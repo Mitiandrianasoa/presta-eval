@@ -393,7 +393,7 @@ const obtenirOuCreerGroupeTaxe = async (labelTaxe, tauxTaxe, idPays, cache, regi
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <tax_rule>
     <id_tax_rules_group>${idTaxRuleGroup}</id_tax_rules_group>
-    <id_country>${idPays || 3}</id_country>
+    <id_country>8</id_country>
     <id_state>0</id_state>
     <zipcode_from>0</zipcode_from>
     <zipcode_to>0</zipcode_to>
