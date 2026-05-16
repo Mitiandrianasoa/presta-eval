@@ -356,6 +356,17 @@ const createCartStepByStep = async (
 // ============================================
 // CRÉATION DE LA COMMANDE
 // ============================================
+
+const fetchRealSecureKey = async (customerId: string): Promise<string> => {
+  try {
+    const res = await api.get(`/customers/${customerId}?output_format=XML&display=full`);
+    const doc = new DOMParser().parseFromString(res.data, 'text/xml');
+    return doc.querySelector('customer secure_key')?.textContent?.trim() || '';
+  } catch {
+    return '';
+  }
+};
+
 const createOrderWithSchema = async (
   cartId: string,
   customerId: string,
@@ -363,18 +374,22 @@ const createOrderWithSchema = async (
   paymentMethod: string = DEFAULT_CONFIG.PAYMENT_METHOD
 ): Promise<any> => {
   console.log(`📋 Création simplifiée de la commande`);
-  
+
   try {
+    // Récupérer le vrai secure_key PS du client (MD5 dans ps_customer)
+    const secureKey = await fetchRealSecureKey(customerId);
+    if (!secureKey) throw new Error('secure_key client introuvable');
+
     // Récupérer les totaux du panier
     const cartResponse = await api.get(`/carts/${cartId}?output_format=XML&display=full`);
     const parser = new DOMParser();
     const cartDoc = parser.parseFromString(cartResponse.data, 'text/xml');
-    
+
     const getValue = (sel: string) => cartDoc.querySelector(sel)?.textContent?.trim() || '0';
-    
-    const totalProductsWt = getValue('cart total_products_wt') || '1';
-    const totalProducts = getValue('cart total_products') || '1';
-    
+
+    const totalProductsWt = getValue('cart total_products_wt') || '0';
+    const totalProducts = getValue('cart total_products') || '0';
+
     const orderXml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order>
@@ -391,9 +406,9 @@ const createOrderWithSchema = async (
     <total_products>${totalProducts}</total_products>
     <total_products_wt>${totalProductsWt}</total_products_wt>
     <total_paid>${totalProductsWt}</total_paid>
-    <total_paid_real>${totalProductsWt}</total_paid_real>
+    <total_paid_real>0</total_paid_real>
     <total_shipping>0</total_shipping>
-    <secure_key>${customerToken}</secure_key>
+    <secure_key>${secureKey}</secure_key>
     <current_state>13</current_state>
     <valid>1</valid>
   </order>
@@ -529,76 +544,19 @@ const createOrderWithSchema = async (
   }
 };
 
-// ✅ Fonction pour changer le statut
+// Changer le statut via order_histories (méthode officielle PS)
 const updateOrderState = async (orderId: string, newState: string) => {
-  try {
-    console.log(`🔄 Changement du statut de la commande ${orderId} → ${newState}`);
-
-    // Récupérer d'abord la commande complète pour ne pas écraser des champs requis
-    let fullOrderXml = '';
-    try {
-      const existing = await api.get(`/orders/${orderId}?output_format=XML&display=full`);
-      const existingDoc = new DOMParser().parseFromString(existing.data, 'text/xml');
-      const orderEl = existingDoc.querySelector('order');
-      if (orderEl) {
-        // Mettre à jour uniquement current_state et valid dans le XML récupéré
-        const stateEl = orderEl.querySelector('current_state');
-        if (stateEl) stateEl.textContent = newState;
-        const validEl = orderEl.querySelector('valid');
-        if (validEl) validEl.textContent = '1';
-        fullOrderXml = `<?xml version="1.0" encoding="UTF-8"?>\n<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">${orderEl.outerHTML}</prestashop>`;
-      }
-    } catch (_) {
-      // Si on ne peut pas récupérer la commande, on tente avec le XML minimal
-    }
-
-    const xml = fullOrderXml || `<?xml version="1.0" encoding="UTF-8"?>
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
-  <order>
-    <id>${orderId}</id>
-    <current_state>${newState}</current_state>
-    <valid>1</valid>
-  </order>
+  <order_history>
+    <id_order>${orderId}</id_order>
+    <id_order_state>${newState}</id_order_state>
+  </order_history>
 </prestashop>`;
 
-    const response = await api.put(`/orders/${orderId}?output_format=XML`, xml, {
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'Accept': 'application/xml'
-      }
-    });
-
-    console.log(`✅ Statut commande ${orderId} changé à ${newState}`);
-    return response.data;
-    
-  } catch (err: any) {
-    console.warn(`⚠️ Impossible de changer le statut de ${orderId}:`, err.message);
-    
-    // Essayer une 2ème fois
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
-  <order>
-    <id>${orderId}</id>
-    <current_state>${newState}</current_state>
-    <valid>1</valid>
-  </order>
-</prestashop>`;
-
-      await api.put(`/orders/${orderId}?output_format=XML`, xml, {
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'Accept': 'application/xml'
-        }
-      });
-      
-      console.log(`✅ Statut commande ${orderId} changé à ${newState} (2ème tentative)`);
-    } catch (err2) {
-      console.error(`❌ Échec définitif du changement de statut pour ${orderId}`);
-    }
-  }
+  await api.post('/order_histories?output_format=XML', xml, {
+    headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+  });
 };
 
 // ============================================
@@ -675,21 +633,6 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
       customerToken,
       cartData.paymentMethod || DEFAULT_CONFIG.PAYMENT_METHOD
     );
-    
-    // ✅ 4. Mettre à jour le statut de la commande en 13
-    if (order.id && order.id !== 'unknown') {
-      console.log(`🔄 Mise à jour du statut de la commande ${order.id} → 13`);
-      
-      try {
-        await updateOrderState(order.id, '13');
-        console.log(`✅ Statut de la commande ${order.id} mis à jour avec succès`);
-      } catch (updateError) {
-        console.warn(`⚠️ Échec de la mise à jour du statut:`, updateError);
-        // On continue même si la mise à jour échoue
-      }
-    } else {
-      console.warn('⚠️ ID commande inconnu, impossible de mettre à jour le statut');
-    }
     
     console.log('🎉 Checkout terminé avec succès!');
     

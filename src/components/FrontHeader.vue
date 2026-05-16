@@ -9,7 +9,7 @@
       <nav class="main-nav">
         <router-link to="/" class="nav-link">Accueil</router-link>
         <router-link to="/products" class="nav-link">Produits</router-link>
-        <router-link v-if="isAuthenticated" to="/cart" class="nav-link cart-link">
+        <router-link to="/cart" class="nav-link cart-link">
           Panier
           <span v-if="cartItemCount" class="cart-count">{{ cartItemCount }}</span>
         </router-link>
@@ -89,12 +89,12 @@ const loadUser = () => {
 // Charger le panier
 const loadCart = () => {
   try {
-    const cartStr = sessionStorage.getItem('prestashop_cart');
+    const cartStr = localStorage.getItem('prestashop_cart');
     if (cartStr) {
       cart.value = JSON.parse(cartStr);
     }
-  } catch (err) {
-    console.error('Erreur lors du chargement du panier:', err);
+  } catch {
+    // silently ignore
   }
 };
 

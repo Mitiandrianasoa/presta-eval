@@ -25,6 +25,14 @@ const goToPayments = () => {
   router.push('/admin/payments');
 };
 
+const goToStockEntry = () => {
+  router.push('/admin/stock-entry');
+};
+
+const goToStockEvolution = () => {
+  router.push('/admin/stock-evolution');
+};
+
 const showBrandsSuppliers = () => {
   emit('show-brands-suppliers');
 };
@@ -100,6 +108,25 @@ const goToDashboard = () => {
           <line x1="16" y1="7" x2="16" y2="7.01"/>
         </svg>
         <span>Stock</span>
+      </button>
+
+      <!-- Évolution du stock -->
+      <button @click="goToStockEvolution" class="menu-item main-item evo-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>Évolution stock</span>
+      </button>
+
+      <!-- Approvisionnement stock -->
+      <button @click="goToStockEntry" class="menu-item main-item stock-entry-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          <line x1="12" y1="11" x2="12" y2="17"/>
+          <line x1="9" y1="14" x2="15" y2="14"/>
+        </svg>
+        <span>Approvisionnement</span>
       </button>
 
       <!-- Gérer les clients -->

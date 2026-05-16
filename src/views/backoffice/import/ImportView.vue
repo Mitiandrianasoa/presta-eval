@@ -353,29 +353,50 @@
         </table>
       </div>
 
-      <!-- Rapport de validation (erreurs avant import) -->
-      <div v-if="validationErrors.length > 0" class="validation-section">
+      <!-- Rapport de validation (erreurs / avertissements avant import) -->
+      <div v-if="validationErrors.length > 0" class="validation-section" :class="validationHasOnlyWarnings ? 'validation-warn-only' : ''">
         <div class="validation-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="validation-icon">
+          <svg v-if="!validationHasOnlyWarnings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="validation-icon">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <h2>Import bloqué — {{ validationErrors.length }} erreur(s) détectée(s)</h2>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="validation-icon warn-icon">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <h2>
+            <template v-if="!validationHasOnlyWarnings">
+              Import bloqué —
+              <span v-if="validationErrorCount > 0">{{ validationErrorCount }} erreur(s)</span>
+              <span v-if="validationErrorCount > 0 && validationWarningCount > 0">, </span>
+              <span v-if="validationWarningCount > 0" class="warn-count">{{ validationWarningCount }} avertissement(s)</span>
+            </template>
+            <template v-else>
+              {{ validationWarningCount }} avertissement(s) — import continué
+            </template>
+          </h2>
           <button @click="validationErrors = []" class="btn-clear-logs">Fermer</button>
         </div>
-        <p class="validation-subtitle">Corrigez les erreurs ci-dessous dans vos fichiers CSV et relancez l'import.</p>
+        <p class="validation-subtitle">
+          <template v-if="!validationHasOnlyWarnings">Corrigez les erreurs ci-dessous dans vos fichiers CSV et relancez l'import.</template>
+          <template v-else>Ces avertissements n'ont pas bloqué l'import. Renommez les colonnes indiquées pour les supprimer.</template>
+        </p>
         <div class="validation-table-wrap">
           <table class="validation-table">
             <thead>
               <tr>
+                <th>Sévérité</th>
                 <th>Fichier</th>
                 <th>Ligne</th>
                 <th>Colonne</th>
                 <th>Valeur</th>
-                <th>Erreur</th>
+                <th>Message</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(err, idx) in validationErrors" :key="idx">
+              <tr v-for="(err, idx) in validationErrors" :key="idx" :class="err.severity === 'warning' ? 'val-row-warn' : 'val-row-error'">
+                <td class="val-severity">
+                  <span v-if="err.severity === 'error'" class="sev-badge sev-error">Erreur</span>
+                  <span v-else class="sev-badge sev-warn">Avertis.</span>
+                </td>
                 <td class="val-file">{{ err.file }}</td>
                 <td class="val-line">{{ err.line === 0 ? 'En-tête' : err.line }}</td>
                 <td class="val-col">{{ err.column }}</td>
@@ -505,6 +526,10 @@ const importStats = computed(() => ({
   error: importLogs.value.filter(l => l.level === 'error').length,
   warning: importLogs.value.filter(l => l.level === 'warning').length,
 }));
+
+const validationErrorCount  = computed(() => validationErrors.value.filter(e => e.severity === 'error').length);
+const validationWarningCount = computed(() => validationErrors.value.filter(e => e.severity === 'warning').length);
+const validationHasOnlyWarnings = computed(() => validationErrorCount.value === 0 && validationWarningCount.value > 0);
 
 function logIcon(level: ImportLog['level']): string {
   const icons: Record<string, string> = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' };
@@ -690,11 +715,15 @@ const importAll = async () => {
 
   if (errors.length > 0) {
     validationErrors.value = errors;
+  } else {
+    validationErrors.value = [];
+  }
+
+  if (errors.some(e => e.severity === 'error')) {
     importLogs.value = [];
     return;
   }
 
-  validationErrors.value = [];
   importLogs.value = [];
 
   // ── Étape 2 : Import séquentiel fichier1 → fichier2 → fichier3 ──
@@ -1324,8 +1353,43 @@ p { color: #7f8c8d; margin: 0; }
 .validation-table tr:hover td { background: #fff0f0; }
 
 .val-file  { color: #2c3e50; font-weight: 600; white-space: nowrap; }
-.val-line  { color: #e74c3c; font-weight: 700; text-align: center; white-space: nowrap; }
+.val-line  { font-weight: 700; text-align: center; white-space: nowrap; }
 .val-col   { color: #8e44ad; font-family: monospace; white-space: nowrap; }
 .val-val   { color: #7f8c8d; font-family: monospace; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.val-msg   { color: #c0392b; }
+.val-msg   { }
+
+/* Row coloring by severity */
+.val-row-error td { background: #fff5f5; }
+.val-row-error .val-line { color: #e74c3c; }
+.val-row-error .val-msg  { color: #c0392b; }
+.val-row-error:hover td  { background: #ffecec; }
+
+.val-row-warn td  { background: #fffbee; }
+.val-row-warn .val-line { color: #e67e22; }
+.val-row-warn .val-msg  { color: #b7770d; }
+.val-row-warn:hover td  { background: #fff3cc; }
+
+/* Severity badge */
+.val-severity { white-space: nowrap; }
+.sev-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.sev-error { background: #fce4e4; color: #c0392b; }
+.sev-warn  { background: #fef3cd; color: #b7770d; }
+
+/* Warnings-only section variant */
+.validation-warn-only {
+  background: #fffbee;
+  border-color: #e67e22;
+}
+.validation-warn-only .validation-header h2 { color: #b7770d; }
+.validation-warn-only .validation-table th  { background: #fef3cd; color: #b7770d; border-bottom-color: #e67e22; }
+.warn-icon { color: #e67e22 !important; }
+.warn-count { color: #e67e22; }
 </style>

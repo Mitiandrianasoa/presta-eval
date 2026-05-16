@@ -85,6 +85,34 @@
               <span>Réinitialiser</span>
             </button>
           </div>
+
+          <!-- Filtres attributs (couleur / taille) -->
+          <div v-if="colorOptions.length > 0 || sizeOptions.length > 0" class="attribute-filters">
+            <div v-if="colorOptions.length > 0" class="attr-filter-row">
+              <span class="attr-label"><i class="fas fa-palette"></i> Couleur :</span>
+              <div class="attr-chips">
+                <button
+                  v-for="opt in colorOptions"
+                  :key="opt.id"
+                  class="attr-chip"
+                  :class="{ active: selectedColors.includes(opt.id) }"
+                  @click="toggleColor(opt.id)"
+                >{{ opt.name }}</button>
+              </div>
+            </div>
+            <div v-if="sizeOptions.length > 0" class="attr-filter-row">
+              <span class="attr-label"><i class="fas fa-ruler-combined"></i> Taille :</span>
+              <div class="attr-chips">
+                <button
+                  v-for="opt in sizeOptions"
+                  :key="opt.id"
+                  class="attr-chip size-chip"
+                  :class="{ active: selectedSizes.includes(opt.id) }"
+                  @click="toggleSize(opt.id)"
+                >{{ opt.name }}</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Filtres actifs -->
@@ -110,6 +138,20 @@
               <i class="fas fa-money-bill-wave"></i>
               {{ formatPriceRange() }}
               <button @click="clearPriceRange" class="remove-filter">
+                <i class="fas fa-times"></i>
+              </button>
+            </span>
+            <span v-for="colorId in selectedColors" :key="'c' + colorId" class="filter-tag">
+              <i class="fas fa-palette"></i>
+              {{ getColorName(colorId) }}
+              <button @click="toggleColor(colorId)" class="remove-filter">
+                <i class="fas fa-times"></i>
+              </button>
+            </span>
+            <span v-for="sizeId in selectedSizes" :key="'s' + sizeId" class="filter-tag">
+              <i class="fas fa-ruler-combined"></i>
+              {{ getSizeName(sizeId) }}
+              <button @click="toggleSize(sizeId)" class="remove-filter">
                 <i class="fas fa-times"></i>
               </button>
             </span>
@@ -246,6 +288,8 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../../api/api';
 import FrontHeader from '../../../components/FrontHeader.vue';
+import { useAuth } from '../../../services/useAuth';
+import { guestCartService } from '../../../services/guestCartService';
 
 const router = useRouter();
 
@@ -261,9 +305,23 @@ const priceMin = ref<number | null>(null);
 const priceMax = ref<number | null>(null);
 const sortBy = ref('name-asc');
 
+// Filtres par attributs (couleur, taille)
+const selectedColors = ref<string[]>([]);
+const selectedSizes = ref<string[]>([]);
+const colorOptions = ref<{ id: string; name: string }[]>([]);
+const sizeOptions = ref<{ id: string; name: string }[]>([]);
+const productOptionsMap = ref<Record<string, string[]>>({});
+
 // Vérifier si des filtres sont actifs
 const hasActiveFilters = computed(() => {
-  return !!(searchQuery.value || selectedCategory.value || priceMin.value !== null || priceMax.value !== null);
+  return !!(
+    searchQuery.value ||
+    selectedCategory.value ||
+    priceMin.value !== null ||
+    priceMax.value !== null ||
+    selectedColors.value.length > 0 ||
+    selectedSizes.value.length > 0
+  );
 });
 
 // Panier
@@ -280,9 +338,9 @@ const formatPriceRange = () => {
   if (priceMin.value !== null && priceMax.value !== null) {
     return `${formatPriceNumber(priceMin.value)} - ${formatPriceNumber(priceMax.value)}`;
   } else if (priceMin.value !== null) {
-    return `≥ ${formatPriceNumber(priceMin.value)}`;
+    return `�?� ${formatPriceNumber(priceMin.value)}`;
   } else if (priceMax.value !== null) {
-    return `≤ ${formatPriceNumber(priceMax.value)}`;
+    return `�?� ${formatPriceNumber(priceMax.value)}`;
   }
   return '';
 };
@@ -326,7 +384,23 @@ const filteredProducts = computed(() => {
     return true;
   });
 
-  // 4. Trier les résultats
+  // 4. Filtrer par couleur
+  if (selectedColors.value.length > 0) {
+    filtered = filtered.filter(product => {
+      const opts = productOptionsMap.value[product.id] || [];
+      return selectedColors.value.some(id => opts.includes(id));
+    });
+  }
+
+  // 5. Filtrer par taille
+  if (selectedSizes.value.length > 0) {
+    filtered = filtered.filter(product => {
+      const opts = productOptionsMap.value[product.id] || [];
+      return selectedSizes.value.some(id => opts.includes(id));
+    });
+  }
+
+  // 6. Trier les résultats
   filtered.sort((a, b) => {
     switch (sortBy.value) {
       case 'name-asc':
@@ -356,7 +430,7 @@ const loadProducts = async () => {
       api.get('/stock_availables?output_format=XML&display=[id,id_product,id_product_attribute,quantity]&filter[id_product_attribute]=[0]&limit=1000'),
     ]);
 
-    // Construire une map produitId → quantité depuis stock_availables
+    // Construire une map produitId �?' quantité depuis stock_availables
     const parser = new DOMParser();
     const stockXml = parser.parseFromString(sRes.data, 'text/xml');
     const stockMap: Record<string, number> = {};
@@ -467,10 +541,12 @@ const saveCart = () => {
   localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
 };
 
+const { isLoggedIn } = useAuth();
+
 // Ajouter au panier
 const addToCart = (product: any) => {
   const existingItem = cart.value.find(item => item.id === product.id);
-  
+
   if (existingItem) {
     existingItem.quantity++;
   } else {
@@ -482,8 +558,12 @@ const addToCart = (product: any) => {
       quantity: 1
     });
   }
-  
+
   saveCart();
+
+  if (!isLoggedIn.value) {
+    guestCartService.sync(cart.value.map(i => ({ id: i.id, quantity: i.quantity })));
+  }
   
   // Animation feedback
   const button = event?.target as HTMLButtonElement;
@@ -510,21 +590,105 @@ const resetFilters = () => {
   priceMin.value = null;
   priceMax.value = null;
   sortBy.value = 'name-asc';
+  selectedColors.value = [];
+  selectedSizes.value = [];
+};
+
+const toggleColor = (id: string) => {
+  const idx = selectedColors.value.indexOf(id);
+  if (idx === -1) selectedColors.value = [...selectedColors.value, id];
+  else selectedColors.value = selectedColors.value.filter(c => c !== id);
+};
+
+const toggleSize = (id: string) => {
+  const idx = selectedSizes.value.indexOf(id);
+  if (idx === -1) selectedSizes.value = [...selectedSizes.value, id];
+  else selectedSizes.value = selectedSizes.value.filter(s => s !== id);
+};
+
+const getColorName = (id: string) => colorOptions.value.find(c => c.id === id)?.name || id;
+const getSizeName  = (id: string) => sizeOptions.value.find(s => s.id === id)?.name || id;
+
+const loadAttributeFilters = async () => {
+  try {
+    const parser = new DOMParser();
+
+    const ogRes = await api.get('/product_options?output_format=XML&display=full');
+    const ogDoc = parser.parseFromString(ogRes.data, 'text/xml');
+
+    let colorGroupId = '';
+    let sizeGroupId  = '';
+
+    ogDoc.querySelectorAll('product_option').forEach(el => {
+      const id   = el.querySelector('id')?.textContent?.trim() || '';
+      const name = (
+        el.querySelector('name language')?.textContent?.trim() ||
+        el.querySelector('name')?.textContent?.trim() || ''
+      ).toLowerCase();
+      if (name.includes('couleur') || name.includes('color')) colorGroupId = id;
+      if (name.includes('taille') || name.includes('size'))   sizeGroupId  = id;
+    });
+
+    if (!colorGroupId && !sizeGroupId) return;
+
+    const ovRes = await api.get('/product_option_values?output_format=XML&display=full&limit=500');
+    const ovDoc = parser.parseFromString(ovRes.data, 'text/xml');
+
+    const colors: { id: string; name: string }[] = [];
+    const sizes:  { id: string; name: string }[] = [];
+
+    ovDoc.querySelectorAll('product_option_value').forEach(el => {
+      const id      = el.querySelector('id')?.textContent?.trim() || '';
+      const groupId = el.querySelector('id_product_option')?.textContent?.trim() || '';
+      const name    = el.querySelector('name language')?.textContent?.trim()
+                   || el.querySelector('name')?.textContent?.trim() || '';
+      if (!id || !name) return;
+      if (groupId === colorGroupId) colors.push({ id, name });
+      else if (groupId === sizeGroupId) sizes.push({ id, name });
+    });
+
+    colorOptions.value = colors;
+    sizeOptions.value  = sizes;
+
+    if (colors.length === 0 && sizes.length === 0) return;
+
+    const combRes = await api.get('/combinations?output_format=XML&display=full&limit=1000');
+    const combDoc = parser.parseFromString(combRes.data, 'text/xml');
+
+    const map: Record<string, string[]> = {};
+    combDoc.querySelectorAll('combination').forEach(el => {
+      const productId = el.querySelector('id_product')?.textContent?.trim() || '';
+      if (!productId) return;
+      const optValIds = Array.from(
+        el.querySelectorAll('associations product_option_values product_option_value id')
+      ).map(e => e.textContent?.trim() || '').filter(Boolean);
+      if (!map[productId]) map[productId] = [];
+      map[productId].push(...optValIds);
+    });
+
+    productOptionsMap.value = map;
+  } catch {
+    // attribute filters silently unavailable
+  }
 };
 
 // Utilitaires
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  return new Intl.NumberFormat('fr-MG', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(numPrice);
 };
 
 const formatPriceNumber = (price: number) => {
-  return new Intl.NumberFormat('fr-MG', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(price);
 };
 
@@ -537,6 +701,7 @@ onMounted(() => {
   loadProducts();
   loadCategories();
   loadCart();
+  loadAttributeFilters();
 });
 </script>
 
@@ -549,7 +714,7 @@ onMounted(() => {
   background: var(--bg);
 }
 
-/* ── Main ─────────────────────────────────────────────── */
+/* �"?�"? Main �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .products-main {
   padding: 3rem 0 5rem;
 }
@@ -572,7 +737,7 @@ onMounted(() => {
   margin: 0;
 }
 
-/* ── Filters ──────────────────────────────────────────── */
+/* �"?�"? Filters �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .filters-section {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -736,7 +901,7 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-/* ── Active filters ───────────────────────────────────── */
+/* �"?�"? Active filters �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .active-filters {
   margin-bottom: 1.5rem;
   padding: 0.75rem 1rem;
@@ -798,7 +963,7 @@ onMounted(() => {
   color: #ef4444;
 }
 
-/* ── Results info ─────────────────────────────────────── */
+/* �"?�"? Results info �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .results-info {
   margin-bottom: 1.5rem;
   font-size: 0.875rem;
@@ -809,7 +974,7 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
-/* ── Loading / Error ──────────────────────────────────── */
+/* �"?�"? Loading / Error �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .loading, .error {
   text-align: center;
   padding: 4rem;
@@ -833,7 +998,7 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-/* ── Products grid ────────────────────────────────────── */
+/* �"?�"? Products grid �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1011,7 +1176,7 @@ onMounted(() => {
   background: var(--success);
 }
 
-/* ── No results ───────────────────────────────────────── */
+/* �"?�"? No results �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .no-results {
   text-align: center;
   padding: 5rem 2rem;
@@ -1054,7 +1219,7 @@ onMounted(() => {
   background: var(--primary-dark);
 }
 
-/* ── Footer ───────────────────────────────────────────── */
+/* �"?�"? Footer �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .front-footer {
   background: var(--navy);
   color: white;
@@ -1105,14 +1270,14 @@ onMounted(() => {
   color: #cbd5e1;
 }
 
-/* ── Container ────────────────────────────────────────── */
+/* �"?�"? Container �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 1rem;
 }
 
-/* ── CSS Variables ────────────────────────────────────── */
+/* �"?�"? CSS Variables �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 :root {
   --bg: #f8fafc;
   --surface: #ffffff;
@@ -1132,7 +1297,75 @@ onMounted(() => {
   --transition: 0.2s ease;
 }
 
-/* ── Responsive ───────────────────────────────────────── */
+/* ── Attribute filters ─────────────────────────────────── */
+.attribute-filters {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+}
+
+.attr-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.attr-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.attr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.attr-chip {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+
+.attr-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.attr-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.attr-chip.size-chip.active {
+  background: #7c3aed;
+  border-color: #7c3aed;
+}
+
+.attr-chip.size-chip:hover:not(.active) {
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+
+/* �"?�"? Responsive �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 @media (max-width: 768px) {
   .page-header h1 { 
     font-size: 1.6rem; 

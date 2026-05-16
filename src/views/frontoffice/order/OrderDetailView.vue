@@ -25,7 +25,7 @@
             <h3>Erreur</h3>
             <p>{{ error }}</p>
             <router-link to="/orders" class="back-link">
-              ← Retour aux commandes
+              �?� Retour aux commandes
             </router-link>
           </div>
         </div>
@@ -135,13 +135,13 @@
 
               <!-- Adresse de livraison -->
               <div class="address-card" v-if="deliveryAddress">
-                <h3>📍 Adresse de livraison</h3>
+                <h3>�Y"� Adresse de livraison</h3>
                 <div class="address-content">
                   <p class="address-name">{{ deliveryAddress.firstname }} {{ deliveryAddress.lastname }}</p>
                   <p>{{ deliveryAddress.address1 }}</p>
                   <p v-if="deliveryAddress.address2">{{ deliveryAddress.address2 }}</p>
                   <p>{{ deliveryAddress.postcode }} {{ deliveryAddress.city }}</p>
-                  <p v-if="deliveryAddress.phone">📞 {{ deliveryAddress.phone }}</p>
+                  <p v-if="deliveryAddress.phone">�Y"z {{ deliveryAddress.phone }}</p>
                 </div>
               </div>
 
@@ -161,7 +161,7 @@
           <!-- Actions -->
           <div class="order-actions">
             <router-link to="/orders" class="back-btn">
-              ← Retour aux commandes
+              �?� Retour aux commandes
             </router-link>
             <router-link to="/products" class="shop-btn">
                Continuer mes achats
@@ -210,7 +210,7 @@ const loadOrderDetail = async () => {
   error.value = '';
   
   try {
-    console.log(`📋 Chargement de la commande #${orderId}`);
+    console.log(`�Y"< Chargement de la commande #${orderId}`);
     const parser = new DOMParser();
     
     // 1. Récupérer la commande
@@ -250,10 +250,29 @@ const loadOrderDetail = async () => {
         product_price: row.querySelector('product_price')?.textContent?.trim() || '0',
         product_quantity: row.querySelector('product_quantity')?.textContent?.trim() || '0',
         unit_price_tax_incl: row.querySelector('unit_price_tax_incl')?.textContent?.trim() || '',
-        image_url: productId ? `/api/images/products/${productId}/${productId}` : null,
+        image_url: null as string | null,
       };
     });
-    
+
+    // Récupérer les vrais IDs d'images (même pattern que ProductsView)
+    const uniqueIds = [...new Set(orderProducts.value.map(p => p.product_id).filter(Boolean))];
+    const imageMap: Record<string, string> = {};
+    await Promise.all(uniqueIds.map(async (pid) => {
+      try {
+        const res = await api.get(`/products/${pid}?output_format=XML&display=full`);
+        const doc = parser.parseFromString(res.data, 'text/xml');
+        const imageId = doc.querySelector('product associations images image id')?.textContent?.trim()
+          || doc.querySelector('image id')?.textContent?.trim();
+        if (imageId) imageMap[pid] = imageId;
+      } catch { /* image non trouvée */ }
+    }));
+    orderProducts.value = orderProducts.value.map(p => ({
+      ...p,
+      image_url: imageMap[p.product_id]
+        ? `/api/images/products/${p.product_id}/${imageMap[p.product_id]}`
+        : null,
+    }));
+
     // 3. Récupérer les adresses
     await Promise.all([
       loadAddress(order.value.id_address_delivery, 'delivery'),
@@ -261,10 +280,10 @@ const loadOrderDetail = async () => {
       loadCarrier(order.value.id_carrier),
     ]);
     
-    console.log('✅ Commande chargée avec succès');
+    console.log('�o. Commande chargée avec succès');
     
   } catch (err: any) {
-    console.error('❌ Erreur:', err);
+    console.error('�O Erreur:', err);
     error.value = 'Impossible de charger les détails de la commande';
   } finally {
     loading.value = false;
@@ -296,7 +315,7 @@ const loadAddress = async (addressId: string, type: 'delivery' | 'invoice') => {
       invoiceAddress.value = address;
     }
   } catch (err) {
-    console.warn(`⚠️ Adresse ${type} introuvable`);
+    console.warn(`�s�️ Adresse ${type} introuvable`);
   }
 };
 
@@ -310,7 +329,7 @@ const loadCarrier = async (carrierId: string) => {
     const doc = parser.parseFromString(response.data, 'text/xml');
     carrierName.value = doc.querySelector('carrier name')?.textContent?.trim() || 'Transporteur standard';
   } catch (err) {
-    console.warn('⚠️ Transporteur introuvable');
+    console.warn('�s�️ Transporteur introuvable');
   }
 };
 
@@ -361,10 +380,12 @@ const getStatusClass = (stateId: string): string => {
 // Utilitaires
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  if (isNaN(numPrice)) return '0 MGA';
-  return new Intl.NumberFormat('fr-MG', {
+  if (isNaN(numPrice)) return '0,00 �,�';
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(numPrice);
 };
 

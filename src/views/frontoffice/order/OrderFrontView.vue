@@ -59,7 +59,7 @@
                 {{ getStatusLabel(order.current_state) }}
               </span>
               <span class="order-total">{{ formatPrice(order.total_paid) }}</span>
-              <span class="detail-arrow">→</span>
+              <span class="detail-arrow">�?'</span>
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@ const loadOrders = async () => {
   
   try {
     const customerId = getCustomerId();
-    console.log(`📋 Chargement des commandes pour le client ${customerId}`);
+    console.log(`�Y"< Chargement des commandes pour le client ${customerId}`);
     
     const response = await api.get(
       `/orders?output_format=XML&filter[id_customer]=[${customerId}]&sort=[id_DESC]&limit=50&display=full`
@@ -128,11 +128,11 @@ const loadOrders = async () => {
       date_add: el.querySelector('date_add')?.textContent?.trim() || '',
       id_cart: el.querySelector('id_cart')?.textContent?.trim() || '',
     }));
-    console.log(`✅ ${customerId} :'ID CUSTOMER'`);
-    console.log(`✅ ${orders.value.length} commande(s) trouvée(s)`);
+    console.log(`�o. ${customerId} :'ID CUSTOMER'`);
+    console.log(`�o. ${orders.value.length} commande(s) trouvée(s)`);
     
   } catch (err: any) {
-    console.error('❌ Erreur chargement commandes:', err);
+    console.error('�O Erreur chargement commandes:', err);
     error.value = 'Impossible de charger vos commandes';
   } finally {
     loading.value = false;
@@ -175,12 +175,12 @@ const getStatusClass = (stateId: string): string => {
 
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  if (isNaN(numPrice)) return '0 €';
+  if (isNaN(numPrice)) return '0 �,�';
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5
   }).format(numPrice);
 };
 

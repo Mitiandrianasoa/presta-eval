@@ -9,12 +9,12 @@
           <p>Gérez les articles que vous avez ajoutés</p>
         </div>
 
-        <!-- État : Panier vide -->
+        <!-- �?tat : Panier vide -->
         <div v-if="!isCartLoaded" class="loading">
           <p>Chargement du panier...</p>
         </div>
         <div v-else-if="cart.length === 0" class="empty-cart">
-          <div class="empty-cart-icon">🛒</div>
+          <div class="empty-cart-icon">�Y>'</div>
           <h2>Votre panier est vide</h2>
           <p>Explorez notre boutique et ajoutez des articles !</p>
           <router-link to="/products" class="continue-shopping-btn">
@@ -22,7 +22,7 @@
           </router-link>
         </div>
 
-        <!-- État : Panier avec des articles -->
+        <!-- �?tat : Panier avec des articles -->
         <div v-else class="cart-content">
           <!-- Liste des articles -->
           <div class="cart-items">
@@ -120,7 +120,7 @@
                 </router-link>
             </div>
             
-            <!-- ✅ BOUTON DE PAIEMENT -->
+            <!-- �o. BOUTON DE PAIEMENT -->
             <button 
                 class="checkout-btn" 
                 @click="proceedToCheckout"
@@ -138,7 +138,7 @@
             <!-- Information de paiement -->
             <p class="checkout-info">
                 <span v-if="isLoggedIn">
-                ✓ Paiement à la livraison
+                �o" Paiement à la livraison
                 </span>
             </p>
             
@@ -184,16 +184,18 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
-// Importer le service de checkout
 import { processCheckout } from '../../../services/checkout.service';
 import { useAuth } from '../../../services/useAuth';
-const router = useRouter();
+import api from '../../../api/api';
 
-// État du panier
+const router = useRouter();
+const parseXml = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
+
+// �?tat du panier
 const cart = ref<any[]>([]);
 const isCartLoaded = ref(false);
 
-// État du checkout
+// �?tat du checkout
 const isProcessing = ref(false);
 const checkoutError = ref('');
 const showConfirmModal = ref(false);
@@ -232,13 +234,54 @@ const cartTotal = computed(() => {
   }, 0);
 });
 
-// Charger le panier
+// Charger le panier depuis localStorage
 const loadCart = () => {
   const savedCart = localStorage.getItem('prestashop_cart');
-  if (savedCart) {
-    cart.value = JSON.parse(savedCart);
-  }
-  isCartLoaded.value = true;
+  if (savedCart) cart.value = JSON.parse(savedCart);
+};
+
+// Charger le panier PS du client connecté (si localStorage vide)
+const loadCartFromPS = async () => {
+  if (!isLoggedIn.value || cart.value.length > 0) return;
+
+  try {
+    const customerId = getCustomerId();
+    const res = await api.get(
+      `/carts?filter[id_customer]=[${customerId}]&output_format=XML&display=full&sort=id_DESC&limit=1`
+    );
+    const cartEl = parseXml(res.data).querySelector('cart');
+    if (!cartEl) return;
+
+    const rows = Array.from(cartEl.querySelectorAll('associations cart_rows cart_row'));
+    if (rows.length === 0) return;
+
+    const items: any[] = [];
+    for (const row of rows) {
+      const productId = row.querySelector('id_product')?.textContent?.trim() || '';
+      const qty       = parseInt(row.querySelector('quantity')?.textContent?.trim() || '1') || 1;
+      if (!productId || productId === '0') continue;
+
+      try {
+        const pRes    = await api.get(`/products/${productId}?output_format=XML&display=full`);
+        const pDoc    = parseXml(pRes.data);
+        const name    = pDoc.querySelector('product name language')?.textContent?.trim() || 'Produit';
+        const price   = pDoc.querySelector('product price')?.textContent?.trim() || '0';
+        const imageId = pDoc.querySelector('product associations images image id')?.textContent?.trim();
+        items.push({
+          id:        productId,
+          name,
+          price,
+          image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null,
+          quantity:  qty,
+        });
+      } catch { /* produit introuvable */ }
+    }
+
+    if (items.length > 0) {
+      cart.value = items;
+      saveCart();
+    }
+  } catch { /* panier PS non trouvé */ }
 };
 
 // Sauvegarder le panier
@@ -310,7 +353,7 @@ const startCheckout = async () => {
       paymentMethod: 'paiement_livraison'
     };
     
-    console.log('🚀 Démarrage du checkout avec:', {
+    console.log('�Ys? Démarrage du checkout avec:', {
       productsCount: cartData.products.length,
       customerId: cartData.customerId
     });
@@ -318,7 +361,7 @@ const startCheckout = async () => {
     // Appeler le service de checkout
     const result = await processCheckout(cartData);
     
-    console.log('✅ Résultat checkout:', result);
+    console.log('�o. Résultat checkout:', result);
     
     if (result.success) {
       // Sauvegarder les infos de commande pour la page de confirmation
@@ -339,7 +382,7 @@ const startCheckout = async () => {
     }
     
   } catch (err: any) {
-    console.error('❌ Erreur checkout:', err);
+    console.error('�O Erreur checkout:', err);
     checkoutError.value = err.message || 'Une erreur est survenue lors du traitement';
   } finally {
     isProcessing.value = false;
@@ -349,9 +392,11 @@ const startCheckout = async () => {
 // Utilitaires
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  return new Intl.NumberFormat('fr-MG', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(numPrice);
 };
 
@@ -360,8 +405,10 @@ const handleImageError = (event: Event) => {
   img.src = '/placeholder-product.jpg';
 };
 
-onMounted(() => {
+onMounted(async () => {
   loadCart();
+  await loadCartFromPS();
+  isCartLoaded.value = true;
 });
 </script>
 
@@ -735,7 +782,7 @@ onMounted(() => {
 .page-header h1 { font-size: 2rem; font-weight: 700; color: var(--navy); margin: 0 0 0.4rem; }
 .page-header p { color: var(--muted); margin: 0; }
 
-/* État vide */
+/* �?tat vide */
 .empty-cart {
   text-align: center;
   padding: 5rem 2rem;
@@ -911,7 +958,7 @@ onMounted(() => {
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
-/* ── Résumé : liste des articles ─────────────────────── */
+/* �"?�"? Résumé : liste des articles �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */
 .summary-items {
   display: flex;
   flex-direction: column;

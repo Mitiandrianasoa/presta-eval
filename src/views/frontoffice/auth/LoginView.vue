@@ -96,9 +96,11 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
+import { useAuth } from '../../../services/useAuth';
 
 const router = useRouter();
 const route  = useRoute();
+const { login } = useAuth();
 
 interface Customer {
   id: string;
@@ -153,11 +155,10 @@ const handleLogin = () => {
 
   // On connecte directement avec l'utilisateur pré-sélectionné
   // sans vérifier le mot de passe
-  const token = btoa(
+  const userToken = btoa(
     JSON.stringify({ user: preselectedUser.value, exp: Date.now() + 24 * 60 * 60 * 1000 })
   );
-  sessionStorage.setItem('prestashop_token', token);
-  sessionStorage.setItem('prestashop_user', JSON.stringify(preselectedUser.value));
+  login(preselectedUser.value, userToken);
 
   // Nettoyer la pré-sélection
   sessionStorage.removeItem('prestashop_preselected_user');

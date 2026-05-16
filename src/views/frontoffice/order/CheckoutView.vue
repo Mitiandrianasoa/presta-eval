@@ -9,7 +9,7 @@
           <p>Vérifiez vos informations avant de confirmer</p>
         </div>
 
-        <!-- États de chargement -->
+        <!-- �?tats de chargement -->
         <div v-if="loading" class="loading">
           <div class="spinner"></div>
           <p>{{ loadingMessage }}</p>
@@ -27,7 +27,7 @@
 
         <!-- Succès -->
         <div v-else-if="checkoutSuccess" class="success-message">
-          <div class="success-icon">✅</div>
+          <div class="success-icon">�o.</div>
           <h2>Commande confirmée !</h2>
           <p>Votre commande a été créée avec succès.</p>
           <div v-if="orderDetails" class="order-details">
@@ -46,27 +46,27 @@
             <h2>Récapitulatif de votre commande</h2>
             
             <div class="info-card">
-              <h3>👤 Client</h3>
+              <h3>�Y'� Client</h3>
               <p>{{ customerInfo?.firstname }} {{ customerInfo?.lastname }}</p>
               <p>{{ customerInfo?.email }}</p>
             </div>
 
             <div class="info-card">
-              <h3>🚚 Livraison</h3>
+              <h3>�Yss Livraison</h3>
               <p>{{ carrierInfo?.name || 'Transporteur standard' }}</p>
               <p v-if="carrierInfo?.delay">{{ carrierInfo.delay }}</p>
               <p class="free-shipping">Gratuit</p>
             </div>
 
             <div class="info-card">
-              <h3>💳 Paiement</h3>
+              <h3>�Y'� Paiement</h3>
               <p>Paiement à la livraison</p>
               <p class="payment-note">Vous paierez à la réception de votre commande</p>
             </div>
 
             <!-- Liste des produits -->
             <div class="cart-summary">
-              <h3>📦 Articles ({{ totalItems }})</h3>
+              <h3>�Y"� Articles ({{ totalItems }})</h3>
               <div class="cart-item" v-for="item in cart" :key="item.id">
                 <img 
                   :src="item.image_url || '/placeholder-product.jpg'" 
@@ -116,7 +116,7 @@ import { processCheckout, getCustomerInfo, getDefaultCarrier } from '../../../se
 
 const router = useRouter();
 
-// États
+// �?tats
 const loading = ref(false);
 const loadingMessage = ref('');
 const error = ref('');
@@ -212,11 +212,11 @@ const confirmOrder = async () => {
       localStorage.removeItem('prestashop_cart');
       cart.value = [];
       
-      console.log('✅ Commande réussie:', result);
+      console.log('�o. Commande réussie:', result);
     }
 
   } catch (err: any) {
-    console.error('❌ Erreur commande:', err);
+    console.error('�O Erreur commande:', err);
     error.value = err.message || 'Erreur lors de la création de la commande';
   } finally {
     loading.value = false;
@@ -232,9 +232,11 @@ const retryCheckout = () => {
 // Utilitaires
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  return new Intl.NumberFormat('fr-MG', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(numPrice);
 };
 

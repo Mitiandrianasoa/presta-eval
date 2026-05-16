@@ -22,6 +22,8 @@ import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
 import ImportView from '../views/backoffice/import/ImportView.vue';
 import CartList from '../components/order/CartList.vue';
 import PayementList from '../components/order/PayementList.vue';
+import StockEntryView from '../views/backoffice/stock/StockEntryView.vue';
+import StockEvolutionView from '../views/backoffice/stock/StockEvolutionView.vue';
 
 const routes = [
   // ── Frontoffice Routes ─────────────────────────────────────────────────────
@@ -128,6 +130,16 @@ const routes = [
     path: '/admin/payments',
     name: 'admin-payments',
     component: PayementList,
+  },
+  {
+    path: '/admin/stock-entry',
+    name: 'admin-stock-entry',
+    component: StockEntryView,
+  },
+  {
+    path: '/admin/stock-evolution',
+    name: 'admin-stock-evolution',
+    component: StockEvolutionView,
   },
 
   // ── Redirections ───────────────────────────────────────────────────────────

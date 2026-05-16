@@ -276,7 +276,9 @@ const resetFilter = () => {
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(amount);
 };
 

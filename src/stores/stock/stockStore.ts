@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import axios from 'axios';
 import api from '../../api/api';
 
 const parse = (xml: string) => new DOMParser().parseFromString(xml, 'text/xml');
@@ -91,17 +92,21 @@ export const useStockStore = defineStore('stock', {
 
     async updateQuantity(id: string, quantity: number) {
       try {
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<prestashop><stock_available>
-  <id>${id}</id>
-  <quantity>${quantity}</quantity>
-</stock_available></prestashop>`;
+        // GET pour récupérer id_product, id_product_attribute et la quantité actuelle
+        const getRes = await api.get(`/stock_availables/${id}?output_format=XML&display=full`);
+        const el = parse(getRes.data).querySelector('stock_available');
+        if (!el) throw new Error(`stock_available #${id} introuvable`);
 
-        await api.put(`/stock_availables/${id}`, xml, {
-          headers: { 'Content-Type': 'text/xml; charset=utf-8' }
-        });
+        const idProduct          = parseInt(el.querySelector('id_product')?.textContent?.trim() || '0');
+        const idProductAttribute = parseInt(el.querySelector('id_product_attribute')?.textContent?.trim() || '0');
+        const currentQty         = parseInt(el.querySelector('quantity')?.textContent?.trim() || '0') || 0;
+        const delta              = quantity - currentQty;
 
-        // Mise à jour locale immédiate
+        if (delta === 0) return;
+
+        // Appel PHP : StockAvailable::updateQuantity() + add_movement=true → écrit dans ps_stock_mvt
+        await axios.post('/stock-update', { id_product: idProduct, id_product_attribute: idProductAttribute, delta });
+
         const stock = this.stocks.find(s => s.id === id);
         if (stock) stock.quantity = quantity;
       } catch (error: any) {

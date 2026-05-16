@@ -70,9 +70,11 @@ onMounted(() => {
 
 const formatPrice = (price: string) => {
   const numPrice = parseFloat(price);
-  return new Intl.NumberFormat('fr-EU', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR'
+    currency: 'EUR',
+    minimumFractionDigits: 5,
+    maximumFractionDigits: 5,
   }).format(numPrice);
 };
 

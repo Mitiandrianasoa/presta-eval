@@ -209,7 +209,6 @@ const handleContinue = () => {
   const redirect = route.query.redirect as string;
 
   if (selected.value.id === 'anon') {
-    sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
     router.push(redirect || '/home');
   } else {
     sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
