@@ -10,8 +10,9 @@ const DEFAULT_CONFIG = {
   CARRIER_ID: '1',
   PAYMENT_METHOD: 'paiement_livraison',
   PAYMENT_MODULE: 'ps_cashondelivery',
-  CURRENCY_ID: '1',
-  LANG_ID: '1',
+  CURRENCY_ID: '2',//EURO
+  LANG_ID: '2',//FRENCH
+
 };
 
 export interface CartProduct {
@@ -113,7 +114,7 @@ const createCartWithProducts = async (
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <cart>
     <id_currency>2</id_currency>
-    <id_lang>1</id_lang>
+    <id_lang>2</id_lang>
     <id_customer>${customerId}</id_customer>
     <id_carrier>1</id_carrier>
     <id_address_delivery>${addressId}</id_address_delivery>
@@ -194,7 +195,7 @@ const createOrder = async (
     <id_currency>2</id_currency>
     <id_lang>1</id_lang>
     <id_customer>${customerId}</id_customer>
-    <id_carrier>1</id_carrier>
+    <id_carrier>${DEFAULT_CONFIG.CURRENCY_ID}</id_carrier>
     <current_state>2</current_state>
     <module>ps_cashondelivery</module>
     <payment>paiement_livraison</payment>
