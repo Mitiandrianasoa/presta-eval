@@ -87,7 +87,6 @@ const normaliserFormatTaxe = (taxeTxt) => {
   return { taux, label };
 };
 
-
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -495,12 +494,14 @@ const lancerImportation = async () => {
           <wholesale_price>${prod.prix_achat}</wholesale_price>
           <active>1</active>
           <state>1</state>
+          <show_price>1</show_price>                    <!-- ✅ AJOUTÉ -->
+          <available_for_order>1</available_for_order> 
           <available_date>${prod.date_dispo}</available_date>
           <id_category_default>${idCategoryDefault}</id_category_default>
           <id_tax_rules_group>${idTaxRulesGroup}</id_tax_rules_group>
           <id_shop_default>1</id_shop_default>
           <name>
-            <language id="1">${prod.nom}</language>
+            <language id="2">${prod.nom}</language>
           </name>
           <associations>
             <categories>

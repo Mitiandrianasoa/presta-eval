@@ -1,5 +1,4 @@
-// src/services/checkout.service.ts - Version simplifiée sans mise à jour
-
+// src/services/checkout.service.ts
 import api from '../api/api';
 import { useAuth } from '../services/useAuth';
 
@@ -10,9 +9,8 @@ const DEFAULT_CONFIG = {
   CARRIER_ID: '1',
   PAYMENT_METHOD: 'paiement_livraison',
   PAYMENT_MODULE: 'ps_cashondelivery',
-  CURRENCY_ID: '2',//EURO
-  LANG_ID: '2',//FRENCH
-
+  CURRENCY_ID: '2', // Euro
+  LANG_ID: '1', // Français
 };
 
 export interface CartProduct {
@@ -22,6 +20,8 @@ export interface CartProduct {
   name?: string;
   price?: string;
   image_url?: string;
+  combination_name?: string;
+  combination_reference?: string;
 }
 
 export interface CartData {
@@ -62,7 +62,6 @@ const getOrCreateAddress = async (customerId: string): Promise<string> => {
       if (addressId) return addressId;
     }
     
-    // Créer une adresse en France
     const customerResponse = await api.get(`/customers/${customerId}?output_format=XML`);
     const customerDoc = parser.parseFromString(customerResponse.data, 'text/xml');
     
@@ -81,6 +80,7 @@ const getOrCreateAddress = async (customerId: string): Promise<string> => {
     <postcode>75001</postcode>
     <city>Paris</city>
     <phone>0612345678</phone>
+    <phone_mobile>0612345678</phone_mobile>
   </address>
 </prestashop>`;
 
@@ -92,6 +92,7 @@ const getOrCreateAddress = async (customerId: string): Promise<string> => {
     return addressDoc.querySelector('address id')?.textContent?.trim() || '1';
     
   } catch (error) {
+    console.error('Erreur adresse:', error);
     return '1';
   }
 };
@@ -113,10 +114,10 @@ const createCartWithProducts = async (
   const cartXml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <cart>
-    <id_currency>2</id_currency>
-    <id_lang>2</id_lang>
+    <id_currency>${DEFAULT_CONFIG.CURRENCY_ID}</id_currency>
+    <id_lang>${DEFAULT_CONFIG.LANG_ID}</id_lang>
     <id_customer>${customerId}</id_customer>
-    <id_carrier>1</id_carrier>
+    <id_carrier>${DEFAULT_CONFIG.CARRIER_ID}</id_carrier>
     <id_address_delivery>${addressId}</id_address_delivery>
     <id_address_invoice>${addressId}</id_address_invoice>
     <associations>
@@ -125,6 +126,8 @@ const createCartWithProducts = async (
   </cart>
 </prestashop>`;
 
+  console.log('📦 Création du panier...');
+  
   const response = await api.post('/carts?output_format=XML', cartXml, {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', 'Accept': 'application/xml' }
   });
@@ -134,92 +137,63 @@ const createCartWithProducts = async (
   const cartId = xmlDoc.querySelector('cart id')?.textContent?.trim();
   
   if (!cartId) throw new Error('ID du panier non trouvé');
+  console.log(`✅ Panier créé: ${cartId}`);
   return cartId;
 };
 
-
-
-
-// checkout.service.ts - Version avec vérification du produit
-
-const getProductRealPrice = async (productId: string): Promise<number> => {
-  console.log(`🔍 Récupération du prix réel du produit ${productId}`);
-  
-  try {
-    const response = await api.get(`/products/${productId}?output_format=XML&display=full`);
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    
-    // Récupérer le prix TTC
-    const price = xmlDoc.querySelector('product price')?.textContent?.trim();
-    const wholesalePrice = xmlDoc.querySelector('product wholesale_price')?.textContent?.trim();
-    
-    console.log(`   Prix catalogue: ${price}`);
-    console.log(`   Prix wholesale: ${wholesalePrice}`);
-    
-    return parseFloat(price || '0');
-    
-  } catch (error) {
-    console.error('Erreur récupération prix:', error);
-    return 0;
-  }
-};
-
+/**
+ * Crée la commande - PrestaShop calcule automatiquement tous les prix (base + impact + taxes)
+ */
 const createOrder = async (
   cartId: string,
   customerId: string,
   customerSecureKey: string,
-  addressId: string,
-  products: CartProduct[]
+  addressId: string
 ): Promise<string> => {
-  // Récupérer les prix réels depuis l'API
-  let totalAmount = 0;
+  console.log(`📋 Création de la commande pour le panier ${cartId}`);
   
-  for (const product of products) {
-    const realPrice = await getProductRealPrice(product.product_id);
-    const productTotal = realPrice * product.quantity;
-    totalAmount += productTotal;
-    console.log(`   Produit ${product.product_id}: prix réel=${realPrice} x ${product.quantity} = ${productTotal}`);
-  }
-  
-  console.log(`💰 Total réel (API): ${totalAmount}`);
-  
-  const formattedTotal = totalAmount.toFixed(6);
-  
+  // XML minimal - PrestaShop calcule automatiquement les totaux
   const orderXml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order>
     <id_address_delivery>${addressId}</id_address_delivery>
     <id_address_invoice>${addressId}</id_address_invoice>
     <id_cart>${cartId}</id_cart>
-    <id_currency>2</id_currency>
-    <id_lang>1</id_lang>
+    <id_currency>${DEFAULT_CONFIG.CURRENCY_ID}</id_currency>
+    <id_lang>${DEFAULT_CONFIG.LANG_ID}</id_lang>
     <id_customer>${customerId}</id_customer>
-    <id_carrier>${DEFAULT_CONFIG.CURRENCY_ID}</id_carrier>
+    <id_carrier>${DEFAULT_CONFIG.CARRIER_ID}</id_carrier>
     <current_state>2</current_state>
-    <module>ps_cashondelivery</module>
-    <payment>paiement_livraison</payment>
-    <conversion_rate>1.000000</conversion_rate>
-    <total_paid>${formattedTotal}</total_paid>
-    <total_paid_real>${formattedTotal}</total_paid_real>
-    <total_products>${formattedTotal}</total_products>
-    <total_products_wt>${formattedTotal}</total_products_wt>
-    <total_shipping>0.000000</total_shipping>
+    <module>${DEFAULT_CONFIG.PAYMENT_MODULE}</module>
+    <payment>${DEFAULT_CONFIG.PAYMENT_METHOD}</payment>
     <secure_key>${customerSecureKey}</secure_key>
     <valid>1</valid>
   </order>
 </prestashop>`;
 
+  console.log('📄 Envoi de la commande (PrestaShop calcule les prix automatiquement)...');
+  
   const response = await api.post('/orders?output_format=XML', orderXml, {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', 'Accept': 'application/xml' }
   });
   
   const parser = new DOMParser();
   const orderDoc = parser.parseFromString(response.data, 'text/xml');
-  const orderId = orderDoc.querySelector('order id')?.textContent?.trim();
   
+  let orderId = orderDoc.querySelector('order id')?.textContent?.trim();
+  if (!orderId) {
+    orderId = orderDoc.querySelector('id')?.textContent?.trim();
+  }
+  
+  if (!orderId) {
+    console.error('Réponse API:', response.data);
+    throw new Error('ID commande non trouvé');
+  }
+  
+  console.log(`✅ Commande créée: ${orderId}`);
   return orderId;
 };
+
 // ============================================
 // FONCTION PRINCIPALE
 // ============================================
@@ -232,21 +206,23 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     const { getCustomerId } = useAuth();
     const customerId = cartData.customerId || getCustomerId();
     
-    // Calculer le total
-    const totalAmount = cartData.products.reduce((sum, product) => {
-      const price = parseFloat(product.price as string) || 0;
-      return sum + price * product.quantity;
+    // Afficher les produits avec leurs déclinaisons
+    for (const product of cartData.products) {
+      const combinationInfo = product.id_product_attribute && product.id_product_attribute !== '0'
+        ? ` (déclinaison: ${product.combination_name || product.id_product_attribute})`
+        : '';
+      console.log(`   - ${product.name}${combinationInfo}: ${product.quantity} x ${product.price}€`);
+    }
+    
+    // Calculer le total approximatif (juste pour log)
+    const totalApprox = cartData.products.reduce((sum, p) => {
+      return sum + (parseFloat(p.price) || 0) * p.quantity;
     }, 0);
-    
-    console.log(`💰 Total à payer: ${totalAmount} EUR`);
-    
-    // Afficher les détails des produits
-    cartData.products.forEach(p => {
-      console.log(`   - ${p.name}: ${p.quantity} x ${p.price} = ${parseFloat(p.price) * p.quantity} EUR`);
-    });
+    console.log(`💰 Total approximatif: ${totalApprox.toFixed(2)} EUR (PrestaShop calculera le vrai total)`);
     
     // Récupérer le secure_key
     const customerSecureKey = await getCustomerSecureKey(customerId);
+    console.log(`🔑 Secure key: ${customerSecureKey.substring(0, 8)}...`);
     
     // Récupérer ou créer une adresse
     const addressId = await getOrCreateAddress(customerId);
@@ -254,25 +230,24 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     
     // Créer le panier
     const cartId = await createCartWithProducts(customerId, cartData.products, addressId);
-    console.log(`🛒 Panier ID: ${cartId}`);
     
-    // Attendre un peu
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Attendre que PrestaShop traite le panier
+    console.log('⏳ Attente du traitement du panier par PrestaShop...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Créer la commande directement avec le bon montant
-    const orderId = await createOrder(cartId, customerId, customerSecureKey, addressId, cartData.products);
+    // Créer la commande (PrestaShop calcule automatiquement les prix)
+    const orderId = await createOrder(cartId, customerId, customerSecureKey, addressId);
     
     // Vider le panier local
     localStorage.removeItem('prestashop_cart');
     
-    console.log(`🎉 SUCCÈS! Commande #${orderId} - ${totalAmount} EUR`);
+    console.log(`🎉 SUCCÈS! Commande #${orderId} créée avec succès`);
     
     return {
       success: true,
       cartId,
       order: {
         id: orderId,
-        total: totalAmount.toString(),
         status: '2',
         currency: 'EUR'
       },
