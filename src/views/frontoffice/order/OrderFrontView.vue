@@ -146,7 +146,7 @@ const viewOrderDetail = (orderId: string) => {
 const getStatusLabel = (stateId: string): string => {
   const statuses: Record<string, string> = {
     '1': 'En attente',
-    '2': 'En préparation',
+    '2': 'Payed',
     '3': 'Prête',
     '4': 'Expédiée',
     '5': 'Livrée',
@@ -154,6 +154,7 @@ const getStatusLabel = (stateId: string): string => {
     '7': 'Remboursée',
     '8': 'Erreur',
     '13': 'En attente',
+    '11': 'status-delivered-and-paid',
   };
   return statuses[stateId] || `Statut ${stateId}`;
 };
@@ -169,6 +170,7 @@ const getStatusClass = (stateId: string): string => {
     '7': 'status-refunded',
     '8': 'status-error',
     '13': 'status-pending',
+    
   };
   return classes[stateId] || 'status-default';
 };

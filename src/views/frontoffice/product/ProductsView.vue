@@ -127,10 +127,10 @@
                   <i class="fas fa-times-circle"></i> Rupture
                 </span>
               </div>
-              <button class="add-to-cart-btn" @click.stop="addToCart(product)" :disabled="product.totalStock <= 0">
+              <!-- <button class="add-to-cart-btn" @click.stop="addToCart(product)" :disabled="product.totalStock <= 0">
                 <i class="fas fa-shopping-cart"></i>
                 {{ product.totalStock > 0 ? 'Ajouter' : 'Indisponible' }}
-              </button>
+              </button> -->
             </div>
           </div>
         </div>
@@ -281,7 +281,7 @@ const loadProducts = async () => {
         id_category_default: el.querySelector('id_category_default')?.textContent?.trim() || '',
         on_sale: el.querySelector('on_sale')?.textContent?.trim() === '1',
         image_url: imageId ? `/api/images/products/${productId}/${imageId}` : null,
-        date_add: el.querySelector('date_add')?.textContent?.trim() || '',
+        date_add: el.querySelector('available_date')?.textContent?.trim() || '',  
       };
     });
   } catch (err: any) {
@@ -303,13 +303,48 @@ const loadCategories = async () => {
   } catch (err) { console.error('Erreur catégories:', err); }
 };
 
-const getAvailabilityBadge = (date: string): 'HOT' | 'NEW' | null => {
-  if (!date || date === '0000-00-00') return null;
-  const productDate = new Date(date.split(' ')[0]);
-  const now = new Date();
-  const diffDays = Math.floor((now.setHours(0,0,0,0) - productDate.setHours(0,0,0,0)) / (1000*60*60*24));
-  if (diffDays <= 1 && diffDays >= 0) return 'HOT';
-  if (diffDays <= 7 && diffDays > 1) return 'NEW';
+// const getAvailabilityBadge = (date: string): 'HOT' | 'NEW' | null => {
+//   if (!date || date === '0000-00-00') return null;
+//   const productDate = new Date(date.split(' ')[0]);
+//   const now = new Date();
+//   const diffDays = Math.floor((now.setHours(0,0,0,0) - productDate.setHours(0,0,0,0)) / (1000*60*60*24));
+//   if (diffDays <= 1 && diffDays >= 0) return 'HOT';
+//   if (diffDays <= 7 && diffDays > 1) return 'NEW';
+//   return null;
+// };
+// Remplace ta fonction actuelle par celle-ci
+const getAvailabilityBadge = (availableDate: string): 'HOT' | 'NEW' | null => {
+  if (!availableDate || availableDate === '0000-00-00') return null;
+  
+  // Nettoyer la date
+  let cleanDate = availableDate.split(' ')[0];
+  
+  // Convertir la date (supporte DD/MM/YYYY et YYYY-MM-DD)
+  let productDate;
+  if (cleanDate.includes('/')) {
+    const [day, month, year] = cleanDate.split('/');
+    productDate = new Date(`${year}-${month}-${day}`);
+  } else {
+    productDate = new Date(cleanDate);
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  productDate.setHours(0, 0, 0, 0);
+  
+  // Calculer la différence en jours
+  const diffTime = today.getTime() - productDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  console.log(`📅 Produit: date=${cleanDate}, diff=${diffDays} jours`);
+  
+  // ✅ NOUVELLE RÈGLE: HOT = 1 jour ou moins
+  if (diffDays <= 1) {
+    return 'HOT';
+  } else if (diffDays >= 2 && diffDays <= 7) {
+    return 'NEW';
+  }
+  
   return null;
 };
 
