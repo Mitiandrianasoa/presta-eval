@@ -289,7 +289,7 @@ async function createOrderPayment(orderId: number, amount: number, dateAdd: stri
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order_payment>
     <order_reference><![CDATA[${reference}]]></order_reference>
-    <id_currency><![CDATA[1]]></id_currency>
+    <id_currency><![CDATA[2]]></id_currency>
     <amount><![CDATA[${amount.toFixed(6)}]]></amount>
     <payment_method><![CDATA[Paiement à la livraison]]></payment_method>
     <conversion_rate><![CDATA[1.000000]]></conversion_rate>

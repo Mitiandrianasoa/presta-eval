@@ -69,8 +69,8 @@ const importSuccess = ref(true);
 
 // Constantes
 const ID_COUNTRY_FRANCE = 8;
-const ID_CURRENCY_EURO = 1;
-const ID_LANG_FR = 1;
+const ID_CURRENCY_EURO = 2;
+const ID_LANG_FR = 2;
 const ID_ORDER_STATE_PAID = 2;
 
 // Caches
