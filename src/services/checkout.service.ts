@@ -10,7 +10,7 @@ const DEFAULT_CONFIG = {
   PAYMENT_METHOD: 'paiement_livraison',
   PAYMENT_MODULE: 'ps_cashondelivery',
   CURRENCY_ID: '2', // Euro
-  LANG_ID: '1', // Français
+  LANG_ID: '2', // Français
 };
 
 export interface CartProduct {
@@ -142,17 +142,54 @@ const createCartWithProducts = async (
 };
 
 /**
- * Crée la commande - PrestaShop calcule automatiquement tous les prix (base + impact + taxes)
+ * Récupère les totaux du panier depuis l'API PrestaShop
+ */
+const getCartTotals = async (cartId: string): Promise<{ totalHT: number; totalTTC: number }> => {
+  console.log(`💰 Récupération des totaux du panier ${cartId}`);
+  
+  try {
+    const response = await api.get(`/carts/${cartId}?output_format=XML&display=full`);
+    const parser = new DOMParser();
+    const cartDoc = parser.parseFromString(response.data, 'text/xml');
+    
+    const totalProductsWt = parseFloat(cartDoc.querySelector('cart total_products_wt')?.textContent?.trim() || '0');
+    const totalProducts = parseFloat(cartDoc.querySelector('cart total_products')?.textContent?.trim() || '0');
+    const conversionRate = parseFloat(cartDoc.querySelector('cart conversion_rate')?.textContent?.trim() || '1');
+    
+    console.log(`   Total TTC: ${totalProductsWt}`);
+    console.log(`   Total HT: ${totalProducts}`);
+    console.log(`   Taux conversion: ${conversionRate}`);
+    
+    return {
+      totalHT: totalProducts,
+      totalTTC: totalProductsWt
+    };
+    
+  } catch (error) {
+    console.error('Erreur récupération totaux:', error);
+    return { totalHT: 0, totalTTC: 0 };
+  }
+};
+
+/**
+ * Crée la commande avec tous les champs requis
  */
 const createOrder = async (
   cartId: string,
   customerId: string,
   customerSecureKey: string,
-  addressId: string
+  addressId: string,
+  totalHT: number,
+  totalTTC: number
 ): Promise<string> => {
   console.log(`📋 Création de la commande pour le panier ${cartId}`);
+  console.log(`💰 Total HT: ${totalHT.toFixed(6)}`);
+  console.log(`💰 Total TTC: ${totalTTC.toFixed(6)}`);
   
-  // XML minimal - PrestaShop calcule automatiquement les totaux
+  const formattedHT = totalHT.toFixed(6);
+  const formattedTTC = totalTTC.toFixed(6);
+  
+  // XML complet avec tous les champs requis
   const orderXml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order>
@@ -166,12 +203,26 @@ const createOrder = async (
     <current_state>2</current_state>
     <module>${DEFAULT_CONFIG.PAYMENT_MODULE}</module>
     <payment>${DEFAULT_CONFIG.PAYMENT_METHOD}</payment>
+    <conversion_rate>1.000000</conversion_rate>
+    <total_discounts>0.000000</total_discounts>
+    <total_discounts_tax_incl>0.000000</total_discounts_tax_incl>
+    <total_discounts_tax_excl>0.000000</total_discounts_tax_excl>
+    <total_paid>${formattedTTC}</total_paid>
+    <total_paid_tax_incl>${formattedTTC}</total_paid_tax_incl>
+    <total_paid_tax_excl>${formattedHT}</total_paid_tax_excl>
+    <total_paid_real>${formattedTTC}</total_paid_real>
+    <total_products>${formattedHT}</total_products>
+    <total_products_wt>${formattedTTC}</total_products_wt>
+    <total_shipping>0.000000</total_shipping>
+    <total_shipping_tax_incl>0.000000</total_shipping_tax_incl>
+    <total_shipping_tax_excl>0.000000</total_shipping_tax_excl>
+    <carrier_tax_rate>0.000</carrier_tax_rate>
     <secure_key>${customerSecureKey}</secure_key>
     <valid>1</valid>
   </order>
 </prestashop>`;
 
-  console.log('📄 Envoi de la commande (PrestaShop calcule les prix automatiquement)...');
+  console.log('📄 Envoi de la commande...');
   
   const response = await api.post('/orders?output_format=XML', orderXml, {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', 'Accept': 'application/xml' }
@@ -206,19 +257,18 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     const { getCustomerId } = useAuth();
     const customerId = cartData.customerId || getCustomerId();
     
-    // Afficher les produits avec leurs déclinaisons
+    // Afficher les produits avec leurs combinaisons
+    let totalCalculated = 0;
     for (const product of cartData.products) {
       const combinationInfo = product.id_product_attribute && product.id_product_attribute !== '0'
         ? ` (déclinaison: ${product.combination_name || product.id_product_attribute})`
         : '';
-      console.log(`   - ${product.name}${combinationInfo}: ${product.quantity} x ${product.price}€`);
+      const price = parseFloat(product.price) || 0;
+      const subtotal = price * product.quantity;
+      totalCalculated += subtotal;
+      console.log(`   - ${product.name}${combinationInfo}: ${product.quantity} x ${price.toFixed(2)}€ = ${subtotal.toFixed(2)}€`);
     }
-    
-    // Calculer le total approximatif (juste pour log)
-    const totalApprox = cartData.products.reduce((sum, p) => {
-      return sum + (parseFloat(p.price) || 0) * p.quantity;
-    }, 0);
-    console.log(`💰 Total approximatif: ${totalApprox.toFixed(2)} EUR (PrestaShop calculera le vrai total)`);
+    console.log(`💰 Total calculé (frontend): ${totalCalculated.toFixed(2)} EUR`);
     
     // Récupérer le secure_key
     const customerSecureKey = await getCustomerSecureKey(customerId);
@@ -233,21 +283,37 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     
     // Attendre que PrestaShop traite le panier
     console.log('⏳ Attente du traitement du panier par PrestaShop...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Créer la commande (PrestaShop calcule automatiquement les prix)
-    const orderId = await createOrder(cartId, customerId, customerSecureKey, addressId);
+    // Récupérer les totaux calculés par PrestaShop
+    let totals = await getCartTotals(cartId);
+    
+    // Si les totaux sont à 0, utiliser le calcul frontend
+    if (totals.totalTTC === 0 && totalCalculated > 0) {
+      console.warn('⚠️ Totaux API à 0, utilisation du calcul frontend');
+      totals = {
+        totalHT: totalCalculated / 1.056, // Estimation HT (TVA ~5.6%)
+        totalTTC: totalCalculated
+      };
+    }
+    
+    console.log(`💰 Totaux utilisés: HT=${totals.totalHT.toFixed(2)}, TTC=${totals.totalTTC.toFixed(2)}`);
+    
+    // Créer la commande
+    const orderId = await createOrder(cartId, customerId, customerSecureKey, addressId, totals.totalHT, totals.totalTTC);
     
     // Vider le panier local
     localStorage.removeItem('prestashop_cart');
     
-    console.log(`🎉 SUCCÈS! Commande #${orderId} créée avec succès`);
+    console.log(`🎉 SUCCÈS! Commande #${orderId} - ${totals.totalTTC.toFixed(2)} EUR TTC`);
     
     return {
       success: true,
       cartId,
       order: {
         id: orderId,
+        total: totals.totalTTC.toString(),
+        totalHT: totals.totalHT.toString(),
         status: '2',
         currency: 'EUR'
       },

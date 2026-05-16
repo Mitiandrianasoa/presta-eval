@@ -28,7 +28,7 @@
           <div class="cart-items">
             <div
               v-for="(item, index) in cart"
-              :key="item.id"
+              :key="`${item.id}_${item.id_product_attribute || 0}`"
               class="cart-item"
             >
               <div class="item-image" @click="goToProduct(item.id)">
@@ -42,6 +42,17 @@
                 <router-link :to="`/product/${item.id}`" class="item-name">
                   {{ item.name }}
                 </router-link>
+                
+                <!-- ✅ AFFICHAGE DE LA COMBINAISON SÉLECTIONNÉE -->
+                <div v-if="item.combination_name" class="item-combination">
+                  <span class="combination-label">Variante :</span>
+                  <span class="combination-value">{{ item.combination_name }}</span>
+                </div>
+                <div v-if="item.combination_reference && item.combination_reference !== item.reference" class="item-combination-ref">
+                  <span class="combination-label">Réf. variante :</span>
+                  <span class="combination-value">{{ item.combination_reference }}</span>
+                </div>
+                
                 <div class="item-price">
                   {{ formatPrice(item.price) }}
                 </div>
@@ -81,11 +92,14 @@
             <div class="summary-items">
               <div
                 v-for="item in cart"
-                :key="'summary-' + item.id"
+                :key="`summary-${item.id}_${item.id_product_attribute || 0}`"
                 class="summary-item"
               >
                 <div class="summary-item-info">
                   <span class="summary-item-name">{{ item.name }}</span>
+                  <span v-if="item.combination_name" class="summary-item-combination">
+                    ({{ item.combination_name }})
+                  </span>
                   <span class="summary-item-quantity">x{{ item.quantity }}</span>
                 </div>
                 <span class="summary-item-total">
@@ -108,7 +122,7 @@
             </div>
             
             <div class="summary-line total">
-              <span>Total estimé</span>
+              <span>Total estimé TTC</span>
               <span>{{ formatPrice(cartTotal.toString()) }}</span>
             </div>
             
@@ -120,7 +134,7 @@
               </router-link>
             </div>
             
-            <!-- ✅ BOUTON DE PAIEMENT -->
+            <!-- BOUTON DE PAIEMENT -->
             <button 
               class="checkout-btn" 
               @click="proceedToCheckout"
@@ -157,7 +171,7 @@
         <h3>Confirmer la commande</h3>
         <p>Vous allez être redirigé vers la page de validation.</p>
         <p>Mode de paiement : <strong>Paiement à la livraison</strong></p>
-        <p>Total : <strong>{{ formatPrice(cartTotal.toString()) }}</strong></p>
+        <p>Total TTC : <strong>{{ formatPrice(cartTotal.toString()) }}</strong></p>
         <div class="modal-actions">
           <button @click="showConfirmModal = false" class="cancel-btn">
             Annuler
@@ -186,10 +200,22 @@ import FrontHeader from '../../../components/FrontHeader.vue';
 import { processCheckout } from '../../../services/checkout.service';
 import { useAuth } from '../../../services/useAuth';
 
+interface CartItem {
+  id: string;
+  id_product_attribute?: string | number;
+  name: string;
+  price: string;
+  quantity: number;
+  image_url?: string;
+  reference?: string;
+  combination_name?: string;
+  combination_reference?: string;
+}
+
 const router = useRouter();
 
 // État du panier
-const cart = ref<any[]>([]);
+const cart = ref<CartItem[]>([]);
 const isCartLoaded = ref(false);
 
 // État du checkout
@@ -205,7 +231,8 @@ const cartItemCount = computed(() => {
 
 const cartTotal = computed(() => {
   return cart.value.reduce((total, item) => {
-    return total + (parseFloat(item.price) || 0) * item.quantity;
+    const price = parseFloat(item.price) || 0;
+    return total + price * item.quantity;
   }, 0);
 });
 
@@ -214,6 +241,13 @@ const loadCart = () => {
   const savedCart = localStorage.getItem('prestashop_cart');
   if (savedCart) {
     cart.value = JSON.parse(savedCart);
+    console.log('📦 Panier chargé avec combinaisons:', cart.value.map(item => ({
+      name: item.name,
+      combination: item.combination_name,
+      combinationId: item.id_product_attribute,
+      quantity: item.quantity,
+      price: item.price
+    })));
   }
   isCartLoaded.value = true;
 };
@@ -260,7 +294,6 @@ const proceedToCheckout = () => {
     return;
   }
   
-  // Afficher la modal de confirmation
   showConfirmModal.value = true;
 };
 
@@ -273,31 +306,37 @@ const startCheckout = async () => {
   try {
     const customerId = getCustomerId();
     
-    // Construire les données pour le checkout
+    // Construire les données pour le checkout avec les combinaisons
     const cartData = {
       products: cart.value.map(item => ({
         product_id: item.id,
+        id_product_attribute: item.id_product_attribute || '0',
         quantity: item.quantity,
         name: item.name,
         price: item.price,
-        image_url: item.image_url
+        image_url: item.image_url,
+        combination_name: item.combination_name,
+        combination_reference: item.combination_reference
       })),
       customerId: customerId,
       paymentMethod: 'paiement_livraison'
     };
     
-    console.log('🚀 Démarrage du checkout avec:', {
+    console.log('🚀 Démarrage du checkout avec combinaisons:', {
       productsCount: cartData.products.length,
-      customerId: cartData.customerId
+      products: cartData.products.map(p => ({
+        id: p.product_id,
+        attribute: p.id_product_attribute,
+        name: p.name,
+        combination: p.combination_name
+      }))
     });
     
-    // Appeler le service de checkout
     const result = await processCheckout(cartData);
     
     console.log('✅ Résultat checkout:', result);
     
     if (result.success) {
-      // Sauvegarder les infos de commande pour la page de confirmation
       localStorage.setItem('last_order', JSON.stringify({
         orderId: result.order?.id || 'Inconnu',
         cartId: result.cartId,
@@ -306,11 +345,9 @@ const startCheckout = async () => {
         items: cart.value.length
       }));
       
-      // Vider le panier
       localStorage.removeItem('prestashop_cart');
       cart.value = [];
       
-      // Rediriger vers la page de confirmation
       router.push('/order-confirmation');
     }
     
@@ -322,12 +359,15 @@ const startCheckout = async () => {
   }
 };
 
-// Utilitaires
-const formatPrice = (price: string) => {
-  const numPrice = parseFloat(price);
-  return new Intl.NumberFormat('fr-MG', {
+// Formatage des prix (TTC)
+const formatPrice = (price: string | number) => {
+  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+  if (isNaN(numPrice)) return '0,00 €';
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'MGA'
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(numPrice);
 };
 
@@ -342,7 +382,32 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Styles pour le bouton de checkout */
+/* Styles ajoutés pour les combinaisons */
+.item-combination, .item-combination-ref {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.combination-label {
+  font-weight: 500;
+  color: #475569;
+}
+
+.combination-value {
+  color: #3b82f6;
+}
+
+.summary-item-combination {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
+/* Styles existants (garder tous les styles de votre version originale) */
 .checkout-btn {
   width: 100%;
   padding: 1rem;
@@ -436,7 +501,6 @@ onMounted(() => {
   margin-top: 0.5rem;
 }
 
-/* Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -503,7 +567,6 @@ onMounted(() => {
   background: #15803d;
 }
 
-/* Styles de base */
 .cart-page {
   min-height: 100vh;
   background: var(--bg);
@@ -519,7 +582,6 @@ onMounted(() => {
 .page-header h1 { font-size: 2rem; font-weight: 700; color: var(--navy); margin: 0 0 0.4rem; }
 .page-header p { color: var(--muted); margin: 0; }
 
-/* État vide */
 .empty-cart {
   text-align: center;
   padding: 5rem 2rem;
@@ -542,7 +604,6 @@ onMounted(() => {
 }
 .continue-shopping-btn:hover { background: var(--primary-dark); }
 
-/* Grille principale du panier */
 .cart-content {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -550,7 +611,6 @@ onMounted(() => {
   align-items: start;
 }
 
-/* Liste des articles */
 .cart-items {
   display: flex;
   flex-direction: column;
@@ -654,7 +714,6 @@ onMounted(() => {
 }
 .remove-btn:hover { background: #fee2e2; }
 
-/* Total par article */
 .item-total {
   font-size: 1.15rem;
   font-weight: 700;
@@ -663,7 +722,6 @@ onMounted(() => {
   margin-left: auto;
 }
 
-/* Résumé de la commande */
 .cart-summary {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -768,7 +826,6 @@ onMounted(() => {
   margin-bottom: 1.25rem;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .cart-content {
     grid-template-columns: 1fr;
