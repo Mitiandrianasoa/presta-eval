@@ -29,7 +29,8 @@ const loadData = async () => {
   loading.value = true;
   error.value   = null;
   try {
-    carts.value = await cartService.fetchAll();
+    // Utilisez la nouvelle méthode pour ne récupérer que les paniers sans commande
+    carts.value = await cartService.fetchCartsWithoutOrdersOptimized();
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -57,6 +58,7 @@ const totalProducts = (cart: Cart) =>
 
 onMounted(loadData);
 </script>
+
 
 <template>
   <div class="app-layout">

@@ -20,6 +20,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   reference: string;
+   id_cart: string;
   id_customer: string;
   customer_name: string;
   total_paid: string;
@@ -60,6 +61,7 @@ function parseOrderElement(orderEl: Element): Order {
     id_customer:    text(orderEl, 'id_customer'),
     customer_name:  text(orderEl, 'customer_name'),
     total_paid:     text(orderEl, 'total_paid'),
+    id_cart:        text(orderEl, 'id_cart'),
     payment:        text(orderEl, 'payment'),
     current_state:  text(orderEl, 'current_state'),
     date_add:       text(orderEl, 'date_add'),
