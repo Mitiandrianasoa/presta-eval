@@ -47,7 +47,7 @@ const getCustomerSecureKey = async (customerId: string): Promise<string> => {
   }
 };
 
-const getOrCreateAddress = async (customerId: string): Promise<string> => {
+export const getOrCreateAddress = async (customerId: string): Promise<string> => {
   try {
     const response = await api.get(
       `/addresses?output_format=XML&filter[id_customer]=[${customerId}]&display=full`
@@ -97,7 +97,7 @@ const getOrCreateAddress = async (customerId: string): Promise<string> => {
   }
 };
 
-const createCartWithProducts = async (
+export const createCartWithProducts = async (
   customerId: string,
   products: CartProduct[],
   addressId: string

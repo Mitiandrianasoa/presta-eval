@@ -9,6 +9,50 @@
           <p>Gérez les articles que vous avez ajoutés</p>
         </div>
 
+        <section v-if="isLoggedIn" class="saved-carts-section">
+          <div class="saved-carts-header">
+            <div>
+              <h2>Mes paniers enregistrés</h2>
+              <p>Tous les paniers du client, avec un repère visuel sur ceux déjà convertis en commande</p>
+            </div>
+          </div>
+
+          <div v-if="savedCartsLoading" class="saved-carts-state">
+            Chargement des paniers...
+          </div>
+
+          <div v-else-if="savedCartsError" class="saved-carts-state error">
+            {{ savedCartsError }}
+          </div>
+
+          <div v-else-if="savedCarts.length === 0" class="saved-carts-state empty">
+            Aucun panier trouvé pour ce client.
+          </div>
+
+          <div v-else class="saved-carts-list">
+            <div v-for="savedCart in savedCarts" :key="savedCart.id" class="saved-cart-card">
+              <div class="saved-cart-info">
+                <strong>Panier #{{ savedCart.id }}</strong>
+                <span>{{ savedCart.totalQuantity }} article(s) · {{ formatDate(savedCart.dateUpd || savedCart.dateAdd) }}</span>
+              </div>
+              <span class="cart-status-badge" :class="savedCart.hasOrder ? 'linked' : 'open'">
+                {{ savedCart.hasOrder ? 'Commande liée' : 'Disponible' }}
+              </span>
+              <button
+                class="resume-cart-btn"
+                :class="{ disabled: savedCart.hasOrder }"
+                :disabled="resumeCartLoadingId === savedCart.id || savedCart.hasOrder"
+                :title="savedCart.hasOrder ? 'Ce panier a déjà été utilisé pour une commande' : 'Poursuivre ce panier'"
+                @click="resumeSavedCart(savedCart.id)"
+              >
+                {{ resumeCartLoadingId === savedCart.id ? 'Chargement...' : (savedCart.hasOrder ? 'Déjà commandé' : 'Poursuivre ce panier') }}
+              </button>
+            </div>
+          </div>
+
+          <p v-if="resumeCartError" class="saved-carts-error">{{ resumeCartError }}</p>
+        </section>
+
         <!-- État : Panier vide -->
         <div v-if="!isCartLoaded" class="loading">
           <p>Chargement du panier...</p>
@@ -160,6 +204,26 @@
             <div v-if="checkoutError" class="checkout-error">
               {{ checkoutError }}
             </div>
+
+            <button
+              v-if="isLoggedIn"
+              class="save-cart-btn"
+              :disabled="saveCartLoading || cart.length === 0"
+              @click="saveCurrentCart"
+            >
+              <span v-if="saveCartLoading" class="btn-content">
+                <span class="mini-spinner"></span>
+                Enregistrement en cours...
+              </span>
+              <span v-else>💾 Enregistrer le panier</span>
+            </button>
+
+            <div v-if="saveCartSuccess" class="save-cart-success">
+              {{ saveCartSuccess }}
+            </div>
+            <div v-if="saveCartError" class="save-cart-error">
+              {{ saveCartError }}
+            </div>
           </div>
         </div>
       </div>
@@ -198,6 +262,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import FrontHeader from '../../../components/FrontHeader.vue';
 import { processCheckout } from '../../../services/checkout.service';
+import { cartOrderService, type OpenCartSummary, type CurrentCartItem } from '../../../services/cartOrder.service';
 import { useAuth } from '../../../services/useAuth';
 
 interface CartItem {
@@ -217,6 +282,14 @@ const router = useRouter();
 // État du panier
 const cart = ref<CartItem[]>([]);
 const isCartLoaded = ref(false);
+const savedCarts = ref<OpenCartSummary[]>([]);
+const savedCartsLoading = ref(false);
+const savedCartsError = ref('');
+const resumeCartError = ref('');
+const resumeCartLoadingId = ref<string | null>(null);
+const saveCartLoading = ref(false);
+const saveCartSuccess = ref('');
+const saveCartError = ref('');
 
 // État du checkout
 const isProcessing = ref(false);
@@ -252,6 +325,57 @@ const loadCart = () => {
   isCartLoaded.value = true;
 };
 
+const loadSavedCarts = async () => {
+  if (!isLoggedIn.value) {
+    savedCarts.value = [];
+    return;
+  }
+
+  savedCartsLoading.value = true;
+  savedCartsError.value = '';
+
+  try {
+    const customerId = getCustomerId();
+    savedCarts.value = await cartOrderService.fetchOpenCustomerCarts(customerId);
+  } catch (err: any) {
+    savedCartsError.value = err?.message || 'Impossible de charger vos paniers enregistrés';
+  } finally {
+    savedCartsLoading.value = false;
+  }
+};
+
+const resumeSavedCart = async (cartId: string) => {
+  resumeCartError.value = '';
+  resumeCartLoadingId.value = cartId;
+
+  try {
+    const resumedCart = await cartOrderService.resumeCart(cartId);
+    cart.value = resumedCart as CurrentCartItem[];
+    isCartLoaded.value = true;
+  } catch (err: any) {
+    resumeCartError.value = err?.message || 'Impossible de poursuivre ce panier';
+  } finally {
+    resumeCartLoadingId.value = null;
+  }
+};
+
+const saveCurrentCart = async () => {
+  saveCartLoading.value = true;
+  saveCartError.value = '';
+  saveCartSuccess.value = '';
+
+  try {
+    const customerId = getCustomerId();
+    const cartId = await cartOrderService.saveCurrentCart(customerId);
+    saveCartSuccess.value = `Panier enregistré avec l'ID #${cartId}`;
+    await loadSavedCarts();
+  } catch (err: any) {
+    saveCartError.value = err?.message || 'Impossible d’enregistrer le panier';
+  } finally {
+    saveCartLoading.value = false;
+  }
+};
+
 // Sauvegarder le panier
 const saveCart = () => {
   localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
@@ -259,13 +383,17 @@ const saveCart = () => {
 
 // Gestion des quantités
 const increaseQuantity = (index: number) => {
-  cart.value[index].quantity++;
+  const item = cart.value[index];
+  if (!item) return;
+  item.quantity++;
   saveCart();
 };
 
 const decreaseQuantity = (index: number) => {
-  if (cart.value[index].quantity > 1) {
-    cart.value[index].quantity--;
+  const item = cart.value[index];
+  if (!item) return;
+  if (item.quantity > 1) {
+    item.quantity--;
     saveCart();
   }
 };
@@ -310,7 +438,7 @@ const startCheckout = async () => {
     const cartData = {
       products: cart.value.map(item => ({
         product_id: item.id,
-        id_product_attribute: item.id_product_attribute || '0',
+        id_product_attribute: String(item.id_product_attribute || '0'),
         quantity: item.quantity,
         name: item.name,
         price: item.price,
@@ -371,6 +499,17 @@ const formatPrice = (price: string | number) => {
   }).format(numPrice);
 };
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr || dateStr === '0000-00-00 00:00:00') return 'Date inconnue';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'Date inconnue';
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+};
+
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement;
   img.src = '/placeholder-product.jpg';
@@ -378,6 +517,7 @@ const handleImageError = (event: Event) => {
 
 onMounted(() => {
   loadCart();
+  loadSavedCarts();
 });
 </script>
 
@@ -603,6 +743,162 @@ onMounted(() => {
   transition: background var(--transition);
 }
 .continue-shopping-btn:hover { background: var(--primary-dark); }
+
+.saved-carts-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.saved-carts-header h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  color: var(--navy);
+}
+
+.saved-carts-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.saved-carts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.saved-cart-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.saved-cart-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.saved-cart-info strong {
+  color: var(--text);
+}
+
+.saved-cart-info span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.cart-status-badge {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cart-status-badge.open {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.cart-status-badge.linked {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.resume-cart-btn {
+  border: none;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.resume-cart-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.resume-cart-btn.disabled {
+  background: #94a3b8;
+}
+
+.saved-carts-state {
+  margin-top: 1rem;
+  color: var(--muted);
+}
+
+.saved-carts-state.error,
+.saved-carts-error {
+  color: #dc2626;
+}
+
+.saved-carts-state.empty {
+  color: var(--muted);
+}
+
+.save-cart-btn {
+  width: 100%;
+  padding: 1rem;
+  background: #0f766e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 1rem;
+  font-family: inherit;
+}
+
+.save-cart-btn:hover:not(:disabled) {
+  background: #115e59;
+  transform: translateY(-1px);
+}
+
+.save-cart-btn:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.save-cart-success {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.save-cart-error {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  text-align: center;
+  font-size: 0.9rem;
+}
 
 .cart-content {
   display: grid;
