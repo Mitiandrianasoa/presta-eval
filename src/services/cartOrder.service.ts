@@ -267,5 +267,73 @@ export const cartOrderService = {
    */
   async checkoutCurrentCart(customerId?: string): Promise<any> {
     return this.saveAndCheckout(customerId);
+  },
+
+  /**
+   * Crée un client anonyme temporaire pour enregistrer un panier
+   */
+  async createAnonymousCustomer(email: string, firstname: string, lastname: string): Promise<string> {
+    const customerXml = `<?xml version="1.0" encoding="UTF-8"?>
+  <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+    <customer>
+      <email>${email}</email>
+      <firstname>${firstname}</firstname>
+      <lastname>${lastname}</lastname>
+      <passwd>temp_${Math.random().toString(36).substring(7)}</passwd>
+      <active>1</active>
+      <is_guest>1</is_guest>
+    </customer>
+  </prestashop>`;
+
+    try {
+      const response = await api.post('/customers?output_format=XML', customerXml, {
+        headers: { 'Content-Type': 'text/xml; charset=utf-8', 'Accept': 'application/xml' }
+      });
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+      const customerId = xmlDoc.querySelector('customer id')?.textContent?.trim();
+      
+      if (!customerId) {
+        throw new Error('ID client non trouvé');
+      }
+
+      console.log(`✅ Client anonyme créé: #${customerId}`);
+      return customerId;
+    } catch (error: any) {
+      console.error('❌ Erreur création client anonyme:', error?.response?.data || error.message);
+      throw new Error(`Impossible de créer votre profil anonyme: ${error?.message}`);
+    }
+  },
+
+  /**
+   * Enregistre un panier anonyme
+   */
+  async saveAnonymousCart(email: string, firstname: string, lastname: string): Promise<string> {
+    const savedCart = localStorage.getItem('prestashop_cart');
+    if (!savedCart) {
+      throw new Error('Aucun panier à enregistrer');
+    }
+    
+    const items = JSON.parse(savedCart) as CurrentCartItem[];
+    if (items.length === 0) {
+      throw new Error('Le panier est vide');
+    }
+
+    // Créer un client anonyme
+    const customerId = await this.createAnonymousCustomer(email, firstname, lastname);
+
+    // Récupérer ou créer une adresse
+    const addressId = await getOrCreateAddress(customerId);
+
+    // Créer le panier
+    const cartId = await createCartWithProducts(customerId, items.map(toCheckoutProduct), addressId);
+
+    // Sauvegarder l'ID du panier local  
+    localStorage.setItem('prestashop_saved_cart_id', cartId);
+    localStorage.setItem('prestashop_anon_email', email);
+
+    console.log(`✅ Panier anonyme enregistré avec ID: ${cartId}`);
+    return cartId;
   }
 };

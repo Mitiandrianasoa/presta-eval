@@ -171,11 +171,51 @@
             </div>
             
             <!-- Message si non connecté -->
-            <div v-if="!isLoggedIn" class="login-notice">
-              <p>Connectez-vous pour finaliser votre commande</p>
-              <router-link to="/login?redirect=/cart" class="login-link">
-                Se connecter
-              </router-link>
+            <div v-if="!isLoggedIn" class="anon-section">
+              <div class="anon-notice">
+                <p>📌 Vous pouvez enregistrer votre panier ou vous connecter pour commander</p>
+              </div>
+              
+              <!-- Formulaire anonyme pour enregistrer le panier -->
+              <div class="anon-form">
+                <h3>Enregistrer votre panier en tant qu'anonyme</h3>
+                <input 
+                  v-model="anonEmail" 
+                  type="email" 
+                  placeholder="Votre adresse email"
+                  class="form-input"
+                >
+                <input 
+                  v-model="anonFirstName" 
+                  type="text" 
+                  placeholder="Prénom"
+                  class="form-input"
+                >
+                <input 
+                  v-model="anonLastName" 
+                  type="text" 
+                  placeholder="Nom"
+                  class="form-input"
+                >
+                <button
+                  class="save-anon-cart-btn"
+                  :disabled="saveCartLoading || !anonEmail || !anonFirstName || !anonLastName"
+                  @click="saveAnonCart"
+                >
+                  <span v-if="saveCartLoading" class="btn-content">
+                    <span class="mini-spinner"></span>
+                    Enregistrement...
+                  </span>
+                  <span v-else>💾 Enregistrer mon panier</span>
+                </button>
+              </div>
+              
+              <div class="anon-login">
+                <p>Ou connectez-vous pour commander immédiatement :</p>
+                <router-link to="/login?redirect=/cart" class="login-link">
+                  Se connecter
+                </router-link>
+              </div>
             </div>
             
             <!-- BOUTON DE PAIEMENT -->
@@ -215,7 +255,7 @@
                 <span class="mini-spinner"></span>
                 Enregistrement en cours...
               </span>
-              <span v-else>💾 Enregistrer le panier</span>
+              <span v-else>Enregistrer le panier</span>
             </button>
 
             <div v-if="saveCartSuccess" class="save-cart-success">
@@ -290,6 +330,11 @@ const resumeCartLoadingId = ref<string | null>(null);
 const saveCartLoading = ref(false);
 const saveCartSuccess = ref('');
 const saveCartError = ref('');
+
+// État anonyme
+const anonEmail = ref('');
+const anonFirstName = ref('');
+const anonLastName = ref('');
 
 // État du checkout
 const isProcessing = ref(false);
@@ -371,6 +416,26 @@ const saveCurrentCart = async () => {
     await loadSavedCarts();
   } catch (err: any) {
     saveCartError.value = err?.message || 'Impossible d’enregistrer le panier';
+  } finally {
+    saveCartLoading.value = false;
+  }
+};
+
+const saveAnonCart = async () => {
+  saveCartLoading.value = true;
+  saveCartError.value = '';
+  saveCartSuccess.value = '';
+
+  try {
+    const cartId = await cartOrderService.saveAnonymousCart(anonEmail.value, anonFirstName.value, anonLastName.value);
+    saveCartSuccess.value = `Panier anonyme enregistré avec l'ID #${cartId}. Connectez-vous pour commander!`;
+    
+    // Réinitialiser le formulaire
+    anonEmail.value = '';
+    anonFirstName.value = '';
+    anonLastName.value = '';
+  } catch (err: any) {
+    saveCartError.value = err?.message || 'Impossible d\'enregistrer le panier anonyme';
   } finally {
     saveCartLoading.value = false;
   }
