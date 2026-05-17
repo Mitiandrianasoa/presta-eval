@@ -80,7 +80,7 @@
             </span>
           </div>
         </div>
-
+ 
         <!-- Résultats -->
         <div class="results-info">
           <i class="fas fa-chart-line"></i>

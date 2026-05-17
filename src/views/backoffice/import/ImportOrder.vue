@@ -385,7 +385,7 @@ const creerCommande = async (idCart, idCustomer, idAddress, registreRollback) =>
     <id_currency><![CDATA[${ID_CURRENCY_EURO}]]></id_currency>
     <id_lang><![CDATA[${ID_LANG_FR}]]></id_lang>
     <payment><![CDATA[Import CSV]]></payment>
-    <module><![CDATA[ps_checkpayment]]></module>
+    <module><![CDATA[ps_cashondelivery]]></module>
     <conversion_rate><![CDATA[1]]></conversion_rate>
     <total_products><![CDATA[${totalProducts}]]></total_products>
     <total_products_wt><![CDATA[${totalProductsWt}]]></total_products_wt>
@@ -393,7 +393,7 @@ const creerCommande = async (idCart, idCustomer, idAddress, registreRollback) =>
     <total_paid_real><![CDATA[${totalProductsWt}]]></total_paid_real>
     <total_shipping><![CDATA[0]]></total_shipping>
     <secure_key><![CDATA[${secureKey}]]></secure_key>
-    <current_state><![CDATA[13]]></current_state>
+    <current_state><![CDATA[2]]></current_state>
     <valid><![CDATA[1]]></valid>
   </order>
 </prestashop>`;

@@ -80,7 +80,7 @@ export const orderService = {
     try {
       const res    = await api.get('/order_states?output_format=XML&display=full&limit=5000');
       const xmlDoc = parse(res.data);
-
+      console.log('🔄 Statuts de commandes récupérés depuis PrestaShop', xmlDoc);
       const states = Array.from(xmlDoc.querySelectorAll('order_state')).map(el => ({
         id:   attr(el, 'id') || text(el, 'id'),
         name: text(el, 'name'),
@@ -121,6 +121,7 @@ export const orderService = {
     console.log(`🚫 ${canceled.length} commandes annulées`);
     return canceled;
   },
+
 
   /**
    * Récupère une commande par son ID.
