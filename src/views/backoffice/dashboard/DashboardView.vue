@@ -70,6 +70,23 @@
             </div>
           </div>
         </div>
+        
+        <!-- <div class="tabs-container">
+          <button 
+            class="tab-btn" 
+            :class="{ active: currentTab === 'orders' }" 
+            @click="currentTab = 'orders'"
+          >
+            Liste des commandes
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: currentTab === 'stats' }" 
+            @click="currentTab = 'stats'"
+          >
+            Statistiques par Catégorie
+          </button>
+        </div> -->
 
         <!-- SUMMARY CARDS -->
         <div class="summary-row">
@@ -262,7 +279,11 @@ const error = ref('');
 const dateDebut = ref('');
 const dateFin = ref('');
 const orders = ref<Order[]>([]);
-const cacheProduits = ref<Record<string, { price: number; wholesale_price: number }>>({});
+const currentTab = ref('orders');
+// const cacheProduits = ref<Record<string, { price: number; wholesale_price: number }>>({});
+const cacheProduits = ref<Record<string, { price: number; wholesale_price: number, category_id: string }>>({});
+const cacheCategories = ref<Record<string, string>>({});
+
 
 // Computed
 const hasActiveFilter = computed(() => !!(dateDebut.value || dateFin.value));
@@ -326,6 +347,59 @@ const panierMoyen = computed(() => {
   return totalTTC.value / totalOrders.value;
 });
 
+interface CategoryStat {
+  id: string;
+  name: string;
+  totalVentesHT: number;
+  totalAchat: number;
+  benefice: number;
+  marge: number;
+}
+
+const statsParCategorie = computed(() => {
+  const statsMap: Record<string, { ventesHT: number; achat: number }> = {};
+
+  // 1. Parcourir toutes les commandes filtrées
+  ordersFiltered.value.forEach(order => {
+    order.products.forEach(product => {
+      const productInfo = cacheProduits.value[product.id];
+      if (productInfo) {
+        const catId = productInfo.category_id;
+        const qte = product.quantity;
+        
+        // Approximation du prix de vente HT au prorata ou prix du cache si l'API de la commande ne donne pas le HT unitaire précis
+        // Ici on prend le prix de base HT du produit * quantité
+        const totalProduitHT = productInfo.price * qte; 
+        const totalProduitAchat = productInfo.wholesale_price * qte;
+
+        if (!statsMap[catId]) {
+          statsMap[catId] = { ventesHT: 0, achat: 0 };
+        }
+
+        statsMap[catId].ventesHT += totalProduitHT;
+        statsMap[catId].achat += totalProduitAchat;
+      }
+    });
+  });
+
+  // 2. Transformer la Map en tableau trié par bénéfice décroissant
+  return Object.keys(statsMap).map(catId => {
+    const ventesHT = statsMap[catId].ventesHT;
+    const achat = statsMap[catId].achat;
+    const beneficeCat = ventesHT - achat;
+    const margeCat = ventesHT > 0 ? (beneficeCat / ventesHT) * 100 : 0;
+
+    return {
+      id: catId,
+      name: cacheCategories.value[catId] || `Catégorie #${catId}`,
+      totalVentesHT: ventesHT,
+      totalAchat: achat,
+      benefice: beneficeCat,
+      marge: margeCat
+    };
+  }).sort((a, b) => b.benefice - a.benefice);
+});
+
 // Méthodes
 const loadOrders = async () => {
   loading.value = true;
@@ -338,6 +412,7 @@ const loadOrders = async () => {
     const orderElements = xmlDoc.querySelectorAll('order');
 
     await loadProductCache();
+    await loadCategoryCache();
 
     const ordersArray: Order[] = [];
 
@@ -404,9 +479,54 @@ const loadOrders = async () => {
   }
 };
 
+const loadCategoryCache = async () => {
+  try {
+    const response = await api.get('/categories?output_format=XML&display=[id,name]&limit=500');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const categories = xmlDoc.querySelectorAll('category');
+
+    categories.forEach(cat => {
+      const id = cat.querySelector('id')?.textContent?.trim() || '';
+      // Prestashop peut renvoyer le nom en plusieurs langues, on prend le premier trouvé
+      const name = cat.querySelector('name')?.textContent?.trim() || 'Inconnu';
+      if (id) cacheCategories.value[id] = name;
+    });
+  } catch (e) {
+    console.warn('Erreur chargement cache catégories:', e);
+  }
+};
+
+// const loadProductCache = async () => {
+//   try {
+//     const response = await api.get('/products?output_format=XML&display=[id,price,wholesale_price]&limit=5000');
+//     const parser = new DOMParser();
+//     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+//     const products = xmlDoc.querySelectorAll('product');
+
+//     products.forEach(product => {
+//       const id = product.querySelector('id')?.textContent?.trim() || '';
+//       const price = parseFloat(product.querySelector('price')?.textContent?.trim() || '0');
+//       const wholesalePrice = parseFloat(product.querySelector('wholesale_price')?.textContent?.trim() || '0');
+      
+//       if (id) {
+//         cacheProduits.value[id] = { price, wholesale_price: wholesalePrice };
+//       }
+//     });
+
+//     console.log(`Produits chargés: ${Object.keys(cacheProduits.value).length}`);
+//   } catch (e) {
+//     console.warn('Erreur chargement cache produits:', e);
+//   }
+// };
+
+
+// 2. Modifie la fonction :
+
 const loadProductCache = async () => {
   try {
-    const response = await api.get('/products?output_format=XML&display=[id,price,wholesale_price]&limit=5000');
+    // AJOUT de id_category_default dans le display de l'URL API
+    const response = await api.get('/products?output_format=XML&display=[id,price,wholesale_price,id_category_default]&limit=5000');
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
     const products = xmlDoc.querySelectorAll('product');
@@ -415,9 +535,11 @@ const loadProductCache = async () => {
       const id = product.querySelector('id')?.textContent?.trim() || '';
       const price = parseFloat(product.querySelector('price')?.textContent?.trim() || '0');
       const wholesalePrice = parseFloat(product.querySelector('wholesale_price')?.textContent?.trim() || '0');
+      const categoryId = product.querySelector('id_category_default')?.textContent?.trim() || 'Non classé';
       
       if (id) {
-        cacheProduits.value[id] = { price, wholesale_price: wholesalePrice };
+        // On stocke la catégorie dans le cache
+        cacheProduits.value[id] = { price, wholesale_price: wholesalePrice, category_id: categoryId };
       }
     });
 

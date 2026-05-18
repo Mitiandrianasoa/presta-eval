@@ -11,6 +11,10 @@ const goToDashboard = () => {
   router.push('/admin/dashboard');
 };
 
+const goToStatistics = () => {
+  router.push('/admin/statistics');
+};
+
 const goToProducts = () => {
   router.push('/admin?view=products');
 };
@@ -20,7 +24,7 @@ const goToCategories = () => {
 };
 
 const goToStock = () => {
-  router.push('/admin?view=stock');
+  router.push('/admin/stock');
 };
 
 const goToCustomers = () => {
@@ -73,6 +77,17 @@ const goToConfig = () => {
           <rect x="3" y="16" width="7" height="5" rx="1"/>
         </svg>
         <span>Dashboard</span>
+      </button>
+
+      <button @click="goToStatistics" class="menu-item main-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19V5"/>
+          <path d="M4 19h16"/>
+          <rect x="7" y="13" width="3" height="6" rx="1"/>
+          <rect x="12" y="9" width="3" height="10" rx="1"/>
+          <rect x="17" y="6" width="3" height="13" rx="1"/>
+        </svg>
+        <span>Statistiques</span>
       </button>
 
 

@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
 import { useStockStore } from '../../stores/stock/stockStore';
+import Sidebar from '../Sidebar.vue';
 
 const stockStore = useStockStore();
 const searchQuery = ref('');
@@ -83,6 +84,7 @@ const getStockClass = (quantity: number) => {
 </script>
 
 <template>
+  <Sidebar> </Sidebar>
   <div class="stock-list">
     <div class="stock-header">
       <h2>Gestion des Stocks</h2>
@@ -219,7 +221,8 @@ const getStockClass = (quantity: number) => {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 24px;
+  padding: 10px;
+  margin-left: 15%;
 }
 
 .stock-header {

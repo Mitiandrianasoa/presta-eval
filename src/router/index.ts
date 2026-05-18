@@ -19,6 +19,7 @@ import ConfigView from '../views/backoffice/config/ConfigView.vue';
 import CategoryImportView from '../views/backoffice/catalog/CategoryImportView.vue';
 import OrderView from '../views/backoffice/order/OrderView.vue';
 import DashboardView from '../views/backoffice/dashboard/DashboardView.vue';
+import StatisticsView from '../views/backoffice/dashboard/StatisticsView.vue';
 import ImportView from '../views/backoffice/import/ImportView.vue';
 import CanceledOrders from '@/components/order/CanceledOrders.vue';
 import CartList from '@/components/order/CartList.vue';
@@ -28,6 +29,7 @@ import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
 import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
 import ImportPhoto from '@/views/backoffice/import/ImportPhoto.vue';
 import StockMvt from '@/views/backoffice/stock/StockMvt.vue';
+import StockList from '@/components/stock/StockList.vue'; 
 
 const routes = [
   // ── Frontoffice Routes ─────────────────────────────────────────────────────
@@ -82,11 +84,7 @@ const routes = [
     component: ProductDetailView,
   },
   // Dans votre fichier de routes
-{
-  path: '/stocks/movements',
-  name: 'StockMovements',
-  component: StockMvt,
-},
+
 
   // Login : formulaire email (pré-rempli) + mot de passe → connexion complète
   {
@@ -104,12 +102,17 @@ const routes = [
   {
     path: '/admin',
     name: 'admin',
-    component: CatalogView,
+    component: DashboardView,
   },
   {
     path: '/admin/dashboard',
     name: 'admin-dashboard',
     component: DashboardView,
+  },
+  {
+    path: '/admin/statistics',
+    name: 'admin-statistics',
+    component: StatisticsView,
   },
     {
     path: '/import',
@@ -126,6 +129,16 @@ const routes = [
     name: 'import-categories',
     component: CategoryImportView,
   },
+  {
+  path: '/stocks/movements',
+  name: 'StockMovements',
+  component: StockMvt,
+},
+{
+ path: '/admin/stock',
+  name: 'Stock',
+  component: StockList,
+},
   //IMPORT 
    {
     path: '/admin/import',
