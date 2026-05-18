@@ -13,6 +13,7 @@ const attr  = (el: Element, attName: string) => el.getAttribute(attName) || '';
 export interface OrderItem {
   id: string;
   product_id: string;
+  product_attribute_id: string;
   product_name: string;
   product_reference: string;
   quantity: string;
@@ -41,7 +42,7 @@ export interface OrderState {
 // ─── IDs des états dans PrestaShop ────────────────────────────────────────────
 // ⚠️ Vérifiez ces IDs dans votre boutique (table ps_order_state ou logs console)
 export const CANCELED_STATE_ID  = '6';
-export const DELIVERED_STATE_ID = '4';
+export const DELIVERED_STATE_ID = '5';
 
 // ─── Helpers internes ──────────────────────────────────────────────────────────
 
@@ -50,12 +51,13 @@ function parseOrderElement(orderEl: Element): Order {
   const items: OrderItem[] = Array.from(
     orderEl.querySelectorAll('associations order_row')
   ).map(itemEl => ({
-    id:                text(itemEl, 'id'),
-    product_id:        text(itemEl, 'product_id'),
-    product_name:      text(itemEl, 'product_name'),
-    product_reference: text(itemEl, 'product_reference'),
-    quantity:          text(itemEl, 'product_quantity'),
-    price:             text(itemEl, 'product_price'),
+    id:                   text(itemEl, 'id'),
+    product_id:           text(itemEl, 'product_id'),
+    product_attribute_id: text(itemEl, 'product_attribute_id'),
+    product_name:         text(itemEl, 'product_name'),
+    product_reference:    text(itemEl, 'product_reference'),
+    quantity:             text(itemEl, 'product_quantity'),
+    price:                text(itemEl, 'product_price'),
   }));
 
   return {
@@ -181,6 +183,36 @@ export const orderService = {
     if (success !== 'true') {
       const msg = xmlDoc.querySelector('error')?.textContent?.trim() || 'Erreur shiporder';
       throw new Error(msg);
+    }
+  },
+
+  /**
+   * Marque une commande comme livrée : met à jour l'état ET décrémente le stock
+   * via WebService direct (évite les hooks PS qui causent un 503).
+   */
+  async markDelivered(order: Order): Promise<void> {
+    await this.updateState(order.id, DELIVERED_STATE_ID);
+    for (const item of order.items) {
+      try {
+        const qty = parseInt(item.quantity) || 0;
+        if (!qty || !item.product_id) continue;
+        const idAttr = item.product_attribute_id || '0';
+        const filterAttr = idAttr !== '0'
+          ? `&filter[id_product_attribute]=${idAttr}`
+          : '&filter[id_product_attribute]=0';
+        const stockRes = await api.get(
+          `/stock_availables?output_format=XML&filter[id_product]=${item.product_id}${filterAttr}&display=[id,quantity]`
+        );
+        const stockDoc = parse(stockRes.data);
+        const stockEl  = stockDoc.querySelector('stock_available');
+        if (!stockEl) continue;
+        const idStock    = attr(stockEl, 'id') || text(stockEl, 'id');
+        const currentQty = parseInt(text(stockEl, 'quantity') || '0');
+        const newQty     = Math.max(0, currentQty - qty);
+        await updateResource('stock_availables', idStock, { quantity: String(newQty) });
+      } catch (e: any) {
+        console.warn(`⚠️ Stock non décrémenté produit ${item.product_id}:`, e.message);
+      }
     }
   },
 

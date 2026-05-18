@@ -356,16 +356,21 @@ const ordersFiltered = computed(() => {
 
 const totalOrders = computed(() => ordersFiltered.value.length);
 
-const totalHT = computed(() => 
-  ordersFiltered.value.reduce((sum, o) => sum + o.totalHT, 0)
+// CA = commandes non annulées uniquement (état 6 exclu)
+const ordersActive = computed(() =>
+  ordersFiltered.value.filter(o => o.current_state !== '6')
 );
 
-const totalTTC = computed(() => 
-  ordersFiltered.value.reduce((sum, o) => sum + o.totalTTC, 0)
+const totalHT = computed(() =>
+  ordersActive.value.reduce((sum, o) => sum + o.totalHT, 0)
 );
 
-const totalAchat = computed(() => 
-  ordersFiltered.value.reduce((sum, o) => sum + o.totalAchat, 0)
+const totalTTC = computed(() =>
+  ordersActive.value.reduce((sum, o) => sum + o.totalTTC, 0)
+);
+
+const totalAchat = computed(() =>
+  ordersActive.value.reduce((sum, o) => sum + o.totalAchat, 0)
 );
 
 const benefice = computed(() => totalTTC.value - totalAchat.value);
@@ -391,7 +396,7 @@ const panierMoyen = computed(() => {
 const beneficeParCategorie = computed(() => {
   const map: Record<string, { nom: string; ventesHT: number; achatHT: number }> = {};
 
-  for (const order of ordersFiltered.value) {
+  for (const order of ordersActive.value) {
     for (const product of order.products) {
       const cached = cacheProduits.value[product.id];
       if (!cached) continue;
@@ -472,7 +477,7 @@ const loadOrders = async () => {
       const customerId = orderEl.querySelector('id_customer')?.textContent?.trim() || '';
       const currentState = orderEl.querySelector('current_state')?.textContent?.trim() || '';
       const totalPaidTTC = parseFloat(orderEl.querySelector('total_paid_tax_incl')?.textContent?.trim() || '0');
-      const totalProductsHT = parseFloat(orderEl.querySelector('total_products')?.textContent?.trim() || '0');
+      const totalPaidHT  = parseFloat(orderEl.querySelector('total_paid_tax_excl')?.textContent?.trim() || '0');
 
       if (!dateAdd || !orderId) continue;
 
@@ -508,7 +513,7 @@ const loadOrders = async () => {
         date: dateAdd,
         customer_id: customerId,
         current_state: currentState,
-        totalHT: totalProductsHT,
+        totalHT: totalPaidHT,
         totalTTC: totalPaidTTC,
         totalAchat,
         benefice: beneficeOrder,

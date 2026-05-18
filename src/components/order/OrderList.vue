@@ -45,10 +45,11 @@ const updateState = async (orderId: string, newState: string) => {
   }
 };
 
-// Boutons Livrer / Annuler → passent par shiporder.php (état + stock)
 const markDelivered = async (orderId: string) => {
+  const order = orders.value.find(o => o.id === orderId);
+  if (!order) return;
   try {
-    await orderService.callShiporder(orderId, '4');
+    await orderService.markDelivered(order);
     await loadData();
   } catch (e: any) {
     error.value = `Erreur livraison : ${e.message}`;
@@ -57,7 +58,7 @@ const markDelivered = async (orderId: string) => {
 
 const cancelOrder = async (orderId: string) => {
   try {
-    await orderService.callShiporder(orderId, '6');
+    await orderService.updateState(orderId, CANCELED_STATE_ID);
     await loadData();
   } catch (e: any) {
     error.value = `Erreur annulation : ${e.message}`;

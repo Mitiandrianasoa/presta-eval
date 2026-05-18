@@ -27,7 +27,7 @@ const DEFAULT_CONFIG = {
 // ─── Mapping des états de commande ────────────────────────────────────────────
 const ETATS_COMMANDE = {
   'paiement accepté': 2,
-  'livré': 4,   // état 4 = Livré (stock décrémenté)
+  'livré': 5,   // état 5 = Livré/Voatolotra (stock décrémenté)
   'annulé': 6,  // état 6 = Annulé (aucun changement de stock)
 };
 
@@ -983,8 +983,8 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
           } catch (stockErr) {
             console.warn(`   ⚠️ Mise à jour stock réservé non critique :`, stockErr.message);
           }
-        } else if (idOrderState === 4) {
-          // Livré : PUT direct sur stock_available via WebService (sans hooks PS)
+        } else if (idOrderState === 5) {
+          // Livré/Voatolotra : PUT direct sur stock_available via WebService (sans hooks PS)
           await decrementerStocks(items);
           console.log(`   ✅ Stock décrémenté pour commande #${cmd.id_order}`);
         } else if (idOrderState === 6) {
