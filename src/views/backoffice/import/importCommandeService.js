@@ -54,6 +54,20 @@ export const estDateValide = (dateStr) => {
   return /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr.trim());
 };
 
+export const convertirDateCsvEnSql = (dateStr) => {
+  if (!dateStr) {
+    throw new Error('Date CSV manquante');
+  }
+
+  const match = dateStr.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) {
+    throw new Error(`Format de date invalide : "${dateStr}" (attendu DD/MM/YYYY)`);
+  }
+
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day} 00:00:00`;
+};
+
 /**
  * Valide une ligne CSV commande.
  * @param {Object} row
@@ -433,7 +447,7 @@ export const creerAdresse = async (idCustomer, nom, adresse, registreRollback) =
   }
 };
 
-export const creerPanier = async (idCustomer, idAddress, items, registreRollback) => {
+export const creerPanier = async (idCustomer, idAddress, items, registreRollback, dateCsv = '') => {
   try {
     let cartRowsXml = '';
     
@@ -450,6 +464,9 @@ export const creerPanier = async (idCustomer, idAddress, items, registreRollback
     </cart_row>`;
     }
     
+    const dateSql = convertirDateCsvEnSql(dateCsv);
+    console.log(`🛒 Création panier | Date CSV: "${dateCsv}" → Date SQL: "${dateSql}"`);
+    
     const xmlCart = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <cart>
@@ -458,6 +475,8 @@ export const creerPanier = async (idCustomer, idAddress, items, registreRollback
     <id_address_delivery><![CDATA[${idAddress}]]></id_address_delivery>
     <id_address_invoice><![CDATA[${idAddress}]]></id_address_invoice>
     <id_currency><![CDATA[${ID_CURRENCY_EURO}]]></id_currency>
+    <date_add><![CDATA[${dateSql}]]></date_add>
+    <date_upd><![CDATA[${dateSql}]]></date_upd>
     <id_lang><![CDATA[${ID_LANG_FR}]]></id_lang>
     <associations>
       <cart_rows>${cartRowsXml}
@@ -484,7 +503,7 @@ export const creerPanier = async (idCustomer, idAddress, items, registreRollback
   }
 };
 
-export const creerCommande = async (idCart, idCustomer, idAddress, items, registreRollback) => {
+export const creerCommande = async (idCart, idCustomer, idAddress, items, registreRollback, dateCsv = '') => {
   try {
     console.log(`📦 Préparation commande | Cart: ${idCart}`);
 
@@ -670,10 +689,12 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
     // Formater les totaux
     const formattedHT = totalProducts.toFixed(6);
     const formattedTTC = totalProductsWt.toFixed(6);
+    const dateSql = convertirDateCsvEnSql(dateCsv);
 
     console.log(`💰 Totaux finaux:`);
     console.log(`   HT (total_products): ${formattedHT}€`);
     console.log(`   TTC (total_products_wt): ${formattedTTC}€`);
+    console.log(`   Date SQL: ${dateSql}`);
 
     // XML de commande
     const orderXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -703,6 +724,10 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
     <total_shipping_tax_incl><![CDATA[0.000000]]></total_shipping_tax_incl>
     <total_shipping_tax_excl><![CDATA[0.000000]]></total_shipping_tax_excl>
     <carrier_tax_rate><![CDATA[0.000]]></carrier_tax_rate>
+    <date_add><![CDATA[${dateSql}]]></date_add>
+    <date_upd><![CDATA[${dateSql}]]></date_upd>
+    <invoice_date><![CDATA[${dateSql}]]></invoice_date>
+    <delivery_date><![CDATA[${dateSql}]]></delivery_date>
     <secure_key><![CDATA[${secureKey}]]></secure_key>
     <valid><![CDATA[1]]></valid>
   </order>
@@ -859,13 +884,17 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
       const idAddress = await creerAdresse(idCustomer, cmd.nom, cmd.adresse, registreRollback);
       cmd.id_address = idAddress;
       
-      const idCart = await creerPanier(idCustomer, idAddress, items, registreRollback);
+      console.log(`\n📋 Traitement commande CSV avec date: "${cmd.date}"`);
+      
+      const idCart = await creerPanier(idCustomer, idAddress, items, registreRollback, cmd.date);
       cmd.id_cart = idCart;
+      console.log(`   ✅ Panier créé (#${idCart}) avec la date du CSV`);
       
       if (cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')) {
         // Passage de `items` pour le calcul fallback
-        const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback);
+        const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback, cmd.date);
         cmd.id_order = orderResult.id;
+        console.log(`   ✅ Commande créée (#${cmd.id_order}) avec la date du CSV`);
 
         await enregistrerMouvementsStocks(items, 1);
       }

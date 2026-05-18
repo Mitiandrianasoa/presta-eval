@@ -14,19 +14,23 @@
         </div>
       </div>
 
+      <!-- Loading -->
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
         <p>Chargement des données...</p>
       </div>
 
+      <!-- Error -->
       <div v-else-if="error" class="error-message">
         <h3>Erreur</h3>
         <p>{{ error }}</p>
         <button @click="loadOrders" class="retry-btn">Réessayer</button>
       </div>
 
+      <!-- Dashboard Content -->
       <div v-else class="dashboard-content">
 
+        <!-- Date Filter Section -->
         <div class="filter-section">
           <div class="filter-card">
             <div class="filter-header">
@@ -76,8 +80,11 @@
           </div>
         </div>
 
-        <!-- SUMMARY CARDS -->
+        <!-- ============================================ -->
+        <!-- SUMMARY CARDS - AVEC HT, TTC, ACHAT, BÉNÉFICE -->
+        <!-- ============================================ -->
         <div class="summary-row">
+          <!-- Chiffre d'affaires TTC -->
           <div class="summary-card accent-blue">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -90,6 +97,7 @@
             </div>
           </div>
 
+          <!-- Chiffre d'affaires HT -->
           <div class="summary-card accent-indigo">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -103,6 +111,7 @@
             </div>
           </div>
 
+          <!-- Prix d'achat total (Wholesale) -->
           <div class="summary-card accent-amber">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -117,6 +126,7 @@
             </div>
           </div>
 
+          <!-- Bénéfice -->
           <div class="summary-card" :class="benefice >= 0 ? 'accent-green' : 'accent-red'">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -134,7 +144,9 @@
           </div>
         </div>
 
+        <!-- ============================================ -->
         <!-- STATS RAPIDES -->
+        <!-- ============================================ -->
         <div class="stats-mini-row">
           <div class="stat-mini">
             <span class="stat-mini-value">{{ totalOrders }}</span>
@@ -154,10 +166,12 @@
           </div>
         </div>
 
-        <!-- TABLEAU DÉTAILLÉ DES COMMANDES -->
+        <!-- ============================================ -->
+        <!-- TABLEAU DÉTAILLÉ PAR JOUR -->
+        <!-- ============================================ -->
         <div class="orders-section">
           <div class="section-header">
-            <h2>Détail des commandes</h2>
+            <h2>Commandes par jour</h2>
             <span class="section-badge">{{ totalOrders }} commandes</span>
           </div>
 
@@ -165,10 +179,8 @@
             <table>
               <thead>
                 <tr>
-                  <th>N° Commande</th>
                   <th>Date</th>
-                  <th>Client</th>
-                  <th>Produits</th>
+                  <th class="center">Nb Cdes</th>
                   <th class="right">CA HT</th>
                   <th class="right">CA TTC</th>
                   <th class="right">Prix Achat</th>
@@ -177,27 +189,25 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="order in ordersFiltered" :key="order.id">
-                  <td class="order-id-cell">#{{ order.id }}</td>
-                  <td class="date-cell">{{ formatDate(order.date) }}</td>
-                  <td class="customer-id-cell">{{ order.customer_id }}</td>
-                  <td class="products-cell">
-                    <span class="product-count-badge">{{ order.products.length }} produit(s)</span>
+                <tr v-for="(data, date) in ordersByDayFiltered" :key="date">
+                  <td class="date-cell">{{ formatDate(date) }}</td>
+                  <td class="center">
+                    <span class="count-badge">{{ data.count }}</span>
                   </td>
-                  <td class="right amount-cell">{{ formatCurrency(order.totalHT) }}</td>
-                  <td class="right amount-cell ttc">{{ formatCurrency(order.totalTTC) }}</td>
-                  <td class="right amount-cell achat">{{ formatCurrency(order.totalAchat) }}</td>
-                  <td class="right amount-cell" :class="order.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
-                    {{ formatCurrency(order.benefice) }}
+                  <td class="right amount-cell">{{ formatCurrency(data.totalHT) }}</td>
+                  <td class="right amount-cell ttc">{{ formatCurrency(data.totalTTC) }}</td>
+                  <td class="right amount-cell achat">{{ formatCurrency(data.totalAchat) }}</td>
+                  <td class="right amount-cell" :class="data.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
+                    {{ formatCurrency(data.benefice) }}
                   </td>
                   <td class="right">
-                    <span class="marge-badge" :class="order.marge >= 0 ? 'marge-positive' : 'marge-negative'">
-                      {{ order.marge >= 0 ? '+' : '' }}{{ order.marge.toFixed(1) }}%
+                    <span class="marge-badge" :class="data.marge >= 0 ? 'marge-positive' : 'marge-negative'">
+                      {{ data.marge >= 0 ? '+' : '' }}{{ data.marge.toFixed(1) }}%
                     </span>
                   </td>
                 </tr>
-                <tr v-if="ordersFiltered.length === 0">
-                  <td colspan="9" class="empty-state">
+                <tr v-if="Object.keys(ordersByDayFiltered).length === 0">
+                  <td colspan="7" class="empty-state">
                     <div class="empty-message">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <circle cx="12" cy="12" r="10"/>
@@ -209,9 +219,12 @@
                   </td>
                 </tr>
               </tbody>
-              <tfoot v-if="ordersFiltered.length > 0">
+              <tfoot v-if="Object.keys(ordersByDayFiltered).length > 0">
                 <tr class="total-row">
-                  <td colspan="4"><strong>TOTAL</strong></td>
+                  <td><strong>TOTAL</strong></td>
+                  <td class="center">
+                    <span class="count-badge total">{{ totalOrders }}</span>
+                  </td>
                   <td class="right amount-cell"><strong>{{ formatCurrency(totalHT) }}</strong></td>
                   <td class="right amount-cell ttc"><strong>{{ formatCurrency(totalTTC) }}</strong></td>
                   <td class="right amount-cell achat"><strong>{{ formatCurrency(totalAchat) }}</strong></td>
@@ -243,64 +256,63 @@ import Sidebar from '../../../components/Sidebar.vue';
 const router = useRouter();
 const goToAdmin = (view: string) => router.push(`/admin?view=${view}`);
 
-// Types
-interface OrderProduct {
-  id: string;
-  name: string;
-  quantity: number;
-}
+// ============================================
+// ÉTAT
+// ============================================
+const loading = ref(false);
+const error = ref('');
+const dateDebut = ref('');
+const dateFin = ref('');
 
-interface Order {
-  id: string;
-  date: string;
-  customer_id: string;
+interface DayData {
+  count: number;
   totalHT: number;
   totalTTC: number;
   totalAchat: number;
   benefice: number;
   marge: number;
-  products: OrderProduct[];
 }
 
-// État
-const loading = ref(false);
-const error = ref('');
-const dateDebut = ref('');
-const dateFin = ref('');
-const orders = ref<Order[]>([]);
+const ordersByDay = ref<Record<string, DayData>>({});
 const cacheProduits = ref<Record<string, { price: number; wholesale_price: number }>>({});
 
-// Computed
+// ============================================
+// COMPUTED
+// ============================================
 const hasActiveFilter = computed(() => !!(dateDebut.value || dateFin.value));
 
-const ordersFiltered = computed(() => {
-  if (!hasActiveFilter.value) return orders.value;
+const ordersByDayFiltered = computed(() => {
+  if (!hasActiveFilter.value) return ordersByDay.value;
   
   const debut = dateDebut.value ? new Date(dateDebut.value) : null;
   const fin = dateFin.value ? new Date(dateFin.value) : null;
   if (fin) fin.setHours(23, 59, 59, 999);
   
-  return orders.value.filter(order => {
-    const orderDate = new Date(order.date);
+  const filtered: Record<string, DayData> = {};
+  Object.entries(ordersByDay.value).forEach(([date, data]) => {
+    const currentDate = new Date(date);
     let include = true;
-    if (debut && orderDate < debut) include = false;
-    if (fin && orderDate > fin) include = false;
-    return include;
+    if (debut && currentDate < debut) include = false;
+    if (fin && currentDate > fin) include = false;
+    if (include) filtered[date] = data;
   });
+  return filtered;
 });
 
-const totalOrders = computed(() => ordersFiltered.value.length);
+const totalOrders = computed(() => 
+  Object.values(ordersByDayFiltered.value).reduce((sum, d) => sum + d.count, 0)
+);
 
 const totalHT = computed(() => 
-  ordersFiltered.value.reduce((sum, o) => sum + o.totalHT, 0)
+  Object.values(ordersByDayFiltered.value).reduce((sum, d) => sum + d.totalHT, 0)
 );
 
 const totalTTC = computed(() => 
-  ordersFiltered.value.reduce((sum, o) => sum + o.totalTTC, 0)
+  Object.values(ordersByDayFiltered.value).reduce((sum, d) => sum + d.totalTTC, 0)
 );
 
 const totalAchat = computed(() => 
-  ordersFiltered.value.reduce((sum, o) => sum + o.totalAchat, 0)
+  Object.values(ordersByDayFiltered.value).reduce((sum, d) => sum + d.totalAchat, 0)
 );
 
 const benefice = computed(() => totalTTC.value - totalAchat.value);
@@ -312,83 +324,89 @@ const margePourcentage = computed(() => {
 
 const tvaTotale = computed(() => totalTTC.value - totalHT.value);
 
-const totalProduitsVendus = computed(() => {
-  return ordersFiltered.value.reduce((sum, order) => 
-    sum + order.products.reduce((pSum, p) => pSum + p.quantity, 0), 0
-  );
-});
+const totalProduitsVendus = ref(0);
 
 const panierMoyen = computed(() => {
   if (totalOrders.value === 0) return 0;
   return totalTTC.value / totalOrders.value;
 });
 
-// Méthodes
+// ============================================
+// LOAD ORDERS
+// ============================================
 const loadOrders = async () => {
   loading.value = true;
   error.value = '';
 
   try {
+    // Charger les commandes
     const response = await api.get('/orders?output_format=XML&display=full&limit=5000');
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
     const orderElements = xmlDoc.querySelectorAll('order');
 
+    // Précharger les produits pour avoir les prix wholesale
     await loadProductCache();
 
-    const ordersArray: Order[] = [];
+    const dayData: Record<string, DayData> = {};
+    let produitsVendusCount = 0;
 
     for (const orderEl of Array.from(orderElements)) {
-      const orderId = orderEl.querySelector('id')?.textContent?.trim() || '';
       const dateAdd = orderEl.querySelector('date_add')?.textContent?.trim() || '';
-      const customerId = orderEl.querySelector('id_customer')?.textContent?.trim() || '';
       const totalPaidTTC = parseFloat(orderEl.querySelector('total_paid_tax_incl')?.textContent?.trim() || '0');
       const totalProductsHT = parseFloat(orderEl.querySelector('total_products')?.textContent?.trim() || '0');
+      const orderId = orderEl.querySelector('id')?.textContent?.trim() || '';
 
-      if (!dateAdd || !orderId) continue;
-
-      let totalAchat = 0;
-      const products: OrderProduct[] = [];
+      if (!dateAdd) continue;
       
+      const date = dateAdd.split(' ')[0];
+      if (!dayData[date]) {
+        dayData[date] = { count: 0, totalHT: 0, totalTTC: 0, totalAchat: 0, benefice: 0, marge: 0 };
+      }
+
+      dayData[date].count++;
+      dayData[date].totalHT += totalProductsHT;
+      dayData[date].totalTTC += totalPaidTTC;
+
+      // Calculer le prix d'achat depuis les détails de la commande
       try {
         const orderDetailRes = await api.get(`/orders/${orderId}?output_format=XML&display=full`);
         const orderDetailDoc = parser.parseFromString(orderDetailRes.data, 'text/xml');
         const orderRows = orderDetailDoc.querySelectorAll('order_row');
 
+        let achatCommande = 0;
+        
         for (const row of Array.from(orderRows)) {
           const productId = row.querySelector('product_id')?.textContent?.trim() || '';
-          const productName = row.querySelector('product_name')?.textContent?.trim() || '';
           const quantity = parseInt(row.querySelector('product_quantity')?.textContent?.trim() || '1');
           
-          products.push({ id: productId, name: productName, quantity });
+          produitsVendusCount += quantity;
 
           if (productId && cacheProduits.value[productId]) {
             const wholesalePrice = cacheProduits.value[productId].wholesale_price || 0;
-            totalAchat += wholesalePrice * quantity;
+            achatCommande += wholesalePrice * quantity;
           }
         }
+
+        dayData[date].totalAchat += achatCommande;
       } catch (e) {
-        console.warn(`Impossible de récupérer les détails de la commande ${orderId}`);
+        console.warn(`⚠️ Impossible de récupérer les détails de la commande ${orderId}`);
       }
-
-      const beneficeOrder = totalPaidTTC - totalAchat;
-      const margeOrder = totalPaidTTC > 0 ? (beneficeOrder / totalPaidTTC) * 100 : 0;
-
-      ordersArray.push({
-        id: orderId,
-        date: dateAdd,
-        customer_id: customerId,
-        totalHT: totalProductsHT,
-        totalTTC: totalPaidTTC,
-        totalAchat,
-        benefice: beneficeOrder,
-        marge: margeOrder,
-        products
-      });
     }
 
-    ordersArray.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    orders.value = ordersArray;
+    // Calculer le bénéfice et la marge pour chaque jour
+    Object.values(dayData).forEach(data => {
+      data.benefice = data.totalTTC - data.totalAchat;
+      data.marge = data.totalTTC > 0 ? (data.benefice / data.totalTTC) * 100 : 0;
+    });
+
+    // Trier par date décroissante
+    const sortedDays = Object.keys(dayData).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    const sortedData: Record<string, DayData> = {};
+    sortedDays.forEach(day => { sortedData[day] = dayData[day]; });
+
+    ordersByDay.value = sortedData;
+    totalProduitsVendus.value = produitsVendusCount;
 
   } catch (err: any) {
     error.value = `Erreur lors du chargement: ${err.message}`;
@@ -397,6 +415,9 @@ const loadOrders = async () => {
   }
 };
 
+// ============================================
+// CACHE PRODUITS
+// ============================================
 const loadProductCache = async () => {
   try {
     const response = await api.get('/products?output_format=XML&display=[id,price,wholesale_price]&limit=5000');
@@ -414,12 +435,15 @@ const loadProductCache = async () => {
       }
     });
 
-    console.log(`Produits chargés: ${Object.keys(cacheProduits.value).length}`);
+    console.log(`📦 ${Object.keys(cacheProduits.value).length} produits en cache`);
   } catch (e) {
-    console.warn('Erreur chargement cache produits:', e);
+    console.warn('⚠️ Erreur chargement cache produits:', e);
   }
 };
 
+// ============================================
+// HELPERS
+// ============================================
 const resetFilter = () => {
   dateDebut.value = '';
   dateFin.value = '';
@@ -466,6 +490,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* === LAYOUT === */
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
@@ -499,6 +524,7 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
+/* === FILTER === */
 .filter-section {
   margin-bottom: 1.5rem;
 }
@@ -563,6 +589,7 @@ onMounted(() => {
   color: #1e293b;
   background: white;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .date-input:focus {
@@ -624,6 +651,7 @@ onMounted(() => {
   border-radius: 30px;
 }
 
+/* === LOADING / ERROR === */
 .loading {
   display: flex;
   flex-direction: column;
@@ -671,6 +699,7 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* === SUMMARY CARDS === */
 .summary-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -763,6 +792,7 @@ onMounted(() => {
 .text-green { color: #10b981; }
 .text-red { color: #ef4444; }
 
+/* === STATS MINI === */
 .stats-mini-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -796,6 +826,7 @@ onMounted(() => {
   margin-top: 0.25rem;
 }
 
+/* === TABLE === */
 .orders-section {
   background: white;
   border-radius: 20px;
@@ -835,7 +866,7 @@ onMounted(() => {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1000px;
+  min-width: 900px;
 }
 
 thead {
@@ -853,6 +884,7 @@ th {
   white-space: nowrap;
 }
 
+th.center { text-align: center; }
 th.right { text-align: right; }
 
 td {
@@ -862,17 +894,11 @@ td {
   color: #334155;
 }
 
+td.center { text-align: center; }
 td.right { text-align: right; }
 
 tbody tr:hover {
   background: #f8fafc;
-}
-
-.order-id-cell {
-  font-weight: 700;
-  color: #2563eb;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
 }
 
 .date-cell {
@@ -881,23 +907,21 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
-.customer-id-cell {
-  color: #64748b;
-  font-family: 'Courier New', monospace;
-}
-
-.products-cell {
-  text-align: center;
-}
-
-.product-count-badge {
+.count-badge {
   display: inline-block;
-  background: #e0e7ff;
-  color: #4f46e5;
-  font-size: 0.75rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.8rem;
   font-weight: 700;
   padding: 0.25rem 0.7rem;
   border-radius: 30px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.count-badge.total {
+  background: #3b82f6;
+  color: white;
 }
 
 .amount-cell {
@@ -936,6 +960,7 @@ tbody tr:hover {
   font-size: 0.85rem;
 }
 
+/* === TOTAL ROW === */
 tfoot .total-row td {
   background: #fefce8;
   border-top: 2px solid #e2e8f0;
@@ -943,6 +968,7 @@ tfoot .total-row td {
   padding: 1rem;
 }
 
+/* === EMPTY === */
 .empty-state {
   text-align: center;
   padding: 3rem !important;
@@ -962,6 +988,7 @@ tfoot .total-row td {
   opacity: 0.5;
 }
 
+/* === RESPONSIVE === */
 @media (max-width: 1200px) {
   .summary-row {
     grid-template-columns: repeat(2, 1fr);
