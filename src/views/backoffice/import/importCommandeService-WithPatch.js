@@ -4,6 +4,7 @@
  *  1. Noms de colonnes non conformes
  *  2. Format de date différent de DD/MM/YYYY
  *  3. Montants négatifs (non applicable ici – pas de montant direct dans le CSV commande)
+ *  4. Gestion PATCH-like des dates (date_add, date_upd, invoice_date, delivery_date)
  */
 
 import api from '../../../api/api';
@@ -54,7 +55,13 @@ export const estDateValide = (dateStr) => {
   return /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr.trim());
 };
 
-export const convertirDateCsvEnSql = (dateStr) => {
+/**
+ * Convertit une date CSV (DD/MM/YYYY) en format SQL datetime (YYYY-MM-DD HH:MM:SS).
+ * @param {string} dateStr
+ * @param {string} heure - Heure à utiliser (défaut: "00:00:00")
+ * @returns {string}
+ */
+export const convertirDateCsvEnSql = (dateStr, heure = '00:00:00') => {
   if (!dateStr) {
     throw new Error('Date CSV manquante');
   }
@@ -65,7 +72,7 @@ export const convertirDateCsvEnSql = (dateStr) => {
   }
 
   const [, day, month, year] = match;
-  return `${year}-${month}-${day} 00:00:00`;
+  return `${year}-${month}-${day} ${heure}`;
 };
 
 /**
@@ -148,19 +155,16 @@ export const parserAchat = (achatStr) => {
     console.log('📝 Après suppression crochets:', clean);
     
     // Étape 2: Trouver tous les tuples (parenthèses)
-    // Utiliser une regex qui gère les guillemets
     const regex = /\(([^)]+)\)/g;
     let match;
     
     while ((match = regex.exec(clean)) !== null) {
-      let content = match[1]; // Contenu entre parenthèses
+      let content = match[1];
       
       console.log('🔍 Tuple trouvé:', content);
       
-      // Étape 3: Nettoyer les guillemets (simples et doubles)
       content = content.replace(/"/g, '').trim();
       
-      // Étape 4: Splitter par point-virgule
       const parts = content.split(';');
       
       console.log('📝 Parties après split:', parts);
@@ -183,15 +187,12 @@ export const parserAchat = (achatStr) => {
       }
     }
     
-    // Si aucun item trouvé, essayer un parsing alternatif
     if (items.length === 0) {
       console.warn('⚠️ Parsing standard échoué, tentative alternative...');
       
-      // Remplacer les guillemets et essayer sans regex
       let altClean = achatStr.replace(/["\[\]]/g, '').trim();
       console.log('📝 Nettoyage alternatif:', altClean);
       
-      // Chercher les motifs: reference;quantite;karazany
       const altRegex = /([A-Za-z0-9_]+);(\d+);?([^,)]*)/g;
       let altMatch;
       
@@ -230,7 +231,6 @@ export const calculerTotauxPanier = async (idCart) => {
       cartDoc.querySelector('cart total_products_wt')?.textContent?.trim() || '0'
     );
 
-    // FALLBACK MANUEL
     if (totalTTC <= 0) {
       console.warn('⚠️ Totaux panier à 0, calcul manuel');
 
@@ -299,7 +299,6 @@ export const obtenirIdDeclinaison = async (idProduct, karazany) => {
   console.log(`🔍 Recherche déclinaison pour produit ${idProduct}, karazany: "${karazany}"`);
   
   try {
-    // Méthode 1: Chercher la valeur d'attribut par son nom
     const valueRes = await api.get(
       `/product_option_values?filter[name]=[${encodeURIComponent(karazany)}]&display=[id]`
     );
@@ -315,7 +314,6 @@ export const obtenirIdDeclinaison = async (idProduct, karazany) => {
     const valueId = values[0].getElementsByTagName('id')[0]?.textContent?.trim();
     console.log(`📝 Valeur d'attribut trouvée: ID ${valueId}`);
     
-    // Chercher la combinaison qui utilise cette valeur
     const combRes = await api.get(
       `/combinations?filter[id_product]=${idProduct}&display=[id]`
     );
@@ -327,7 +325,6 @@ export const obtenirIdDeclinaison = async (idProduct, karazany) => {
     for (let i = 0; i < combinations.length; i++) {
       const combId = combinations[i].getElementsByTagName('id')[0]?.textContent?.trim();
       
-      // Récupérer les détails de la combinaison
       const combDetailRes = await api.get(`/combinations/${combId}?output_format=XML`);
       const combDetailDoc = parser.parseFromString(combDetailRes.data, 'text/xml');
       
@@ -351,7 +348,6 @@ export const obtenirIdDeclinaison = async (idProduct, karazany) => {
   }
 };
 
-// Dans votre fichier d'import
 export const obtenirOuCreerClient = async (nom, email, pwd, registreRollback) => {
   if (cacheClients[email]) return cacheClients[email];
   
@@ -369,7 +365,6 @@ export const obtenirOuCreerClient = async (nom, email, pwd, registreRollback) =>
   }
   
   try {
-    // Extraire prénom et nom de la chaîne "nom"
     const nomParts = nom.split(' ');
     const firstname = nomParts[0] || 'Client';
     const lastname = nomParts.slice(1).join(' ') || nom;
@@ -408,7 +403,6 @@ export const obtenirOuCreerClient = async (nom, email, pwd, registreRollback) =>
 
 export const creerAdresse = async (idCustomer, nom, adresse, registreRollback) => {
   try {
-    // Extraire prénom et nom
     const nomParts = nom.split(' ');
     const firstname = nomParts[0] || 'Client';
     const lastname = nomParts.slice(1).join(' ') || nom;
@@ -503,6 +497,109 @@ export const creerPanier = async (idCustomer, idAddress, items, registreRollback
   }
 };
 
+// ─── NOUVELLE FONCTION : PATCH des dates d'une commande ──────────────────────
+
+/**
+ * Met à jour UNIQUEMENT les dates d'une commande existante.
+ * Simule un PATCH en préservant tous les champs obligatoires.
+ * @param {string} orderId - ID de la commande PrestaShop
+ * @param {string} dateCsv - Date brute du CSV (DD/MM/YYYY)
+ * @returns {Promise<void>}
+ */
+export const patcherDatesCommande = async (orderId, dateCsv) => {
+  if (!orderId || !dateCsv) {
+    console.warn(`⚠️ PATCH dates ignoré : orderId=${orderId}, date=${dateCsv}`);
+    return;
+  }
+
+  try {
+    // Récupérer la commande existante pour préserver les champs obligatoires
+    const orderRes = await api.get(`/orders/${orderId}?output_format=XML`);
+    const parser = new DOMParser();
+    const orderDoc = parser.parseFromString(orderRes.data, 'application/xml');
+
+    // Extraire les champs obligatoires à préserver
+    const idAddressDelivery = orderDoc.querySelector('order id_address_delivery')?.textContent?.trim() || '';
+    const idAddressInvoice = orderDoc.querySelector('order id_address_invoice')?.textContent?.trim() || '';
+    const idCart = orderDoc.querySelector('order id_cart')?.textContent?.trim() || '';
+    const idCurrency = orderDoc.querySelector('order id_currency')?.textContent?.trim() || '';
+    const idLang = orderDoc.querySelector('order id_lang')?.textContent?.trim() || '';
+    const idCustomer = orderDoc.querySelector('order id_customer')?.textContent?.trim() || '';
+    const idCarrier = orderDoc.querySelector('order id_carrier')?.textContent?.trim() || '';
+    const currentState = orderDoc.querySelector('order current_state')?.textContent?.trim() || '2';
+    const module = orderDoc.querySelector('order module')?.textContent?.trim() || DEFAULT_CONFIG.PAYMENT_MODULE;
+    const payment = orderDoc.querySelector('order payment')?.textContent?.trim() || DEFAULT_CONFIG.PAYMENT_METHOD;
+    const conversionRate = orderDoc.querySelector('order conversion_rate')?.textContent?.trim() || '1.000000';
+    const totalDiscounts = orderDoc.querySelector('order total_discounts')?.textContent?.trim() || '0.000000';
+    const totalDiscountsTaxIncl = orderDoc.querySelector('order total_discounts_tax_incl')?.textContent?.trim() || '0.000000';
+    const totalDiscountsTaxExcl = orderDoc.querySelector('order total_discounts_tax_excl')?.textContent?.trim() || '0.000000';
+    const totalPaid = orderDoc.querySelector('order total_paid')?.textContent?.trim() || '0.000000';
+    const totalPaidTaxIncl = orderDoc.querySelector('order total_paid_tax_incl')?.textContent?.trim() || '0.000000';
+    const totalPaidTaxExcl = orderDoc.querySelector('order total_paid_tax_excl')?.textContent?.trim() || '0.000000';
+    const totalPaidReal = orderDoc.querySelector('order total_paid_real')?.textContent?.trim() || '0.000000';
+    const totalProducts = orderDoc.querySelector('order total_products')?.textContent?.trim() || '0.000000';
+    const totalProductsWt = orderDoc.querySelector('order total_products_wt')?.textContent?.trim() || '0.000000';
+    const totalShipping = orderDoc.querySelector('order total_shipping')?.textContent?.trim() || '0.000000';
+    const totalShippingTaxIncl = orderDoc.querySelector('order total_shipping_tax_incl')?.textContent?.trim() || '0.000000';
+    const totalShippingTaxExcl = orderDoc.querySelector('order total_shipping_tax_excl')?.textContent?.trim() || '0.000000';
+    const carrierTaxRate = orderDoc.querySelector('order carrier_tax_rate')?.textContent?.trim() || '0.000';
+    const secureKey = orderDoc.querySelector('order secure_key')?.textContent?.trim() || '00000000000000000000000000000000';
+    const valid = orderDoc.querySelector('order valid')?.textContent?.trim() || '1';
+
+    const dateSql = convertirDateCsvEnSql(dateCsv);
+
+    console.log(`📅 PATCH dates commande #${orderId} : date="${dateCsv}" → SQL="${dateSql}"`);
+
+    // Construire un XML complet avec les dates corrigées
+    const xmlPatch = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <order>
+    <id>${orderId}</id>
+    <id_address_delivery>${idAddressDelivery}</id_address_delivery>
+    <id_address_invoice>${idAddressInvoice}</id_address_invoice>
+    <id_cart>${idCart}</id_cart>
+    <id_currency>${idCurrency}</id_currency>
+    <id_lang>${idLang}</id_lang>
+    <id_customer>${idCustomer}</id_customer>
+    <id_carrier>${idCarrier}</id_carrier>
+    <current_state>${currentState}</current_state>
+    <module><![CDATA[${module}]]></module>
+    <payment><![CDATA[${payment}]]></payment>
+    <conversion_rate>${conversionRate}</conversion_rate>
+    <total_discounts>${totalDiscounts}</total_discounts>
+    <total_discounts_tax_incl>${totalDiscountsTaxIncl}</total_discounts_tax_incl>
+    <total_discounts_tax_excl>${totalDiscountsTaxExcl}</total_discounts_tax_excl>
+    <total_paid>${totalPaid}</total_paid>
+    <total_paid_tax_incl>${totalPaidTaxIncl}</total_paid_tax_incl>
+    <total_paid_tax_excl>${totalPaidTaxExcl}</total_paid_tax_excl>
+    <total_paid_real>${totalPaidReal}</total_paid_real>
+    <total_products>${totalProducts}</total_products>
+    <total_products_wt>${totalProductsWt}</total_products_wt>
+    <total_shipping>${totalShipping}</total_shipping>
+    <total_shipping_tax_incl>${totalShippingTaxIncl}</total_shipping_tax_incl>
+    <total_shipping_tax_excl>${totalShippingTaxExcl}</total_shipping_tax_excl>
+    <carrier_tax_rate>${carrierTaxRate}</carrier_tax_rate>
+    <date_add><![CDATA[${dateSql}]]></date_add>
+    <date_upd><![CDATA[${dateSql}]]></date_upd>
+    <invoice_date><![CDATA[${dateSql}]]></invoice_date>
+    <delivery_date><![CDATA[${dateSql}]]></delivery_date>
+    <secure_key><![CDATA[${secureKey}]]></secure_key>
+    <valid>${valid}</valid>
+  </order>
+</prestashop>`;
+
+    await api.put(`/orders/${orderId}`, xmlPatch, {
+      headers: { 'Content-Type': 'application/xml; charset=utf-8' }
+    });
+
+    console.log(`✅ PATCH dates réussi pour commande #${orderId} : ${dateSql}`);
+    
+  } catch (error) {
+    console.error(`❌ Échec PATCH dates commande #${orderId}:`, error.response?.data || error);
+    throw error;
+  }
+};
+
 export const creerCommande = async (idCart, idCustomer, idAddress, items, registreRollback, dateCsv = '') => {
   try {
     console.log(`📦 Préparation commande | Cart: ${idCart}`);
@@ -544,24 +641,18 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
         try {
           const idProduct = await obtenirIdProduit(item.reference);
           let priceHT = 0;
-          let taxRate = 20; // Taxe par défaut 20%
+          let taxRate = 20;
           let priceSource = '';
           
-          // ============================================
-          // ÉTAPE 1: RÉCUPÉRER LE TAUX DE TAXE DU PRODUIT
-          // (Comme dans le checkout)
-          // ============================================
           try {
             const productRes = await api.get(`/products/${idProduct}?output_format=XML`);
             const productDoc = parser.parseFromString(productRes.data, 'text/xml');
             
-            // Récupérer l'ID du groupe de règles de taxe
             const idTaxRulesGroup = productDoc.querySelector('product id_tax_rules_group')?.textContent?.trim();
             
             if (idTaxRulesGroup && idTaxRulesGroup !== '0') {
               console.log(`   📋 Groupe de taxe ID: ${idTaxRulesGroup}`);
               
-              // Récupérer les règles de taxe pour ce groupe
               const taxRulesRes = await api.get(
                 `/tax_rules?filter[id_tax_rules_group]=${idTaxRulesGroup}&display=[id_tax]`
               );
@@ -572,7 +663,6 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
                 const idTax = taxRules[0].querySelector('id_tax')?.textContent?.trim();
                 
                 if (idTax) {
-                  // Récupérer le taux de taxe
                   const taxRes = await api.get(`/taxes/${idTax}?output_format=XML`);
                   const taxDoc = parser.parseFromString(taxRes.data, 'text/xml');
                   const rate = parseFloat(taxDoc.querySelector('tax rate')?.textContent?.trim() || '20');
@@ -590,11 +680,6 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
             console.warn(`   ⚠️ Erreur récupération taxe: ${e.message}, utilisation taux par défaut: ${taxRate}%`);
           }
           
-          // ============================================
-          // ÉTAPE 2: RÉCUPÉRER LE PRIX HT
-          // ============================================
-          
-          // 2a. Chercher d'abord le prix de la déclinaison
           if (item.karazany) {
             const idAttribute = await obtenirIdDeclinaison(idProduct, item.karazany);
             console.log(`   ID déclinaison trouvé: ${idAttribute}`);
@@ -609,7 +694,6 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
                 
                 console.log(`   Impact prix déclinaison: ${combPriceImpact}€`);
                 
-                // Récupérer le prix de base du produit
                 const productRes = await api.get(`/products/${idProduct}?output_format=XML`);
                 const productDoc = parser.parseFromString(productRes.data, 'text/xml');
                 const basePrice = parseFloat(
@@ -618,7 +702,6 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
                 
                 console.log(`   Prix de base produit: ${basePrice}€`);
                 
-                // Prix HT = prix de base + impact
                 priceHT = basePrice + combPriceImpact;
                 priceSource = `déclinaison (base: ${basePrice}€ + impact: ${combPriceImpact}€)`;
                 
@@ -631,7 +714,6 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
             }
           }
           
-          // 2b. Si pas de prix de déclinaison, prendre le prix du produit de base
           if (priceHT <= 0) {
             const productRes = await api.get(`/products/${idProduct}?output_format=XML`);
             const productDoc = parser.parseFromString(productRes.data, 'text/xml');
@@ -642,15 +724,11 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
             console.log(`   Prix HT produit de base: ${priceHT}€`);
           }
           
-          // 2c. Si toujours 0, erreur critique
           if (priceHT <= 0) {
             console.error(`   ❌❌❌ PRIX HT À 0 pour ${item.reference} - Vérifiez PrestaShop!`);
             continue;
           }
           
-          // ============================================
-          // ÉTAPE 3: CALCULER LE PRIX TTC AVEC LA TAXE
-          // ============================================
           const priceTTC = priceHT * (1 + taxRate / 100);
           
           const subtotalHT = priceHT * item.quantite;
@@ -677,7 +755,6 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
       console.log(`   Total TTC: ${totalTTC.toFixed(6)}€`);
       console.log(`   TVA: ${(totalTTC - totalHT).toFixed(6)}€`);
       
-      // Vérification finale
       if (totalHT <= 0 || totalTTC <= 0) {
         throw new Error('Impossible de calculer les totaux : tous les produits ont un prix à 0€');
       }
@@ -689,14 +766,17 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
     // Formater les totaux
     const formattedHT = totalProducts.toFixed(6);
     const formattedTTC = totalProductsWt.toFixed(6);
-    const dateSql = convertirDateCsvEnSql(dateCsv);
+    
+    // Pour la création initiale, on utilise la date du jour pour éviter les erreurs PrestaShop
+    // Les vraies dates seront appliquées via PATCH ensuite
+    const aujourdHui = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     console.log(`💰 Totaux finaux:`);
     console.log(`   HT (total_products): ${formattedHT}€`);
     console.log(`   TTC (total_products_wt): ${formattedTTC}€`);
-    console.log(`   Date SQL: ${dateSql}`);
+    console.log(`   Date création initiale: ${aujourdHui} (sera patchée avec la date CSV ensuite)`);
 
-    // XML de commande
+    // XML de commande - ÉTAPE 1 : création avec date du jour
     const orderXml = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order>
@@ -724,16 +804,16 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
     <total_shipping_tax_incl><![CDATA[0.000000]]></total_shipping_tax_incl>
     <total_shipping_tax_excl><![CDATA[0.000000]]></total_shipping_tax_excl>
     <carrier_tax_rate><![CDATA[0.000]]></carrier_tax_rate>
-    <date_add><![CDATA[${dateSql}]]></date_add>
-    <date_upd><![CDATA[${dateSql}]]></date_upd>
-    <invoice_date><![CDATA[${dateSql}]]></invoice_date>
-    <delivery_date><![CDATA[${dateSql}]]></delivery_date>
+    <date_add><![CDATA[${aujourdHui}]]></date_add>
+    <date_upd><![CDATA[${aujourdHui}]]></date_upd>
+    <invoice_date><![CDATA[${aujourdHui}]]></invoice_date>
+    <delivery_date><![CDATA[0000-00-00 00:00:00]]></delivery_date>
     <secure_key><![CDATA[${secureKey}]]></secure_key>
     <valid><![CDATA[1]]></valid>
   </order>
 </prestashop>`;
 
-    console.log('📤 Envoi de la commande à PrestaShop...');
+    console.log('📤 ÉTAPE 1 : Création de la commande dans PrestaShop...');
     
     const response = await api.post('/orders?output_format=XML', orderXml, {
       headers: {
@@ -759,13 +839,14 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
 
     registreRollback.push({ type: 'order', id: orderId });
 
-    // ─── PATCH des dates avec la date du CSV ──────────────────────────────
+    // ─── ÉTAPE 2 : PATCH des dates avec la date du CSV ──────────────────────
     if (dateCsv && dateCsv.trim() !== '') {
       try {
+        console.log(`📅 ÉTAPE 2 : PATCH des dates avec la date CSV "${dateCsv}"`);
         await patcherDatesCommande(orderId, dateCsv);
-        console.log(`📅 Dates patchées pour commande #${orderId} avec "${dateCsv}"`);
+        console.log(`✅ Dates patchées avec succès pour la commande #${orderId}`);
       } catch (patchErr) {
-        console.warn(`⚠️ Erreur PATCH dates commande #${orderId}: ${patchErr.message}`);
+        console.error(`❌ Erreur PATCH dates pour commande #${orderId}:`, patchErr.message);
       }
     }
 
@@ -869,29 +950,6 @@ export const obtenirSecureKey = async (customerId) => {
   }
 };
 
-export const patcherDatesCommande = async (orderId, dateCsv) => {
-  if (!orderId || !dateCsv) {
-    console.warn(`⚠️ PATCH dates commande ignoré : orderId=${orderId}, date=${dateCsv}`);
-    return;
-  }
-
-  try {
-    const dateSql = convertirDateCsvEnSql(dateCsv);
-    console.log(`📅 PATCH dates commande #${orderId} : "${dateCsv}" → "${dateSql}"`);
-    
-    await updateResource('orders', orderId, {
-      date_add: dateSql,
-      date_upd: dateSql,
-      invoice_date: dateSql,
-      delivery_date: '0000-00-00 00:00:00'
-    });
-    
-    console.log(`✅ PATCH dates commande réussi pour #${orderId} : ${dateSql}`);
-  } catch (error) {
-    console.error(`❌ Erreur PATCH dates commande #${orderId}:`, error);
-  }
-};
-
 /**
  * Lance l'importation des commandes.
  * @param {Object[]} commandesTraitees
@@ -924,10 +982,9 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
       console.log(`   ✅ Panier créé (#${idCart}) avec la date du CSV`);
       
       if (cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')) {
-        // Passage de `items` pour le calcul fallback
         const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback, cmd.date);
         cmd.id_order = orderResult.id;
-        console.log(`   ✅ Commande créée (#${cmd.id_order}) avec la date du CSV`);
+        console.log(`   ✅ Commande créée (#${cmd.id_order}) avec dates patchées depuis le CSV`);
 
         await enregistrerMouvementsStocks(items, 1);
       }

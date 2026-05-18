@@ -39,12 +39,13 @@ const RESET_PRIORITY: ResetItem[] = [
 //   { ref: "customers", priority: 4 },
 
   // Taxes
-  { ref: "tax_rules", priority: 5 },
-  { ref: "tax_rule_groups", priority: 5 },
-  { ref: "taxes", priority: 5 },
+  // { ref: "tax_rules", priority: 5 },
+  // { ref: "tax_rule_groups", priority: 5 },
+  // { ref: "taxes", priority: 5 },
 
   // Catégories
-  { ref: "categories", priority: 6 },
+  { ref: "categories", priority: 4 },
+  // { ref: "stock_availables", priority: 7 }
 ];
 
 function shouldSkip(resource: string, id: number): boolean {
