@@ -355,7 +355,10 @@ const loadCart = () => {
   if (savedCart) cart.value = JSON.parse(savedCart);
 };
 
-const saveCart = () => localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
+const saveCart = () => {
+  localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
+  window.dispatchEvent(new Event('prestashop:cart-updated'));
+};
 
 const addToCart = (product: any) => {
   const productToAdd = {

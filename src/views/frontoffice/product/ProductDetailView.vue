@@ -479,7 +479,8 @@ const addToCart = async () => {
   }
   
   localStorage.setItem('prestashop_cart', JSON.stringify(cartItems));
-  
+  window.dispatchEvent(new Event('prestashop:cart-updated'));
+
   quantity.value = 1;
   setTimeout(() => { addingToCart.value = false; }, 500);
 };

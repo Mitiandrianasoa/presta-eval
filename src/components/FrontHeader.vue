@@ -9,7 +9,7 @@
       <nav class="main-nav">
         <router-link to="/" class="nav-link">Accueil</router-link>
         <router-link to="/products" class="nav-link">Produits</router-link>
-        <router-link v-if="isAuthenticated" to="/cart" class="nav-link cart-link">
+        <router-link to="/cart" class="nav-link cart-link">
           Panier
           <span v-if="cartItemCount" class="cart-count">{{ cartItemCount }}</span>
         </router-link>
@@ -86,17 +86,23 @@ const loadUser = () => {
   }
 };
 
-// Charger le panier
+// Charger le panier depuis localStorage (source de vérité du panier)
 const loadCart = () => {
   try {
-    const cartStr = sessionStorage.getItem('prestashop_cart');
-    if (cartStr) {
-      cart.value = JSON.parse(cartStr);
-    }
+    const cartStr = localStorage.getItem('prestashop_cart');
+    cart.value = cartStr ? JSON.parse(cartStr) : [];
   } catch (err) {
-    console.error('Erreur lors du chargement du panier:', err);
+    cart.value = [];
   }
 };
+
+// Mettre à jour le compteur depuis un autre onglet
+const onStorageChange = (e: StorageEvent) => {
+  if (e.key === 'prestashop_cart') loadCart();
+};
+
+// Mettre à jour le compteur depuis le même onglet (ajout/suppression panier)
+const onCartUpdate = () => loadCart();
 
 // Basculer le menu déroulant
 const toggleDropdown = () => {
@@ -116,7 +122,7 @@ const handleLogout = () => {
   sessionStorage.removeItem('prestashop_token');
   sessionStorage.removeItem('prestashop_user');
   if (!sessionStorage.getItem('prestashop_remember')) {
-    sessionStorage.removeItem('prestashop_cart');
+    localStorage.removeItem('prestashop_cart');
   }
   currentUser.value = null;
   showDropdown.value = false;
@@ -135,10 +141,14 @@ onMounted(() => {
   loadUser();
   loadCart();
   document.addEventListener('click', handleClickOutside);
+  window.addEventListener('storage', onStorageChange);
+  window.addEventListener('prestashop:cart-updated', onCartUpdate);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('storage', onStorageChange);
+  window.removeEventListener('prestashop:cart-updated', onCartUpdate);
 });
 </script>
 

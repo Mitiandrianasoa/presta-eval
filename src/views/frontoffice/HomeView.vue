@@ -459,9 +459,8 @@ const loadCart = () => {
 // Sauvegarder le panier dans localStorage
 
 const saveCart = () => {
-
   localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
-
+  window.dispatchEvent(new Event('prestashop:cart-updated'));
 };
 
 
@@ -616,19 +615,8 @@ const goToCategory = (categoryId: string) => {
 
 // Utilitaires
 
-const formatPrice = (price: string) => {
-
-  const numPrice = parseFloat(price);
-
-  return new Intl.NumberFormat('fr-MG', {
-
-    style: 'currency',
-
-    currency: 'MGA'
-
-  }).format(numPrice);
-
-};
+const formatPrice = (price: string) =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(price));
 
 
 

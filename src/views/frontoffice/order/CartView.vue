@@ -444,6 +444,7 @@ const saveAnonCart = async () => {
 // Sauvegarder le panier
 const saveCart = () => {
   localStorage.setItem('prestashop_cart', JSON.stringify(cart.value));
+  window.dispatchEvent(new Event('prestashop:cart-updated'));
 };
 
 // Gestion des quantités
