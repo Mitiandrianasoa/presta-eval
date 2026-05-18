@@ -57,7 +57,7 @@ const goToConfig = () => {
           <rect x="2" y="3" width="20" height="14" rx="2"/>
           <path d="M8 21h8M12 17v4"/>
         </svg>
-        <h3>Catalogue</h3>
+        <h3>PRESTASHOP</h3>
       </div>
     </div>
 
@@ -77,17 +77,17 @@ const goToConfig = () => {
 
 
       <!-- Tous les produits -->
-      <button @click="goToProducts" class="menu-item main-item">
+      <!-- <button @click="goToProducts" class="menu-item main-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 01-8 0"/>
         </svg>
         <span>Produits</span>
-      </button>
+      </button> -->
 
       <!-- Gérer les catégories -->
-      <button @click="goToCategories" class="menu-item main-item">
+      <!-- <button @click="goToCategories" class="menu-item main-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1"/>
           <rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -95,7 +95,7 @@ const goToConfig = () => {
           <rect x="14" y="14" width="7" height="7" rx="1"/>
         </svg>
         <span>Catégories</span>
-      </button>
+      </button> -->
 
       <!-- Gérer le stock -->
       <button @click="goToStock" class="menu-item main-item stock-item">
@@ -112,22 +112,22 @@ const goToConfig = () => {
       </button>
 
       <!-- Gérer les clients -->
-      <button @click="goToCustomers" class="menu-item main-item customer-item">
+      <!-- <button @click="goToCustomers" class="menu-item main-item customer-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
         </svg>
         <span>Clients</span>
-      </button>
+      </button> -->
       <!-- ✅ SECTION PANIER (NOUVELLE) -->
-      <button @click="goToCarts" class="menu-item main-item cart-item">
+      <!-- <button @click="goToCarts" class="menu-item main-item cart-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="9" cy="21" r="1"/>
           <circle cx="20" cy="21" r="1"/>
           <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
         </svg>
         <span>Paniers</span>
-      </button>
+      </button> -->
 
       <!-- payment -->
       <button @click="goToPayments" class="menu-item main-item payment-item">

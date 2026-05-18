@@ -923,7 +923,7 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
       cmd.id_cart = idCart;
       console.log(`   ✅ Panier créé (#${idCart}) avec la date du CSV`);
       
-      if (cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')) {
+      if (cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté') || cmd.etat.toLowerCase().includes('payé')) {
         // Passage de `items` pour le calcul fallback
         const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback, cmd.date);
         cmd.id_order = orderResult.id;

@@ -1,4 +1,5 @@
 <template>
+   <Sidebar :collapsed="sidebarCollapsed" @toggle="sidebarCollapsed = !sidebarCollapsed" />
   <div class="import-container">
     <h2>Importateur PrestaShop – Import Global</h2>
 
@@ -319,6 +320,8 @@ import {
   importerPhotos,
 } from './importPhotoService.js';
 
+import Sidebar from '@/components/Sidebar.vue';
+
 // ─── Charger les schémas PrestaShop au montage ────────────────────────────────
 chargerSchemas();
 
@@ -378,6 +381,7 @@ const erreursPhotos       = ref('');
 const isImporting  = ref(false);
 const statusMessage = ref('');
 const importSuccess = ref(true);
+const sidebarCollapsed = ref(false);
 
 // ─── Étapes de progression ────────────────────────────────────────────────────
 const etapes = ref([

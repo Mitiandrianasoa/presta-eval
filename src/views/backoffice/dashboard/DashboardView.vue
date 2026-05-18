@@ -98,7 +98,7 @@
             </div>
           </div>
 
-          <div class="summary-card accent-amber">
+          <!-- <div class="summary-card accent-amber">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
@@ -110,9 +110,9 @@
               <span class="summary-label">Prix d'Achat Total</span>
               <span class="summary-value">{{ formatCurrency(totalAchat) }}</span>
             </div>
-          </div>
+          </div> -->
 
-          <div class="summary-card" :class="benefice >= 0 ? 'accent-green' : 'accent-red'">
+          <!-- <div class="summary-card" :class="benefice >= 0 ? 'accent-green' : 'accent-red'">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
@@ -126,7 +126,7 @@
                 {{ margePourcentage >= 0 ? '+' : '' }}{{ margePourcentage.toFixed(1) }}%
               </span>
             </div>
-          </div>
+          </div> -->
         </div>
 
         <!-- STATS RAPIDES -->
@@ -135,18 +135,18 @@
             <span class="stat-mini-value">{{ totalOrders }}</span>
             <span class="stat-mini-label">Commandes</span>
           </div>
-          <div class="stat-mini">
+          <!-- <div class="stat-mini">
             <span class="stat-mini-value">{{ formatCurrency(tvaTotale) }}</span>
             <span class="stat-mini-label">TVA Collectée</span>
-          </div>
+          </div> -->
           <div class="stat-mini">
             <span class="stat-mini-value">{{ totalProduitsVendus }}</span>
             <span class="stat-mini-label">Produits Vendus</span>
           </div>
-          <div class="stat-mini">
+          <!-- <div class="stat-mini">
             <span class="stat-mini-value">{{ formatCurrency(panierMoyen) }}</span>
             <span class="stat-mini-label">Panier Moyen TTC</span>
-          </div>
+          </div> -->
         </div>
 
         <!-- TABLEAU DÉTAILLÉ DES COMMANDES -->
@@ -166,9 +166,9 @@
                   <th>Produits</th>
                   <th class="right">CA HT</th>
                   <th class="right">CA TTC</th>
-                  <th class="right">Prix Achat</th>
-                  <th class="right">Bénéfice</th>
-                  <th class="right">Marge</th>
+                  <!-- <th class="right">Prix Achat</th> -->
+                  <!-- <th class="right">Bénéfice</th> -->
+                  <!-- <th class="right">Marge</th> -->
                 </tr>
               </thead>
               <tbody>
@@ -181,15 +181,15 @@
                   </td>
                   <td class="right amount-cell">{{ formatCurrency(order.totalHT) }}</td>
                   <td class="right amount-cell ttc">{{ formatCurrency(order.totalTTC) }}</td>
-                  <td class="right amount-cell achat">{{ formatCurrency(order.totalAchat) }}</td>
-                  <td class="right amount-cell" :class="order.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
+                  <!-- <td class="right amount-cell achat">{{ formatCurrency(order.totalAchat) }}</td> -->
+                  <!-- <td class="right amount-cell" :class="order.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
                     {{ formatCurrency(order.benefice) }}
-                  </td>
-                  <td class="right">
+                  </td> -->
+                  <!-- <td class="right">
                     <span class="marge-badge" :class="order.marge >= 0 ? 'marge-positive' : 'marge-negative'">
                       {{ order.marge >= 0 ? '+' : '' }}{{ order.marge.toFixed(1) }}%
                     </span>
-                  </td>
+                  </td> -->
                 </tr>
                 <tr v-if="ordersFiltered.length === 0">
                   <td colspan="9" class="empty-state">
@@ -209,15 +209,15 @@
                   <td colspan="4"><strong>TOTAL</strong></td>
                   <td class="right amount-cell"><strong>{{ formatCurrency(totalHT) }}</strong></td>
                   <td class="right amount-cell ttc"><strong>{{ formatCurrency(totalTTC) }}</strong></td>
-                  <td class="right amount-cell achat"><strong>{{ formatCurrency(totalAchat) }}</strong></td>
-                  <td class="right amount-cell" :class="benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
+                  <!-- <td class="right amount-cell achat"><strong>{{ formatCurrency(totalAchat) }}</strong></td> -->
+                  <!-- <td class="right amount-cell" :class="benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
                     <strong>{{ formatCurrency(benefice) }}</strong>
                   </td>
                   <td class="right">
                     <span class="marge-badge total" :class="margePourcentage >= 0 ? 'marge-positive' : 'marge-negative'">
                       {{ margePourcentage >= 0 ? '+' : '' }}{{ margePourcentage.toFixed(1) }}%
                     </span>
-                  </td>
+                  </td> -->
                 </tr>
               </tfoot>
             </table>
@@ -297,11 +297,20 @@ const totalAchat = computed(() =>
   ordersFiltered.value.reduce((sum, o) => sum + o.totalAchat, 0)
 );
 
-const benefice = computed(() => totalTTC.value - totalAchat.value);
+// const benefice = computed(() => totalTTC.value - totalAchat.value);
+
+// const margePourcentage = computed(() => {
+//   if (totalTTC.value === 0) return 0;
+//   return (benefice.value / totalTTC.value) * 100;
+// });
+
+
+const benefice = computed(() => totalHT.value - totalAchat.value);
 
 const margePourcentage = computed(() => {
-  if (totalTTC.value === 0) return 0;
-  return (benefice.value / totalTTC.value) * 100;
+  // On calcule désormais la marge par rapport au CA HT
+  if (totalHT.value === 0) return 0;
+  return (benefice.value / totalHT.value) * 100;
 });
 
 const tvaTotale = computed(() => totalTTC.value - totalHT.value);
@@ -365,8 +374,12 @@ const loadOrders = async () => {
         console.warn(`Impossible de récupérer les détails de la commande ${orderId}`);
       }
 
-      const beneficeOrder = totalPaidTTC - totalAchat;
-      const margeOrder = totalPaidTTC > 0 ? (beneficeOrder / totalPaidTTC) * 100 : 0;
+      // const beneficeOrder = totalPaidTTC - totalAchat;
+      // const margeOrder = totalPaidTTC > 0 ? (beneficeOrder / totalPaidTTC) * 100 : 0;
+
+      // On utilise totalProductsHT (le montant HT récupéré plus haut dans ton code)
+      const beneficeOrder = totalProductsHT - totalAchat;
+      const margeOrder = totalProductsHT > 0 ? (beneficeOrder / totalProductsHT) * 100 : 0;
 
       ordersArray.push({
         id: orderId,

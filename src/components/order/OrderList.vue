@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import Sidebar from '../../components/Sidebar.vue';
 import OrderDetails from './OrderDetails.vue';
 import { orderService, type Order, type OrderState } from '../../services/orderService';
 import { paymentService } from '../../services/paymentService';
+
+const router = useRouter();
 
 // ─── État ──────────────────────────────────────────────────────────────────────
 
@@ -45,6 +48,10 @@ const updateState = async (orderId: string, newState: string) => {
   }
 };
 
+const goToCarts = () => {
+  router.push('/admin/cart');
+};
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(loadData);
@@ -63,10 +70,19 @@ onMounted(loadData);
             <h2>Commandes</h2>
             <p class="subtitle">{{ orders.length }} commande(s) au total</p>
           </div>
-          <!-- Bouton vers les commandes annulées -->
-          <router-link to="/admin/orders/canceled" class="btn btn-danger">
-             Commandes annulées
-          </router-link>
+          <div class="header-actions">
+            <!-- Bouton vers les paniers -->
+            <button @click="goToCarts" class="btn btn-secondary">
+              Paniers
+            </button>
+             <router-link to="/admin/payments" class="btn btn-secondary">
+               Commandes payer
+            </router-link>
+            <!-- Bouton vers les commandes annulées -->
+            <router-link to="/admin/orders/canceled" class="btn btn-danger">
+               Commandes annulées
+            </router-link>
+          </div>
         </div>
 
         <!-- Erreur -->
@@ -188,6 +204,12 @@ onMounted(loadData);
 .page-header h2 { margin: 0; font-size: 1.6rem; font-weight: 700; color: #1a1a2e; }
 .subtitle { margin: 4px 0 0; color: #888; font-size: .9rem; }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 /* ── Boutons ────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -204,6 +226,7 @@ onMounted(loadData);
 }
 .btn:hover { opacity: .88; transform: translateY(-1px); }
 .btn-primary { background: #2196f3; color: #fff; }
+.btn-secondary { background: #4caf50; color: #fff; }
 .btn-danger  { background: #e53935; color: #fff; }
 .btn-sm { padding: 6px 12px; font-size: .82rem; }
 
