@@ -8,6 +8,7 @@
 
 import api from '../../../api/api';
 import { updateResource } from '../../../api/schemaService';
+import { useStockStore } from '../../../stores/stock/stockStore';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const ID_COUNTRY_FRANCE = 8;
@@ -778,6 +779,48 @@ export const decrementerStocks = async (items) => {
   }
 };
 
+export const enregistrerMouvementsStocks = async (items, employeeId = 1) => {
+  const stockStore = useStockStore();
+
+  if (stockStore.stocks.length === 0) {
+    await stockStore.fetchAll();
+  }
+
+  for (const item of items) {
+    try {
+      const idProduct = await obtenirIdProduit(item.reference);
+      const idProductAttribute = await obtenirIdDeclinaison(idProduct, item.karazany);
+      const stock = await stockStore.getStockForProduct(
+        idProduct,
+        String(idProductAttribute || '0')
+      );
+
+      if (!stock) {
+        console.warn(`⚠️ Stock introuvable pour ${item.reference}`);
+        continue;
+      }
+
+      const oldQuantity = stock.quantity;
+      const newQuantity = Math.max(0, oldQuantity - item.quantite);
+
+      if (newQuantity === oldQuantity) {
+        continue;
+      }
+
+      await stockStore.createStockMovement({
+        stock,
+        oldQuantity,
+        newQuantity,
+        employeeId,
+      });
+
+      stock.quantity = newQuantity;
+    } catch (error) {
+      console.warn(`⚠️ Erreur création mouvement stock pour ${item.reference}:`, error);
+    }
+  }
+};
+
 export const obtenirSecureKey = async (customerId) => {
   try {
     const response = await api.get(`/customers/${customerId}?output_format=XML`);
@@ -823,6 +866,8 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
         // Passage de `items` pour le calcul fallback
         const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback);
         cmd.id_order = orderResult.id;
+
+        await enregistrerMouvementsStocks(items, 1);
       }
       
       cmd.status = 'success';

@@ -27,6 +27,7 @@ import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
 import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
 import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
 import ImportPhoto from '@/views/backoffice/import/ImportPhoto.vue';
+import StockMvt from '@/views/backoffice/stock/StockMvt.vue';
 
 const routes = [
   // ── Frontoffice Routes ─────────────────────────────────────────────────────
@@ -80,6 +81,12 @@ const routes = [
     name: 'product-detail',
     component: ProductDetailView,
   },
+  // Dans votre fichier de routes
+{
+  path: '/stocks/movements',
+  name: 'StockMovements',
+  component: StockMvt,
+},
 
   // Login : formulaire email (pré-rempli) + mot de passe → connexion complète
   {

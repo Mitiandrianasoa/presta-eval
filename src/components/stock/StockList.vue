@@ -44,6 +44,18 @@ const filteredStocks = computed(() => {
   );
 });
 
+export interface Stock {
+  id: string;
+  id_product: string;
+  id_product_attribute: string;
+  quantity: number;
+
+  id_warehouse?: string;
+  id_currency?: string;
+
+  product_name?: string;
+  combination_name?: string;
+};
 const startEdit = (stock: any) => {
   editingStock.value = stock.id;
   newQuantity.value = stock.quantity;

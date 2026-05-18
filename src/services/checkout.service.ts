@@ -1,6 +1,7 @@
 // src/services/checkout.service.ts
 import api from '../api/api';
 import { useAuth } from '../services/useAuth';
+import { useStockStore } from '../stores/stock/stockStore';
 
 // ============================================
 // CONFIGURATION
@@ -44,6 +45,46 @@ const getCustomerSecureKey = async (customerId: string): Promise<string> => {
     return secureKey || '00000000000000000000000000000000';
   } catch (error) {
     return '00000000000000000000000000000000';
+  }
+};
+
+const createStockMovementLines = async (products: CartProduct[], employeeId = 1): Promise<void> => {
+  const stockStore = useStockStore();
+
+  if (stockStore.stocks.length === 0) {
+    await stockStore.fetchAll();
+  }
+
+  for (const product of products) {
+    try {
+      const stock = await stockStore.getStockForProduct(
+        product.product_id,
+        product.id_product_attribute || '0'
+      );
+
+      if (!stock) {
+        console.warn(`⚠️ Stock introuvable pour le produit ${product.product_id}`);
+        continue;
+      }
+
+      const oldQuantity = stock.quantity;
+      const newQuantity = Math.max(0, oldQuantity - product.quantity);
+
+      if (newQuantity === oldQuantity) {
+        continue;
+      }
+
+      await stockStore.createStockMovement({
+        stock,
+        oldQuantity,
+        newQuantity,
+        employeeId,
+      });
+
+      stock.quantity = newQuantity;
+    } catch (error) {
+      console.warn(`⚠️ Impossible de créer le mouvement de stock pour ${product.product_id}:`, error);
+    }
   }
 };
 
@@ -301,6 +342,8 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     
     // Créer la commande
     const orderId = await createOrder(cartId, customerId, customerSecureKey, addressId, totals.totalHT, totals.totalTTC);
+
+    await createStockMovementLines(cartData.products);
     
     // Vider le panier local
     localStorage.removeItem('prestashop_cart');
