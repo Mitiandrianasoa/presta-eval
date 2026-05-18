@@ -17,6 +17,7 @@ const AUTH_HEADER = {
 
 const RESET_PRIORITY: ResetItem[] = [
   // Dépendances des commandes
+  {ref: "stock_movements", priority: 0},
   { ref: "order_details", priority: 0 },
   { ref: "order_carriers", priority: 0 },
   { ref: "order_cart_rules", priority: 0 },

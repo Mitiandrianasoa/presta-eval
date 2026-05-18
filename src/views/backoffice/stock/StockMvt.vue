@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useStockStore } from '../../../stores/stock/stockStore';
+import Sidebar from '../../../components/Sidebar.vue';
 
 const stockStore = useStockStore();
 
@@ -193,9 +194,14 @@ const resetFilters = () => {
   filterProduct.value = '';
   currentPage.value = 1;
 };
+
+const goToStockList = () => {
+  window.location.href = '/stocks/movements';
+};
 </script>
 
 <template>
+  <Sidebar />
   <div class="movements-page">
     
     <!-- ======================================== -->
@@ -203,12 +209,11 @@ const resetFilters = () => {
     <!-- ======================================== -->
     <div class="page-header">
       <div>
-        <h2>📊 Historique des Mouvements de Stock</h2>
+        <h2> Historique des Mouvements de Stock</h2>
         <p class="subtitle">Toutes les entrées et sorties de stock</p>
       </div>
-      
-      <button class="refresh-btn" @click="loadAllMovements">
-        🔄 Rafraîchir
+       <button class="refresh-btn" @click="goToStockList">
+         Revenir à la liste des stocks
       </button>
     </div>
 
@@ -216,6 +221,7 @@ const resetFilters = () => {
     <!-- STATISTIQUES -->
     <!-- ======================================== -->
     <div class="stats-bar">
+      
       <div class="stat-card">
         <span class="stat-number">{{ stats.total }}</span>
         <span class="stat-label">Mouvements</span>
@@ -228,10 +234,10 @@ const resetFilters = () => {
         <span class="stat-number">{{ stats.sorties }}</span>
         <span class="stat-label">Sorties</span>
       </div>
-      <div class="stat-card" :class="stats.quantiteTotale >= 0 ? 'stat-green' : 'stat-red'">
+      <!-- <div class="stat-card" :class="stats.quantiteTotale >= 0 ? 'stat-green' : 'stat-red'">
         <span class="stat-number">{{ stats.quantiteTotale > 0 ? '+' : '' }}{{ stats.quantiteTotale }}</span>
         <span class="stat-label">Quantité nette</span>
-      </div>
+      </div> -->
     </div>
 
     <!-- ======================================== -->
@@ -299,7 +305,7 @@ const resetFilters = () => {
             <th>Employé</th>
             <th>Quantité</th>
             <th>Raison</th>
-            <th>Prix unitaire</th>
+            <!-- <th>Prix unitaire</th> -->
           </tr>
         </thead>
         
@@ -323,7 +329,7 @@ const resetFilters = () => {
                 {{ mvt.reason }}
               </span>
             </td>
-            <td>{{ parseFloat(mvt.price_te).toFixed(2) }} €</td>
+            <!-- <td>{{ parseFloat(mvt.price_te).toFixed(2) }} €</td> -->
           </tr>
         </tbody>
       </table>
@@ -376,8 +382,9 @@ const resetFilters = () => {
 .movements-page {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 50px;
   min-height: 80vh;
+  margin-left: 15%;
 }
 
 .page-header {
@@ -427,7 +434,7 @@ const resetFilters = () => {
 .stat-card {
   background: #f8f9fa;
   border-radius: 8px;
-  padding: 16px;
+  padding: 6px;
   text-align: center;
   border: 1px solid #e9ecef;
 }

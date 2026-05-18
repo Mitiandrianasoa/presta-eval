@@ -8,6 +8,7 @@
 
 import api from '../../../api/api';
 import { updateResource } from '../../../api/schemaService';
+import { useStockStore } from '../../../stores/stock/stockStore';
 
 // ─── Colonnes attendues dans le fichier Déclinaisons ─────────────────────────
 const COLONNES_REQUISES_DECLINAISONS = [
@@ -271,13 +272,39 @@ export const creerCombinaison = async (idProduct, idAttribute, reference, prixTt
 
 export const mettreAJourStock = async (idProduct, idProductAttribute, quantite) => {
   const filterAttr = idProductAttribute ? `&filter[id_product_attribute]=${idProductAttribute}` : '';
-  const res = await api.get(`/stock_availables?filter[id_product]=${idProduct}${filterAttr}&display=[id]`);
+  const res = await api.get(`/stock_availables?filter[id_product]=${idProduct}${filterAttr}&display=full`);
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(res.data, 'application/xml');
   const stocks = xmlDoc.getElementsByTagName('stock_available');
   if (stocks.length === 0) throw new Error(`Stock non trouvé pour produit ${idProduct}`);
-  const idStockAvailable = stocks[0].getElementsByTagName('id')[0]?.textContent?.trim();
+
+  const stockEl = stocks[0];
+  const idStockAvailable = stockEl.getElementsByTagName('id')[0]?.textContent?.trim();
+  const oldQuantity = parseInt(stockEl.getElementsByTagName('quantity')[0]?.textContent?.trim() || '0', 10);
+
   await updateResource('stock_availables', idStockAvailable, { quantity: String(quantite) });
+
+  // Enregistrer un mouvement de stock via le store
+  try {
+    const stockStore = useStockStore();
+
+    const stock = {
+      id: idStockAvailable,
+      id_product: String(idProduct),
+      id_product_attribute: String(idProductAttribute || '0'),
+      quantity: oldQuantity,
+      price_te: 0
+    };
+
+    await stockStore.createStockMovement({
+      stock,
+      oldQuantity,
+      newQuantity: Number(quantite),
+      employeeId: 1
+    });
+  } catch (e) {
+    console.warn('⚠️ Impossible d\'enregistrer le mouvement de stock :', e);
+  }
 };
 
 /**
