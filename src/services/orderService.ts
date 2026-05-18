@@ -192,24 +192,46 @@ export const orderService = {
    */
   async markDelivered(order: Order): Promise<void> {
     await this.updateState(order.id, DELIVERED_STATE_ID);
-    for (const item of order.items) {
+
+    // Le endpoint liste peut renvoyer des associations sans détail complet.
+    // On recharge l'order individuellement pour garantir que items est peuplé.
+    let items = order.items;
+    if (!items || items.length === 0) {
+      console.warn(`⚠️ items vides pour commande #${order.id}, rechargement individuel…`);
+      const full = await this.fetchOne(order.id);
+      items = full?.items ?? [];
+    }
+
+    console.log(`📦 Décrémentation stock commande #${order.id} — ${items.length} article(s)`);
+
+    for (const item of items) {
       try {
         const qty = parseInt(item.quantity) || 0;
         if (!qty || !item.product_id) continue;
-        const idAttr = item.product_attribute_id || '0';
+
+        const idAttr     = item.product_attribute_id || '0';
         const filterAttr = idAttr !== '0'
           ? `&filter[id_product_attribute]=${idAttr}`
           : '&filter[id_product_attribute]=0';
+
         const stockRes = await api.get(
           `/stock_availables?output_format=XML&filter[id_product]=${item.product_id}${filterAttr}&display=[id,quantity]`
         );
         const stockDoc = parse(stockRes.data);
         const stockEl  = stockDoc.querySelector('stock_available');
-        if (!stockEl) continue;
+
+        if (!stockEl) {
+          console.warn(`⚠️ Aucun stock trouvé pour produit ${item.product_id} attr ${idAttr}`);
+          continue;
+        }
+
         const idStock    = attr(stockEl, 'id') || text(stockEl, 'id');
         const currentQty = parseInt(text(stockEl, 'quantity') || '0');
         const newQty     = Math.max(0, currentQty - qty);
+
+        console.log(`   🔻 Produit ${item.product_id} (attr ${idAttr}) : ${currentQty} → ${newQty} (−${qty})`);
         await updateResource('stock_availables', idStock, { quantity: String(newQty) });
+        console.log(`   ✅ Stock mis à jour (id_stock=${idStock})`);
       } catch (e: any) {
         console.warn(`⚠️ Stock non décrémenté produit ${item.product_id}:`, e.message);
       }
