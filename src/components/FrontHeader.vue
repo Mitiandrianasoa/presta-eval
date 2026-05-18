@@ -144,8 +144,8 @@ onUnmounted(() => {
 
 <style scoped>
 .home-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: #1c1917;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -172,19 +172,19 @@ onUnmounted(() => {
 
 .logo h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: var(--navy);
+  color: #fafaf9;
   letter-spacing: -0.02em;
 }
 
 .logo h1 span {
-  color: var(--primary);
+  color: #a78bfa;
 }
 
 .logo > span {
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 0.7rem;
+  color: #57534e;
   font-weight: 400;
   letter-spacing: 0.02em;
 }
@@ -197,22 +197,22 @@ onUnmounted(() => {
 
 .nav-link {
   text-decoration: none;
-  color: var(--muted);
-  font-size: 0.9rem;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.875rem;
   font-weight: 500;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
-  transition: color var(--transition), background var(--transition);
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
 .nav-link:hover {
-  color: var(--text);
-  background: var(--bg);
+  color: #fafaf9;
+  background: rgba(255,255,255,0.07);
 }
 
 .nav-link.router-link-active {
-  color: var(--primary);
-  background: var(--primary-light);
+  color: #a78bfa;
+  background: rgba(124,58,237,0.15);
 }
 
 .cart-link {
@@ -222,12 +222,12 @@ onUnmounted(() => {
 }
 
 .cart-count {
-  background: var(--error);
+  background: #7c3aed;
   color: white;
   border-radius: 10px;
   padding: 0.1rem 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   min-width: 1.25rem;
   text-align: center;
   line-height: 1.4;
@@ -246,17 +246,18 @@ onUnmounted(() => {
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--primary);
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 0.8rem;
+  font-weight: 700;
+  font-size: 0.78rem;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.4);
 }
 
 .user-dropdown {
@@ -264,33 +265,35 @@ onUnmounted(() => {
 }
 
 .user-name {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8);
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
-  transition: background var(--transition), border-color var(--transition);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-family: inherit;
 }
 
 .user-name:hover {
-  background: var(--bg);
-  border-color: #cbd5e1;
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.2);
+  color: #fafaf9;
 }
 
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  background: #292524;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
   min-width: 168px;
   z-index: 1000;
   overflow: hidden;
@@ -303,20 +306,26 @@ onUnmounted(() => {
   border: none;
   background: none;
   text-align: left;
-  color: var(--text);
+  color: #d6d3d1;
   text-decoration: none;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: background 0.2s ease, color 0.2s ease;
+  font-family: inherit;
 }
 
 .dropdown-item:hover {
-  background: var(--bg);
+  background: rgba(255,255,255,0.06);
+  color: #fafaf9;
 }
 
 .dropdown-item.logout {
-  color: var(--error);
-  border-top: 1px solid var(--border);
+  color: #f87171;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.dropdown-item.logout:hover {
+  background: rgba(239,68,68,0.1);
 }
 
 /* Auth Buttons */
@@ -326,36 +335,39 @@ onUnmounted(() => {
 }
 
 .btn-login {
-  color: var(--primary);
-  border: 1.5px solid var(--primary);
+  color: rgba(255,255,255,0.75);
+  border: 1.5px solid rgba(255,255,255,0.18);
   background: transparent;
   padding: 0.45rem 1.25rem;
   border-radius: 6px;
   text-decoration: none;
   font-weight: 600;
   font-size: 0.875rem;
-  transition: background var(--transition), color var(--transition);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .btn-login:hover {
-  background: var(--primary-light);
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.32);
+  color: #fafaf9;
 }
 
 .btn-register {
-  background: var(--primary);
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
   color: white;
-  border: 1.5px solid var(--primary);
+  border: 1.5px solid transparent;
   padding: 0.45rem 1.25rem;
   border-radius: 6px;
   text-decoration: none;
   font-weight: 600;
   font-size: 0.875rem;
-  transition: background var(--transition);
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.35);
 }
 
 .btn-register:hover {
-  background: var(--primary-dark);
-  border-color: var(--primary-dark);
+  opacity: 0.88;
+  box-shadow: 0 4px 14px rgba(124,58,237,0.5);
 }
 
 /* Responsive */

@@ -36,10 +36,26 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.form { display: flex; flex-direction: column; gap: 10px; max-width: 500px; }
-.form input, .form select, .form textarea { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-.actions { display: flex; gap: 10px; margin-top: 10px; }
-.btn-save, .btn-cancel { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-.btn-save { background: #4CAF50; color: white; }
-.btn-cancel { background: #999; color: white; }
+.form { display: flex; flex-direction: column; gap: 12px; max-width: 500px; }
+.form h3 { color: #f1f1f8; margin: 0 0 8px; font-size: 16px; }
+.form input, .form select, .form textarea {
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+.form input:focus, .form select:focus, .form textarea:focus {
+  outline: none; border-color: #f97316;
+}
+.form textarea { resize: vertical; }
+.actions { display: flex; gap: 10px; margin-top: 4px; }
+.btn-save, .btn-cancel { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; transition: opacity 0.2s; }
+.btn-save { background: #f97316; color: white; box-shadow: 0 2px 8px rgba(249,115,22,0.3); }
+.btn-save:hover { opacity: 0.88; }
+.btn-cancel { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #a0a0b8; }
+.btn-cancel:hover { background: rgba(255,255,255,0.12); color: #f1f1f8; }
 </style>

@@ -603,7 +603,7 @@ onMounted(() => {
 }
 
 .combination-value {
-  color: #3b82f6;
+  color: #7c3aed;
 }
 
 .summary-item-combination {
@@ -686,8 +686,8 @@ onMounted(() => {
 }
 
 .login-notice {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--primary-light);
+  border: 1px solid #ddd6fe;
   border-radius: 8px;
   padding: 1rem;
   margin: 1rem 0;
@@ -877,9 +877,9 @@ onMounted(() => {
 }
 
 .cart-status-badge.linked {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid #ddd6fe;
 }
 
 .resume-cart-btn {

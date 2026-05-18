@@ -208,8 +208,10 @@
             <td>{{ cmd.email }}</td>
             <td>{{ cmd.date }}</td>
             <td>
-              <span v-if="cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')" class="badge-paid">Payé</span>
-              <span v-else class="badge-abandoned">Abandonné</span>
+              <span v-if="cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')" class="badge-paid">Paiement accepté</span>
+              <span v-else-if="cmd.etat && cmd.etat.toLowerCase().includes('livré')" class="badge-delivered">Livré</span>
+              <span v-else-if="cmd.etat && cmd.etat.toLowerCase().includes('annulé')" class="badge-canceled">Annulé</span>
+              <span v-else class="badge-cart">Dans le panier</span>
             </td>
             <td class="center">{{ cmd.id_customer || '-' }}</td>
             <td class="center">{{ cmd.id_address || '-' }}</td>
@@ -218,7 +220,13 @@
             <td>
               <span v-if="cmd.status === 'pending'" class="txt-pending">En attente…</span>
               <span v-if="cmd.status === 'success'" class="txt-success">
-                ✔ {{ cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté') ? 'Commande créée' : 'Panier créé' }}
+                ✔ {{
+                  !cmd.etat || !cmd.etat.trim() ? 'Panier créé' :
+                  cmd.etat.toLowerCase().includes('paiement accepté') ? 'Commande créée (payé)' :
+                  cmd.etat.toLowerCase().includes('livré') ? 'Commande créée (livré)' :
+                  cmd.etat.toLowerCase().includes('annulé') ? 'Commande créée (annulé)' :
+                  'Commande créée'
+                }}
               </span>
               <span v-if="cmd.status === 'rolled_back'" class="txt-rollback">↺ Annulé</span>
               <span v-if="cmd.status === 'error'" class="txt-error">✘ {{ cmd.erreur }}</span>
@@ -293,6 +301,7 @@
 import { ref, computed } from 'vue';
 import Papa from 'papaparse';
 import rollbackService from '@/services/rollback.js';
+import { useResetStore } from '../../../stores/reset/resetStore';
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 import {
@@ -551,7 +560,7 @@ const lancerImportation = async () => {
   }
 
   // ── ÉTAPE 2 : Déclinaisons ───────────────────────────────────────────────────
-  if (!echecGlobal && fichierDeclinaisons.value && csvDeclinaisons.value.length && !erreursDeclinaisons.value) {
+  if (fichierDeclinaisons.value && csvDeclinaisons.value.length && !erreursDeclinaisons.value) {
     setEtape(1, 'active');
     try {
       const result = await importerDeclinaisons(declinaisonsTraitees.value, () => {
@@ -571,12 +580,12 @@ const lancerImportation = async () => {
       echecGlobal = true;
       messageEchec = `Échec Étape 2 (Déclinaisons) — import stoppé.\n${e.message}`;
     }
-  } else if (!echecGlobal) {
+  } else {
     setEtape(1, 'skipped');
   }
 
   // ── ÉTAPE 3 : Commandes ──────────────────────────────────────────────────────
-  if (!echecGlobal && fichierCommandes.value && csvCommandes.value.length && !erreursCommandes.value) {
+  if (fichierCommandes.value && csvCommandes.value.length && !erreursCommandes.value) {
     setEtape(2, 'active');
     try {
       const result = await importerCommandes(commandesTraitees.value, () => {
@@ -596,12 +605,12 @@ const lancerImportation = async () => {
       echecGlobal = true;
       messageEchec = `Échec Étape 3 (Commandes) — import stoppé.\n${e.message}`;
     }
-  } else if (!echecGlobal) {
+  } else {
     setEtape(2, 'skipped');
   }
 
   // ── ÉTAPE 4 : Photos ─────────────────────────────────────────────────────────
-  if (!echecGlobal && fichierPhotos.value && !erreursPhotos.value) {
+  if (fichierPhotos.value && !erreursPhotos.value) {
     setEtape(3, 'active');
     try {
       const result = await importerPhotos(
@@ -624,7 +633,7 @@ const lancerImportation = async () => {
       echecGlobal = true;
       messageEchec = `Échec Étape 4 (Photos) — import stoppé.\n${e.message}`;
     }
-  } else if (!echecGlobal) {
+  } else {
     setEtape(3, 'skipped');
   }
 
@@ -632,9 +641,23 @@ const lancerImportation = async () => {
   if (echecGlobal) {
     importSuccess.value = false;
     marquerEtapesCancelled(0);
-    // Rollback de toutes les étapes déjà réussies
-    await rollbackService();
-    statusMessage.value = `❌ Transaction globale annulée.\n${messageEchec}\n\nToutes les données insérées ont été supprimées (rollback).`;
+
+    // 1. Afficher toutes les erreurs collectées
+    statusMessage.value = `❌ Erreurs détectées durant l'import :\n${messages.join('\n')}\n\n${messageEchec}`;
+
+    // 2. Laisser le temps à l'UI de se mettre à jour avant la réinitialisation
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // 3. Réinitialiser la base après affichage complet des erreurs
+    try {
+      const resetStore = useResetStore();
+      statusMessage.value += '\n\n⏪ Réinitialisation de la base en cours…';
+      await resetStore.resetAll();
+      statusMessage.value = `❌ Erreurs détectées durant l'import :\n${messages.join('\n')}\n\n${messageEchec}\n\n✅ Base réinitialisée — aucune donnée conservée.`;
+    } catch (resetErr) {
+      await rollbackService();
+      statusMessage.value += '\n\n⚠️ Réinitialisation partielle (rollback).';
+    }
   } else {
     importSuccess.value = true;
     statusMessage.value = '✅ Import global réussi !\n' + messages.join('\n');
@@ -647,20 +670,20 @@ const lancerImportation = async () => {
 <style scoped>
 /* ─── Layout ─────────────────────────────────────────────────────────────── */
 .import-container {
-  font-family: Arial, sans-serif;
+  font-family: inherit;
   max-width: 1200px;
   margin: 24px auto;
   padding: 24px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: #f9f9f9;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  background: #13131f;
 }
 
 h2 {
   margin-top: 0;
   font-size: 1.3rem;
-  color: #222;
-  border-bottom: 2px solid #4ed282;
+  color: #f1f1f8;
+  border-bottom: 2px solid #f97316;
   padding-bottom: 10px;
   margin-bottom: 20px;
 }
@@ -674,14 +697,14 @@ h2 {
 }
 
 .upload-card {
-  background: #fff;
-  border: 2px dashed #ccc;
-  border-radius: 8px;
+  background: #0d0d14;
+  border: 2px dashed rgba(255,255,255,0.12);
+  border-radius: 10px;
   padding: 16px;
   transition: border-color 0.2s;
 }
 .upload-card.loaded {
-  border-color: #4ed282;
+  border-color: #f97316;
   border-style: solid;
 }
 
@@ -692,7 +715,7 @@ h2 {
   margin-bottom: 12px;
 }
 .upload-card__num {
-  background: #4ed282;
+  background: #f97316;
   color: #fff;
   font-weight: bold;
   font-size: 11px;
@@ -703,10 +726,11 @@ h2 {
   font-weight: bold;
   font-size: 14px;
   flex: 1;
+  color: #e2e2f0;
 }
 .badge-ok {
-  background: #e6f9ed;
-  color: #28a745;
+  background: rgba(16,185,129,0.15);
+  color: #10b981;
   font-size: 11px;
   padding: 2px 7px;
   border-radius: 20px;
@@ -725,16 +749,16 @@ h2 {
 }
 .file-label span {
   font-size: 12px;
-  color: #666;
+  color: #6b7280;
   word-break: break-all;
 }
 
 .inline-error {
   margin: 8px 0 0;
   font-size: 12px;
-  color: #dc3545;
-  background: #fff5f5;
-  border-left: 3px solid #dc3545;
+  color: #f87171;
+  background: rgba(239,68,68,0.08);
+  border-left: 3px solid #ef4444;
   padding: 6px 8px;
   border-radius: 4px;
   white-space: pre-wrap;
@@ -753,17 +777,19 @@ h2 {
   align-items: center;
   gap: 8px;
   padding: 12px 28px;
-  background: #4ed282;
+  background: #f97316;
   border: none;
   color: #fff;
   font-weight: bold;
   font-size: 15px;
   cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s;
+  border-radius: 8px;
+  transition: opacity 0.2s;
+  box-shadow: 0 4px 12px rgba(249,115,22,0.35);
+  font-family: inherit;
 }
-.btn-import:hover:not(:disabled) { background: #36ba6c; }
-.btn-import:disabled { background: #ccc; cursor: not-allowed; }
+.btn-import:hover:not(:disabled) { opacity: 0.88; }
+.btn-import:disabled { background: rgba(255,255,255,0.08); color: #4b5563; cursor: not-allowed; box-shadow: none; }
 
 .spinner {
   width: 14px;
@@ -777,7 +803,7 @@ h2 {
 
 .hint {
   font-size: 13px;
-  color: #999;
+  color: #6b7280;
 }
 
 /* ─── Étapes de progression ──────────────────────────────────────────────── */
@@ -796,15 +822,15 @@ h2 {
   padding: 6px 14px;
   border-radius: 20px;
   font-size: 13px;
-  background: #eee;
-  color: #888;
-  border: 1px solid #ddd;
+  background: rgba(255,255,255,0.05);
+  color: #6b7280;
+  border: 1px solid rgba(255,255,255,0.08);
   transition: all 0.3s;
 }
-.progress-step.active    { background: #fff3cd; color: #856404; border-color: #ffc107; font-weight: bold; }
-.progress-step.done      { background: #e6f9ed; color: #155724; border-color: #4ed282; }
-.progress-step.error     { background: #fff5f5; color: #721c24; border-color: #dc3545; }
-.progress-step.cancelled { background: #f5f5f5; color: #999;    border-color: #ccc; text-decoration: line-through; }
+.progress-step.active    { background: rgba(245,158,11,0.12); color: #fbbf24; border-color: rgba(245,158,11,0.3); font-weight: bold; }
+.progress-step.done      { background: rgba(16,185,129,0.12); color: #10b981; border-color: rgba(16,185,129,0.3); }
+.progress-step.error     { background: rgba(239,68,68,0.12);  color: #f87171; border-color: rgba(239,68,68,0.3); }
+.progress-step.cancelled { background: rgba(255,255,255,0.03); color: #4b5563; border-color: rgba(255,255,255,0.05); text-decoration: line-through; }
 .progress-step.skipped   { opacity: 0.4; }
 .progress-step__num {
   background: currentColor;
@@ -824,10 +850,10 @@ h2 {
   padding: 14px 16px;
   margin-bottom: 20px;
   border-left: 5px solid;
-  border-radius: 4px;
+  border-radius: 6px;
 }
-.status-box.success { background: #e6f9ed; border-left-color: #28a745; color: #155724; }
-.status-box.error   { background: #fdf2f2; border-left-color: #dc3545; color: #721c24; }
+.status-box.success { background: rgba(16,185,129,0.1);  border-left-color: #10b981; color: #10b981; }
+.status-box.error   { background: rgba(239,68,68,0.1);   border-left-color: #ef4444; color: #f87171; }
 .status-pre {
   margin: 4px 0 0;
   font-family: inherit;
@@ -841,8 +867,8 @@ h2 {
 }
 .report-section h3 {
   font-size: 1rem;
-  color: #333;
-  border-left: 4px solid #4ed282;
+  color: #e2e2f0;
+  border-left: 4px solid #f97316;
   padding-left: 10px;
   margin-bottom: 10px;
 }
@@ -850,50 +876,54 @@ h2 {
 .report-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
+  background: #0d0d14;
   font-size: 13px;
+  color: #a0a0b8;
 }
 .report-table th,
 .report-table td {
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255,255,255,0.07);
   padding: 8px 10px;
   text-align: left;
 }
-.report-table th { background: #f1f1f1; font-size: 12px; }
+.report-table th { background: rgba(255,255,255,0.04); font-size: 12px; color: #6b7280; }
 .center { text-align: center; }
 
 /* Lignes colorées par statut */
-tr.success      { background: #f3fbf6; }
-tr.error        { background: #fff5f5; }
-tr.rolled_back  { background: #fffdf0; color: #7c6e10; }
-tr.not_found    { background: #fffdf0; }
+tr.success      { background: rgba(16,185,129,0.06); }
+tr.error        { background: rgba(239,68,68,0.06); }
+tr.rolled_back  { background: rgba(245,158,11,0.06); color: #fbbf24; }
+tr.not_found    { background: rgba(245,158,11,0.04); }
 
 /* Badges */
 .badge {
-  background: #007bff;
-  color: #fff;
+  background: rgba(249,115,22,0.2);
+  color: #f97316;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 11px;
 }
-tr.error .badge   { background: #dc3545; }
-tr.success .badge { background: #28a745; }
-tr.rolled_back .badge { background: #ffc107; color: #333; }
+tr.error .badge       { background: rgba(239,68,68,0.2);   color: #f87171; }
+tr.success .badge     { background: rgba(16,185,129,0.2);  color: #10b981; }
+tr.rolled_back .badge { background: rgba(245,158,11,0.2);  color: #fbbf24; }
 
-.badge-paid      { background: #28a745; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-.badge-abandoned { background: #ffc107; color: #333; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.badge-paid      { background: rgba(16,185,129,0.2);  color: #10b981; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.badge-delivered { background: rgba(99,102,241,0.2);  color: #818cf8; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.badge-canceled  { background: rgba(239,68,68,0.2);   color: #f87171; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.badge-cart      { background: rgba(245,158,11,0.2);  color: #fbbf24; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.badge-abandoned { background: rgba(107,114,128,0.2); color: #9ca3af; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
 
 /* Textes de statut */
-.txt-success { color: #28a745; font-weight: bold; }
-.txt-error   { color: #dc3545; font-weight: bold; }
-.txt-rollback { color: #b78a00; font-style: italic; }
-.txt-pending  { color: #666; }
-.txt-warning  { color: #e67e22; font-weight: bold; }
-.txt-skip     { color: #95a5a6; font-style: italic; }
+.txt-success  { color: #10b981; font-weight: bold; }
+.txt-error    { color: #f87171; font-weight: bold; }
+.txt-rollback { color: #fbbf24; font-style: italic; }
+.txt-pending  { color: #6b7280; }
+.txt-warning  { color: #f59e0b; font-weight: bold; }
+.txt-skip     { color: #4b5563; font-style: italic; }
 
 /* ─── Barre de progression photos ───────────────────────────────────────── */
 .progress-section  { margin-bottom: 12px; }
-.progress-bar      { width: 100%; height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
-.progress-fill     { height: 100%; background: linear-gradient(90deg, #4ed282, #28a745); transition: width 0.3s ease; border-radius: 10px; }
-.progress-text     { text-align: center; color: #666; font-size: 13px; margin: 0; }
+.progress-bar      { width: 100%; height: 16px; background: rgba(255,255,255,0.07); border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill     { height: 100%; background: linear-gradient(90deg, #f97316, #fbbf24); transition: width 0.3s ease; border-radius: 10px; }
+.progress-text     { text-align: center; color: #6b7280; font-size: 13px; margin: 0; }
 </style>

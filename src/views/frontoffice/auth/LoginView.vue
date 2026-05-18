@@ -206,8 +206,8 @@ const handleLogin = () => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #f5f3ff;
+  color: #7c3aed;
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 0.875rem;

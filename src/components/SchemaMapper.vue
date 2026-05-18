@@ -81,71 +81,33 @@ const autoMap = () => {
 
 <style scoped>
 .schema-mapper {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  padding: 20px;
-  margin-bottom: 20px;
+  background: #13131f; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 20px; margin-bottom: 20px;
 }
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.header h3 { color: #f1f1f8; margin: 0; font-size: 16px; }
 .btn-auto {
-  background-color: #2196f3;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
+  background: #f97316; color: white; border: none;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  font-weight: 600; font-size: 13px; font-family: inherit;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3); transition: opacity 0.2s;
 }
-.btn-auto:hover {
-  background-color: #1976d2;
-}
-.mapper-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.btn-auto:hover { opacity: 0.88; }
+.mapper-table { width: 100%; border-collapse: collapse; }
 .mapper-table th, .mapper-table td {
-  border-bottom: 1px solid #eee;
-  padding: 12px;
-  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 12px; text-align: left; color: #a0a0b8;
 }
-.mapper-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #333;
-}
-.field-name {
-  font-weight: 500;
-}
-.required-star {
-  color: red;
-  font-weight: bold;
-  margin-left: 4px;
-}
-.badge {
-  font-size: 0.75rem;
-  padding: 3px 6px;
-  border-radius: 12px;
-  margin-left: 8px;
-}
-.lang-badge {
-  background-color: #e3f2fd;
-  color: #1565c0;
-}
-.format-badge {
-  background-color: #f5f5f5;
-  color: #616161;
-  font-family: monospace;
-}
+.mapper-table th { background: rgba(255,255,255,0.03); font-weight: 600; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.field-name { font-weight: 500; color: #e2e2f0; }
+.required-star { color: #ef4444; font-weight: bold; margin-left: 4px; }
+.badge { font-size: 0.75rem; padding: 3px 6px; border-radius: 12px; margin-left: 8px; }
+.lang-badge { background: rgba(249,115,22,0.12); color: #f97316; }
+.format-badge { background: rgba(255,255,255,0.06); color: #a0a0b8; font-family: monospace; }
 .col-select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  width: 100%; padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 8px;
+  background: #0d0d14; color: #e2e2f0; font-family: inherit; font-size: 13px;
 }
+.col-select:focus { outline: none; border-color: #f97316; }
 </style>

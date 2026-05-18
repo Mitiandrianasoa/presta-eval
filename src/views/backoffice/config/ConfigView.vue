@@ -94,7 +94,7 @@ const tables = [
   // =====================================================
   // === STOCK & ENTREPÔTS (11 tables) ===
   // =====================================================
-  { label: 'Stock disponible', table: 'ps_stock_available', endpoint: 'stock_availables', tag: 'stock_available', soft: true },
+  { label: 'Stock disponible', table: 'ps_stock_available', endpoint: 'stock_availables', tag: 'stock_available', soft: true, resetQuantity: true },
   { label: 'Mouvements stock', table: 'ps_stock_mvt', endpoint: 'stock_movements', tag: 'stock_mvt', soft: true },
   { label: 'Raisons mouvements', table: 'ps_stock_mvt_reason', endpoint: 'stock_mvt_reasons', tag: 'stock_mvt_reason', soft: true },
   { label: 'Langues raisons', table: 'ps_stock_mvt_reason_lang', endpoint: 'stock_mvt_reason_langs', tag: 'stock_mvt_reason_lang', soft: true },
@@ -531,6 +531,54 @@ const executeMultipleReset = async () => {
       step.value = `Traitement de ${table.label}...`;
       progress.value = totalDeleted;
 
+      // stock_availables ne supporte pas DELETE : on remet quantity à 0 via PUT
+      if ((table as any).resetQuantity) {
+        const res = await api.get(`/${table.endpoint}?output_format=XML&display=full&limit=10000`);
+        const doc = new DOMParser().parseFromString(res.data, 'text/xml');
+        const elements = Array.from(doc.getElementsByTagName(table.tag));
+
+        for (const el of elements) {
+          const id                = el.querySelector('id')?.textContent?.trim();
+          const idProduct         = el.querySelector('id_product')?.textContent?.trim();
+          const idProductAttr     = el.querySelector('id_product_attribute')?.textContent?.trim() || '0';
+          const idShop            = el.querySelector('id_shop')?.textContent?.trim() || '1';
+          const dependsOnStock    = el.querySelector('depends_on_stock')?.textContent?.trim() || '0';
+          const outOfStock        = el.querySelector('out_of_stock')?.textContent?.trim() || '0';
+          const location          = el.querySelector('location')?.textContent?.trim() || '';
+
+          if (!id || !idProduct) continue;
+
+          const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_available>
+    <id><![CDATA[${id}]]></id>
+    <id_product><![CDATA[${idProduct}]]></id_product>
+    <id_product_attribute><![CDATA[${idProductAttr}]]></id_product_attribute>
+    <id_warehouse><![CDATA[0]]></id_warehouse>
+    <id_shop><![CDATA[${idShop}]]></id_shop>
+    <id_shop_group><![CDATA[0]]></id_shop_group>
+    <quantity><![CDATA[0]]></quantity>
+    <depends_on_stock><![CDATA[${dependsOnStock}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${outOfStock}]]></out_of_stock>
+    <location><![CDATA[${location}]]></location>
+  </stock_available>
+</prestashop>`;
+
+          try {
+            await api.put(`/${table.endpoint}/${id}`, xml, {
+              headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+            });
+            totalDeleted++;
+          } catch (e: any) {
+            // ignoré silencieusement
+          }
+          step.value = `Remise à zéro : ${table.label} (${totalDeleted})`;
+        }
+
+        successCount++;
+        continue;
+      }
+
       // Récupérer tous les IDs
       const res = await api.get(`/${table.endpoint}?output_format=XML&display=[id]&limit=10000`);
       const doc = new DOMParser().parseFromString(res.data, 'text/xml');
@@ -738,17 +786,18 @@ const executeMultipleReset = async () => {
 .layout {
   display: flex;
   min-height: 100vh;
+  background: #0d0d14;
 }
 
 .main-content {
-  margin-left: 260px;
+  margin-left: 240px;
   flex: 1;
-  background: #f5f6fa;
+  background: #0d0d14;
   min-height: 100vh;
 }
 
 .content-wrapper {
-  padding: 30px;
+  padding: 32px 36px;
   max-width: 1400px;
 }
 

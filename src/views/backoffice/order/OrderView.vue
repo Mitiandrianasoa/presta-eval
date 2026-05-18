@@ -12,6 +12,6 @@ import OrderList from '../../../components/order/OrderList.vue';
 .order-view {
   width: 100%;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: #0d0d14;
 }
 </style>

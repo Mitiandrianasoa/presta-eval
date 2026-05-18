@@ -510,7 +510,7 @@ onMounted(() => {
 }
 
 .status-pending { background: #fef9c3; color: #a16207; }
-.status-processing { background: #dbeafe; color: #1e40af; }
+.status-processing { background: #f5f3ff; color: #7c3aed; }
 .status-ready { background: #e0e7ff; color: #3730a3; }
 .status-shipped { background: #f3e8ff; color: #6b21a8; }
 .status-delivered { background: #dcfce7; color: #15803d; }

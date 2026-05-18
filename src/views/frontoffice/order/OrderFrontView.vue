@@ -239,7 +239,7 @@ onMounted(() => {
 
 .spinner {
   border: 3px solid #e2e8f0;
-  border-top: 3px solid #3b82f6;
+  border-top: 3px solid #7c3aed;
   border-radius: 50%;
   width: 36px;
   height: 36px;
@@ -273,7 +273,7 @@ onMounted(() => {
 }
 
 .retry-btn {
-  background: #3b82f6;
+  background: #7c3aed;
   color: white;
   border: none;
   padding: 0.6rem 1.5rem;
@@ -281,12 +281,12 @@ onMounted(() => {
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: opacity 0.2s;
   font-family: inherit;
 }
 
 .retry-btn:hover {
-  background: #2563eb;
+  opacity: 0.88;
 }
 
 /* Empty */
@@ -317,7 +317,7 @@ onMounted(() => {
 
 .shop-btn {
   display: inline-block;
-  background: #3b82f6;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
   color: white;
   padding: 0.7rem 1.75rem;
   border-radius: 8px;
@@ -325,12 +325,13 @@ onMounted(() => {
   font-weight: 600;
   font-size: 0.9rem;
   transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.35);
 }
 
 .shop-btn:hover {
-  background: #2563eb;
+  opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 4px 14px rgba(124,58,237,0.45);
 }
 
 /* Orders List - CARDS COMPACTES */
@@ -435,8 +436,8 @@ onMounted(() => {
 }
 
 .status-processing {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #f5f3ff;
+  color: #7c3aed;
 }
 
 .status-ready {
@@ -482,7 +483,7 @@ onMounted(() => {
 }
 
 .order-card:hover .detail-arrow {
-  color: #3b82f6;
+  color: #7c3aed;
   transform: translateX(3px);
 }
 

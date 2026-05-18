@@ -154,17 +154,18 @@ const handleKeyPress = (event: KeyboardEvent) => {
 .layout {
   display: flex;
   min-height: 100vh;
+  background: #0d0d14;
 }
 
 .main-content {
-  margin-left: 260px; /* Même largeur que la sidebar + un peu d'espace */
+  margin-left: 240px;
   flex: 1;
-  background: #f5f6fa;
+  background: #0d0d14;
   min-height: 100vh;
 }
 
 .content-wrapper {
-  padding: 30px;
+  padding: 32px 36px;
   max-width: 1400px;
 }
 
@@ -174,17 +175,17 @@ const handleKeyPress = (event: KeyboardEvent) => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #f5f6fa;
+  background: #0d0d14;
   padding: 20px;
 }
 
 .login-card {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 30px;
+  background: #13131f;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 32px;
   width: 100%;
-  max-width: 350px;
+  max-width: 360px;
 }
 
 .login-header {
@@ -193,14 +194,14 @@ const handleKeyPress = (event: KeyboardEvent) => {
 }
 
 .login-header h2 {
-  color: #2c3e50;
+  color: #f1f1f8;
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 8px 0;
 }
 
 .login-header p {
-  color: #7f8c8d;
+  color: #6b7280;
   font-size: 13px;
   margin: 0;
 }
@@ -218,67 +219,75 @@ const handleKeyPress = (event: KeyboardEvent) => {
 }
 
 .form-group label {
-  color: #34495e;
+  color: #a0a0b8;
   font-weight: 500;
   font-size: 13px;
 }
 
 .form-input {
   padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
   font-size: 14px;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
 }
 
 .error-message {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(239,68,68,0.10);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.18);
   padding: 10px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 13px;
   text-align: center;
 }
 
 .login-button {
-  background: #3498db;
+  background: #f97316;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 12px 20px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.35);
+  font-family: inherit;
 }
 
 .login-button:hover:not(:disabled) {
-  background: #2980b9;
+  opacity: 0.88;
 }
 
 .login-button:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .login-info {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(255,255,255,0.06);
   text-align: center;
 }
 
 .login-info p {
-  color: #666;
+  color: #6b7280;
   font-size: 12px;
   margin: 0 0 4px 0;
 }
 
 .login-info small {
-  color: #95a5a6;
+  color: #4b5563;
   font-size: 11px;
 }
 
@@ -287,11 +296,11 @@ const handleKeyPress = (event: KeyboardEvent) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
+  background: #13131f;
   padding: 16px 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 24px;
 }
 
 .user-info {
@@ -301,35 +310,36 @@ const handleKeyPress = (event: KeyboardEvent) => {
 }
 
 .welcome {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #f1f1f8;
 }
 
 .user-email {
   font-size: 14px;
-  color: #7f8c8d;
+  color: #6b7280;
 }
 
 .user-role {
   font-size: 12px;
-  color: #3498db;
+  color: #f97316;
   font-weight: 500;
 }
 
 .logout-btn {
   padding: 8px 16px;
-  background: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 6px;
+  background: rgba(239,68,68,0.12);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: background 0.2s;
+  font-family: inherit;
 }
 
 .logout-btn:hover {
-  background: #c0392b;
+  background: rgba(239,68,68,0.22);
 }
 </style>

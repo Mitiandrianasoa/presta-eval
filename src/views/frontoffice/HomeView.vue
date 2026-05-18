@@ -672,7 +672,7 @@ onMounted(() => {
 
 .hero {
 
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+  background: linear-gradient(135deg, #1c1917 0%, #3b0764 55%, #7c3aed 100%);
 
   color: white;
 
@@ -832,7 +832,7 @@ onMounted(() => {
 
   box-shadow: var(--shadow-lg);
 
-  border-color: #93c5fd;
+  border-color: #c4b5fd;
 
 }
 
@@ -1200,7 +1200,7 @@ onMounted(() => {
 
   background: var(--primary-light);
 
-  border-color: #93c5fd;
+  border-color: #c4b5fd;
 
   transform: translateY(-3px);
 

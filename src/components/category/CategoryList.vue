@@ -109,55 +109,54 @@ const remove = async (id: number) => {
 
 <style scoped>
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { padding: 10px; border-bottom: 1px solid #eee; }
-th { background: #f8f9fa; text-align: left; }
-.on, .off { padding: 3px 10px; border-radius: 12px; font-size: 12px; }
-.on { background: #d4edda; }
-.off { background: #f8d7da; }
-.btn-add { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-button { cursor: pointer; border: none; background: none; font-size: 16px; }
-
-.filters {
-  margin-bottom: 20px;
+th, td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #a0a0b8; }
+th { background: rgba(255,255,255,0.03); text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+.on, .off { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.on { background: rgba(16,185,129,0.15); color: #10b981; }
+.off { background: rgba(239,68,68,0.15); color: #ef4444; }
+.btn-add {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #f97316; color: white; border: none;
+  padding: 10px 20px; border-radius: 8px; cursor: pointer;
+  font-size: 14px; font-weight: 500;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+  transition: opacity 0.2s; font-family: inherit;
 }
+.btn-add:hover { opacity: 0.88; }
+button { cursor: pointer; border: none; background: none; font-size: 16px; color: #a0a0b8; }
+button:hover { color: #f97316; }
+h2 { color: #f1f1f8; margin: 0 0 16px; font-size: 20px; }
 
-.checkbox-col {
-  width: 40px;
-  text-align: center;
-}
+.filters { margin-bottom: 20px; }
 
-.checkbox-col input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
+.checkbox-col { width: 40px; text-align: center; }
+.checkbox-col input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
 .selection-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #e3f2fd;
+  background: rgba(249,115,22,0.08);
+  border: 1px solid rgba(249,115,22,0.15);
   padding: 12px 16px;
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #1976d2;
+  color: #f97316;
 }
 
 .btn-clear {
-  background: #fff;
-  border: 1px solid #1976d2;
-  color: #1976d2;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #a0a0b8;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.2s;
+  font-family: inherit;
 }
-
-.btn-clear:hover {
-  background: #1976d2;
-  color: white;
-}
+.btn-clear:hover { background: rgba(255,255,255,0.12); color: #f1f1f8; }
 </style>

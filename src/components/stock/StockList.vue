@@ -148,7 +148,9 @@ const getStockClass = (quantity: number) => {
             <th>ID Produit</th>
             <th>Nom du produit</th>
             <th>Déclinaison</th>
-            <th>Quantité</th>
+            <th>Physique</th>
+            <th>Réservé</th>
+            <th>Disponible</th>
             <th>Statut</th>
             <th>Actions</th>
           </tr>
@@ -166,6 +168,7 @@ const getStockClass = (quantity: number) => {
             <td>{{ stock.id_product }}</td>
             <td class="product-name">{{ stock.product_name || 'Produit inconnu' }}</td>
             <td>{{ stock.combination_name || (stock.id_product_attribute !== '0' ? `#${stock.id_product_attribute}` : '-') }}</td>
+            <!-- Stock physique (quantity dans PS mode simplifié) -->
             <td>
               <div v-if="editingStock === stock.id" class="edit-quantity">
                 <input
@@ -176,6 +179,21 @@ const getStockClass = (quantity: number) => {
                 />
               </div>
               <span v-else class="quantity">{{ stock.quantity }}</span>
+            </td>
+
+            <!-- Réservé : calculé depuis les commandes payées (état 2) -->
+            <td>
+              <span v-if="stock.reserved > 0" class="reserved-badge">
+                {{ stock.reserved }}
+              </span>
+              <span v-else class="quantity-zero">—</span>
+            </td>
+
+            <!-- Disponible = quantity - reserved -->
+            <td>
+              <span class="quantity" :class="{ low: stock.available < 5, zero: stock.available === 0 }">
+                {{ stock.available }}
+              </span>
             </td>
             <td>
               <span class="status-badge" :class="getStockClass(stock.quantity)">
@@ -216,9 +234,9 @@ const getStockClass = (quantity: number) => {
 
 <style scoped>
 .stock-list {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: #13131f;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
   padding: 24px;
 }
 
@@ -234,7 +252,7 @@ const getStockClass = (quantity: number) => {
 .stock-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #2c3e50;
+  color: #f1f1f8;
 }
 
 .header-actions {
@@ -245,16 +263,19 @@ const getStockClass = (quantity: number) => {
 
 .search-input {
   padding: 10px 16px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 8px;
   font-size: 14px;
   width: 250px;
   transition: border-color 0.2s;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #4CAF50;
+  border-color: #f97316;
 }
 
 .refresh-btn {
@@ -262,22 +283,24 @@ const getStockClass = (quantity: number) => {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #3498db;
+  background: #f97316;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.2s;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+  font-family: inherit;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: #2980b9;
+  opacity: 0.88;
 }
 
 .refresh-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -293,15 +316,16 @@ const getStockClass = (quantity: number) => {
   justify-content: center;
   padding: 60px;
   gap: 16px;
+  color: #6b7280;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f0f0f0;
-  border-top-color: #3498db;
+  border: 3px solid rgba(255,255,255,0.07);
+  border-top-color: #f97316;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.75s linear infinite;
 }
 
 @keyframes spin {
@@ -309,8 +333,9 @@ const getStockClass = (quantity: number) => {
 }
 
 .error-message {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(239,68,68,0.1);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.2);
   padding: 16px;
   border-radius: 8px;
   text-align: center;
@@ -324,39 +349,42 @@ const getStockClass = (quantity: number) => {
 }
 
 .stat-item {
-  background: #e8f5e9;
+  background: rgba(16,185,129,0.10);
   padding: 16px 24px;
-  border-radius: 8px;
+  border-radius: 10px;
   text-align: center;
   min-width: 140px;
+  border: 1px solid rgba(16,185,129,0.15);
 }
 
 .stat-item.warning {
-  background: #fff3e0;
+  background: rgba(245,158,11,0.10);
+  border-color: rgba(245,158,11,0.15);
 }
 
 .stat-item.danger {
-  background: #ffebee;
+  background: rgba(239,68,68,0.10);
+  border-color: rgba(239,68,68,0.15);
 }
 
 .stat-value {
   display: block;
   font-size: 28px;
   font-weight: 700;
-  color: #2e7d32;
+  color: #10b981;
 }
 
 .stat-item.warning .stat-value {
-  color: #f57c00;
+  color: #f59e0b;
 }
 
 .stat-item.danger .stat-value {
-  color: #c62828;
+  color: #ef4444;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #666;
+  color: #6b7280;
 }
 
 .stock-table {
@@ -368,37 +396,53 @@ const getStockClass = (quantity: number) => {
 .stock-table td {
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .stock-table th {
-  background: #f8f9fa;
+  background: rgba(255,255,255,0.03);
   font-weight: 600;
-  color: #34495e;
-  font-size: 13px;
+  color: #6b7280;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .stock-table tbody tr:hover {
-  background: #f5f5f5;
+  background: rgba(255,255,255,0.03);
 }
 
 .stock-table tbody tr.out-of-stock {
-  background: #ffebee;
+  background: rgba(239,68,68,0.06);
 }
 
 .stock-table tbody tr.low-stock {
-  background: #fff3e0;
+  background: rgba(245,158,11,0.06);
 }
 
 .product-name {
   font-weight: 500;
-  color: #2c3e50;
+  color: #e2e2f0;
 }
 
 .quantity {
   font-weight: 600;
   font-size: 15px;
+  color: #f1f1f8;
 }
+.quantity.low  { color: #f59e0b; }
+.quantity.zero { color: #ef4444; }
+
+.reserved-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(168,85,247,0.15);
+  color: #a855f7;
+}
+.quantity-zero { color: #4b5563; font-size: 14px; }
 
 .status-badge {
   display: inline-block;
@@ -409,18 +453,18 @@ const getStockClass = (quantity: number) => {
 }
 
 .status-badge.in-stock {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16,185,129,0.15);
+  color: #10b981;
 }
 
 .status-badge.low-stock {
-  background: #fff3e0;
-  color: #f57c00;
+  background: rgba(245,158,11,0.15);
+  color: #f59e0b;
 }
 
 .status-badge.out-of-stock {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(239,68,68,0.15);
+  color: #ef4444;
 }
 
 .edit-quantity {
@@ -431,10 +475,13 @@ const getStockClass = (quantity: number) => {
 .quantity-input {
   width: 80px;
   padding: 6px 10px;
-  border: 2px solid #3498db;
+  border: 2px solid #f97316;
   border-radius: 6px;
   font-size: 14px;
   text-align: center;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
 }
 
 .quantity-input:focus {
@@ -461,30 +508,30 @@ const getStockClass = (quantity: number) => {
 }
 
 .btn-edit {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: rgba(249,115,22,0.15);
+  color: #f97316;
 }
 
 .btn-edit:hover {
-  background: #bbdefb;
+  background: rgba(249,115,22,0.25);
 }
 
 .btn-save {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16,185,129,0.15);
+  color: #10b981;
 }
 
 .btn-save:hover {
-  background: #c8e6c9;
+  background: rgba(16,185,129,0.25);
 }
 
 .btn-cancel {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(239,68,68,0.15);
+  color: #ef4444;
 }
 
 .btn-cancel:hover {
-  background: #ffcdd2;
+  background: rgba(239,68,68,0.25);
 }
 
 .btn-edit svg,
@@ -497,7 +544,7 @@ const getStockClass = (quantity: number) => {
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #999;
+  color: #4b5563;
 }
 
 .checkbox-col {
@@ -515,28 +562,30 @@ const getStockClass = (quantity: number) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #e3f2fd;
+  background: rgba(249,115,22,0.08);
+  border: 1px solid rgba(249,115,22,0.15);
   padding: 12px 16px;
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #1976d2;
+  color: #f97316;
 }
 
 .btn-clear {
-  background: #fff;
-  border: 1px solid #1976d2;
-  color: #1976d2;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #a0a0b8;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .btn-clear:hover {
-  background: #1976d2;
-  color: white;
+  background: rgba(255,255,255,0.12);
+  color: #f1f1f8;
 }
 </style>

@@ -1,23 +1,23 @@
 /* ── Design tokens ─────────────────────────────────────── */
 :root {
-  --primary:       #2563eb;
-  --primary-dark:  #1d4ed8;
-  --primary-light: #eff6ff;
-  --navy:          #0f172a;
-  --text:          #1e293b;
-  --muted:         #64748b;
-  --border:        #e2e8f0;
-  --bg:            #f8fafc;
+  --primary:       #7c3aed;
+  --primary-dark:  #6d28d9;
+  --primary-light: #f5f3ff;
+  --navy:          #1c1917;
+  --text:          #292524;
+  --muted:         #78716c;
+  --border:        #e7e5e4;
+  --bg:            #fafaf9;
   --surface:       #ffffff;
-  --success:       #16a34a;
-  --success-bg:    #f0fdf4;
+  --success:       #059669;
+  --success-bg:    #ecfdf5;
   --error:         #dc2626;
   --error-bg:      #fef2f2;
   --radius:        8px;
-  --radius-lg:     12px;
-  --shadow-sm:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:     0 4px 12px rgba(0,0,0,0.10);
-  --shadow-lg:     0 12px 28px rgba(0,0,0,0.12);
+  --radius-lg:     14px;
+  --shadow-sm:     0 1px 3px rgba(28,25,23,0.07), 0 1px 2px rgba(28,25,23,0.04);
+  --shadow-md:     0 4px 16px rgba(28,25,23,0.09);
+  --shadow-lg:     0 16px 32px rgba(28,25,23,0.12);
   --transition:    0.2s ease;
 }
 
@@ -29,7 +29,7 @@
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text);
-  background: var(--bg);
+  background: #0d0d14;
   margin: 0;
   -webkit-font-smoothing: antialiased;
 }
@@ -53,14 +53,15 @@ body {
   margin: 0 0 0.75rem;
   display: inline-block;
   position: relative;
+  letter-spacing: -0.02em;
 }
 
 .section-heading h2::after {
   content: '';
   display: block;
-  width: 40px;
+  width: 48px;
   height: 3px;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--primary), #a855f7);
   border-radius: 2px;
   margin: 0.6rem auto 0;
 }
@@ -88,8 +89,8 @@ body {
 
 /* ── Shared footer ─────────────────────────────────────── */
 .front-footer {
-  background: var(--navy);
-  color: #cbd5e1;
+  background: linear-gradient(160deg, var(--navy) 0%, #2e1065 100%);
+  color: #d6d3d1;
   padding: 3.5rem 0 1.5rem;
 }
 
@@ -102,7 +103,7 @@ body {
 
 .front-footer h3,
 .front-footer h4 {
-  color: #f1f5f9;
+  color: #fafaf9;
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -127,20 +128,20 @@ body {
 }
 
 .front-footer a {
-  color: #94a3b8;
+  color: #a8a29e;
   text-decoration: none;
   font-size: 0.9rem;
   transition: color var(--transition);
 }
 
 .front-footer a:hover {
-  color: #f1f5f9;
+  color: #a78bfa;
 }
 
 .front-footer .footer-bottom {
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid rgba(255,255,255,0.08);
   padding-top: 1.25rem;
   text-align: center;
   font-size: 0.85rem;
-  color: #475569;
+  color: #57534e;
 }

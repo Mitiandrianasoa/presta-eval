@@ -129,6 +129,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import Papa from 'papaparse';
+import Sidebar from '@/components/Sidebar.vue';
 
 // États des fichiers
 const fileInput1 = ref(null);
@@ -334,39 +335,41 @@ const getStatusText = (status) => {
 </script>
 
 <style scoped>
-.import-container { font-family: Arial, sans-serif; max-width: 1400px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 8px; }
+.import-container { max-width: 1400px; margin: 20px auto; padding: 20px; background: #13131f; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); color: #a0a0b8; }
+.import-container h2 { color: #f1f1f8; margin: 0 0 20px; }
 
 .uploads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
-.upload-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
-.upload-card h3 { margin: 0 0 15px 0; font-size: 1.1em; color: #333; }
+.upload-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
+.upload-card h3 { margin: 0 0 15px; font-size: 1.1em; color: #f1f1f8; }
 .upload-card input { margin: 10px 0; }
-.file-status { margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 12px; }
-.file-status.success { background: #e6f9ed; color: #28a745; }
-.file-status.error { background: #fdf2f2; color: #dc3545; }
+.file-status { margin-top: 10px; padding: 8px; border-radius: 6px; font-size: 12px; }
+.file-status.success { background: rgba(16,185,129,0.12); color: #10b981; }
+.file-status.error { background: rgba(239,68,68,0.12); color: #ef4444; }
 
 .import-action { text-align: center; margin: 20px 0; }
-.btn-import-all { padding: 15px 40px; font-size: 18px; background-color: #4ed282; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 8px; transition: all 0.3s; }
-.btn-import-all:hover:not(:disabled) { background-color: #3db86b; transform: scale(1.02); }
-.btn-import-all:disabled { background-color: #ccc; cursor: not-allowed; }
+.btn-import-all { padding: 15px 40px; font-size: 18px; background: #f97316; border: none; color: white; font-weight: 600; cursor: pointer; border-radius: 10px; box-shadow: 0 4px 16px rgba(249,115,22,0.4); transition: all 0.2s; font-family: inherit; }
+.btn-import-all:hover:not(:disabled) { opacity: 0.88; transform: scale(1.02); }
+.btn-import-all:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.status-box { padding: 15px; margin: 20px 0; border-left: 5px solid; border-radius: 4px; }
-.status-box.success { background-color: #e6f9ed; border-left-color: #28a745; }
-.status-box.error { background-color: #fdf2f2; border-left-color: #dc3545; }
+.status-box { padding: 15px; margin: 20px 0; border-left: 4px solid; border-radius: 8px; }
+.status-box.success { background: rgba(16,185,129,0.10); border-left-color: #10b981; color: #10b981; }
+.status-box.error { background: rgba(239,68,68,0.10); border-left-color: #ef4444; color: #f87171; }
 
-.progress-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
-.progress-bar { width: 100%; height: 30px; background: #e9ecef; border-radius: 15px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #4ed282, #28a745); transition: width 0.3s ease; border-radius: 15px; }
-.progress-text { text-align: center; margin-top: 10px; font-weight: bold; color: #28a745; }
+.progress-section { margin: 20px 0; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+.progress-bar { width: 100%; height: 30px; background: rgba(255,255,255,0.06); border-radius: 15px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #f97316, #fb923c); transition: width 0.3s ease; border-radius: 15px; }
+.progress-text { text-align: center; margin-top: 10px; font-weight: bold; color: #f97316; }
 
-.report-section { margin-top: 30px; background: white; border-radius: 8px; padding: 15px; }
-.report-section h3 { margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #4ed282; }
+.report-section { margin-top: 30px; background: rgba(255,255,255,0.02); border-radius: 10px; padding: 15px; border: 1px solid rgba(255,255,255,0.06); }
+.report-section h3 { margin: 0 0 15px; padding-bottom: 10px; border-bottom: 2px solid #f97316; color: #f1f1f8; }
 .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.report-table th, .report-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-.report-table th { background-color: #f1f1f1; }
+.report-table th, .report-table td { border: 1px solid rgba(255,255,255,0.06); padding: 8px 12px; text-align: left; }
+.report-table th { background: rgba(255,255,255,0.03); color: #6b7280; font-weight: 600; text-transform: uppercase; }
+.report-table td { color: #a0a0b8; }
 .center { text-align: center; }
-.success { background-color: #f3fbf6; }
-.error { background-color: #fff5f5; }
-.txt-success { color: #28a745; font-weight: bold; }
-.txt-error { color: #dc3545; font-weight: bold; }
-.txt-pending { color: #666; }
+.success td { background: rgba(16,185,129,0.06); }
+.error td { background: rgba(239,68,68,0.06); }
+.txt-success { color: #10b981; font-weight: bold; }
+.txt-error { color: #ef4444; font-weight: bold; }
+.txt-pending { color: #6b7280; }
 </style>

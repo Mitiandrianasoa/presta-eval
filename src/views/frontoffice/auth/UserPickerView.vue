@@ -315,7 +315,7 @@ const handleContinue = () => {
 .search-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
   background: var(--surface);
 }
 
@@ -375,8 +375,8 @@ const handleContinue = () => {
 }
 
 .avatar-user {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #f5f3ff;
+  color: #7c3aed;
 }
 
 .avatar-anon {
@@ -418,8 +418,8 @@ const handleContinue = () => {
 }
 
 .badge-client {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #f5f3ff;
+  color: #7c3aed;
 }
 
 .badge-anon {

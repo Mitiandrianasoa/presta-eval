@@ -9,6 +9,7 @@
 import api from '../../../api/api';
 import { updateResource } from '../../../api/schemaService';
 import { useStockStore } from '../../../stores/stock/stockStore';
+import { orderService } from '../../../services/orderService';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const ID_COUNTRY_FRANCE = 8;
@@ -23,6 +24,12 @@ const DEFAULT_CONFIG = {
   LANG_ID: '2', // Français
 };
 
+// ─── Mapping des états de commande ────────────────────────────────────────────
+const ETATS_COMMANDE = {
+  'paiement accepté': 2,
+  'livré': 4,   // état 4 = Livré (stock décrémenté)
+  'annulé': 6,  // état 6 = Annulé (aucun changement de stock)
+};
 
 // ─── Colonnes attendues dans le fichier Commandes ────────────────────────────
 const COLONNES_REQUISES_COMMANDES = ['date', 'nom', 'email', 'pwd', 'adresse', 'achat', 'etat'];
@@ -503,9 +510,9 @@ export const creerPanier = async (idCustomer, idAddress, items, registreRollback
   }
 };
 
-export const creerCommande = async (idCart, idCustomer, idAddress, items, registreRollback, dateCsv = '') => {
+export const creerCommande = async (idCart, idCustomer, idAddress, items, registreRollback, dateCsv = '', idOrderState = 2) => {
   try {
-    console.log(`📦 Préparation commande | Cart: ${idCart}`);
+    console.log(`📦 Préparation commande | Cart: ${idCart} | État: ${idOrderState}`);
 
     // Récupérer la secure key AVANT l'attente
     const secureKey = await obtenirSecureKey(idCustomer);
@@ -707,7 +714,7 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
     <id_lang><![CDATA[${ID_LANG_FR}]]></id_lang>
     <id_customer><![CDATA[${idCustomer}]]></id_customer>
     <id_carrier><![CDATA[1]]></id_carrier>
-    <current_state><![CDATA[2]]></current_state>
+    <current_state><![CDATA[${idOrderState}]]></current_state>
     <module>${DEFAULT_CONFIG.PAYMENT_MODULE}</module>
     <payment>${DEFAULT_CONFIG.PAYMENT_METHOD}</payment>
     <conversion_rate><![CDATA[1.000000]]></conversion_rate>
@@ -777,6 +784,32 @@ export const creerCommande = async (idCart, idCustomer, idAddress, items, regist
     };
 
   } catch (error) {
+    // PS retourne parfois un 500 à cause du hook déprécié "newOrder" (module gamification),
+    // même si la commande a bien été insérée en base. On vérifie par le panier.
+    if (error.response?.status === 500) {
+      try {
+        console.warn('⚠️ 500 reçu — vérification si la commande a quand même été créée...');
+        const checkRes = await api.get(
+          `/orders?filter[id_cart]=${idCart}&output_format=XML&display=[id]&limit=1`
+        );
+        const checkDoc = new DOMParser().parseFromString(checkRes.data, 'text/xml');
+        const foundId  = checkDoc.querySelector('order id')?.textContent?.trim();
+
+        if (foundId) {
+          console.log(`✅ Commande #${foundId} trouvée malgré le 500 (hook gamification déprécié)`);
+          registreRollback.push({ type: 'order', id: foundId });
+
+          if (dateCsv && dateCsv.trim() !== '') {
+            try { await patcherDatesCommande(foundId, dateCsv); } catch (_) {}
+          }
+
+          return { id: foundId, success: true };
+        }
+      } catch (checkErr) {
+        console.warn('⚠️ Vérification commande échouée :', checkErr.message);
+      }
+    }
+
     console.error('❌ Échec création commande:', error.response?.data || error);
     throw error;
   }
@@ -922,14 +955,47 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
       const idCart = await creerPanier(idCustomer, idAddress, items, registreRollback, cmd.date);
       cmd.id_cart = idCart;
       console.log(`   ✅ Panier créé (#${idCart}) avec la date du CSV`);
-      
-      if (cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')) {
-        // Passage de `items` pour le calcul fallback
-        const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback, cmd.date);
-        cmd.id_order = orderResult.id;
-        console.log(`   ✅ Commande créée (#${cmd.id_order}) avec la date du CSV`);
 
-        await enregistrerMouvementsStocks(items, 1);
+      // ─── Résolution de l'état de commande ────────────────────────────────
+      const etatNormalise = cmd.etat?.trim().toLowerCase() || '';
+      const idOrderState = ETATS_COMMANDE[etatNormalise];
+
+      if (idOrderState !== undefined) {
+        // Pour "annulé" (6) : créer d'abord en état 2 (payé) pour que PrestaShop
+        // enregistre correctement la commande, puis passer à 6 via shiporder.php.
+        // Créer directement avec current_state=6 via l'API ne crée pas d'entrée
+        // dans ps_order_history et la commande n'apparaît pas dans les annulées.
+        const createState = idOrderState === 6 ? 2 : idOrderState;
+
+        const orderResult = await creerCommande(
+          idCart, idCustomer, idAddress, items, registreRollback, cmd.date, createState
+        );
+        cmd.id_order = orderResult.id;
+        console.log(`   ✅ Commande créée (#${cmd.id_order}) | État initial: ${createState}`);
+
+        // Gestion stock
+        if (idOrderState === 2) {
+          // Paiement accepté : met à jour reserved_quantity en base (non bloquant —
+          // le dashboard calcule le réservé depuis les commandes si la requête échoue)
+          try {
+            await orderService.callShiporder(cmd.id_order, '2');
+            console.log(`   ✅ Stock réservé pour commande #${cmd.id_order}`);
+          } catch (stockErr) {
+            console.warn(`   ⚠️ Mise à jour stock réservé non critique :`, stockErr.message);
+          }
+        } else if (idOrderState === 4) {
+          // Livré : PUT direct sur stock_available via WebService (sans hooks PS)
+          await decrementerStocks(items);
+          console.log(`   ✅ Stock décrémenté pour commande #${cmd.id_order}`);
+        } else if (idOrderState === 6) {
+          // Annulé : PUT direct via WebService (évite les hooks PS qui crashent)
+          await orderService.updateState(cmd.id_order, '6');
+          console.log(`   ✅ Commande #${cmd.id_order} passée à l'état annulé (6)`);
+        }
+
+        console.log(`   ✅ État final: ${etatNormalise} (current_state=${idOrderState})`);
+      } else {
+        console.log(`   ℹ️ État "${cmd.etat}" non géré, commande non créée.`);
       }
       
       cmd.status = 'success';

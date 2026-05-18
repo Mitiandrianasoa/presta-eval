@@ -4,7 +4,9 @@
 
 export const API_CONFIG = {
   // Clé d'authentification PrestaShop
-  AUTH_KEY: 'XH2WM6KI15W9WXR4AB92KGVMALT6YXDY',
+  AUTH_KEY: 'bqHTFCOOgQIPEq03m6yZTUZt6iyhAwVG',
+  // Token du module shiporder (modules/mon_module/controllers/front/shiporder.php)
+  SHIPORDER_TOKEN: 'MON_TOKEN_SECRET_2024',
   
   // // Endpoints
   // ENDPOINTS: {

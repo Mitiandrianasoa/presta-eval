@@ -91,120 +91,47 @@ const removeProduct = (productId: number) => {
 </template>
 
 <style scoped>
-.search-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+.search-container { display: flex; flex-direction: column; gap: 10px; }
+label { font-weight: 600; font-size: 12px; color: #6b7280; }
 
-label {
-  font-weight: 600;
-}
-
-.search-box {
-  position: relative;
-}
-
+.search-box { position: relative; }
 .search-box input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  width: 100%; padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px; font-size: 14px;
+  background: #0d0d14; color: #e2e2f0; font-family: inherit;
 }
-
-.search-box input:focus {
-  outline: none;
-  border-color: #4CAF50;
-}
+.search-box input:focus { outline: none; border-color: #f97316; }
 
 .dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #ddd;
-  border-top: none;
-  border-radius: 0 0 4px 4px;
-  max-height: 250px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: #1a1a2e; border: 1px solid rgba(255,255,255,0.10);
+  border-top: none; border-radius: 0 0 8px 8px;
+  max-height: 250px; overflow-y: auto; z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
-
-.dropdown-list {
-  display: flex;
-  flex-direction: column;
-}
+.dropdown-list { display: flex; flex-direction: column; }
 
 .dropdown-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  border-bottom: 1px solid #f0f0f0;
+  display: flex; justify-content: space-between; padding: 10px 12px;
+  border: none; background: none; cursor: pointer; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.05); color: #a0a0b8;
   transition: background 0.2s;
 }
+.dropdown-item:hover { background: rgba(249,115,22,0.08); color: #f1f1f8; }
 
-.dropdown-item:hover {
-  background: #f5f5f5;
-}
+.product-name { flex: 1; font-size: 13px; }
+.product-ref { color: #6b7280; font-size: 11px; margin-left: 10px; }
+.no-results { padding: 10px; color: #6b7280; text-align: center; font-size: 13px; }
 
-.product-name {
-  flex: 1;
-  font-size: 13px;
-}
-
-.product-ref {
-  color: #999;
-  font-size: 11px;
-  margin-left: 10px;
-}
-
-.no-results {
-  padding: 10px;
-  color: #999;
-  text-align: center;
-  font-size: 13px;
-}
-
-.selected-products {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
+.selected-products { display: flex; flex-wrap: wrap; gap: 8px; }
 .product-tag {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #f0f0f0;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(249,115,22,0.10); border: 1px solid rgba(249,115,22,0.2);
+  padding: 6px 10px; border-radius: 6px; font-size: 13px; color: #f97316;
 }
+.product-tag span { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.product-tag span {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
-  color: #999;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 0 4px;
-}
-
-.remove-btn:hover {
-  color: #e74c3c;
-}
+.remove-btn { background: none; border: none; color: #6b7280; cursor: pointer; font-size: 14px; padding: 0 4px; }
+.remove-btn:hover { color: #ef4444; }
 </style>

@@ -86,35 +86,14 @@ const triggerFileInput = () => {
 </template>
 
 <style scoped>
-.csv-uploader {
-  margin-bottom: 20px;
-}
+.csv-uploader { margin-bottom: 20px; }
 .upload-box {
-  border: 2px dashed #4caf50;
-  border-radius: 8px;
-  padding: 30px;
-  text-align: center;
-  cursor: pointer;
-  background-color: #f9fdf9;
-  transition: all 0.3s ease;
+  border: 2px dashed rgba(249,115,22,0.3);
+  border-radius: 12px; padding: 30px; text-align: center; cursor: pointer;
+  background: rgba(249,115,22,0.05); transition: all 0.3s; color: #a0a0b8;
 }
-.upload-box:hover {
-  background-color: #f1f8f1;
-  border-color: #388e3c;
-}
-.upload-icon {
-  font-size: 2rem;
-  margin-bottom: 10px;
-  display: block;
-}
-.file-names-list {
-  text-align: left;
-  color: #2e7d32;
-  margin-top: 10px;
-  display: inline-block;
-}
-.file-names-list ul {
-  padding-left: 20px;
-  margin-top: 5px;
-}
+.upload-box:hover { background: rgba(249,115,22,0.10); border-color: #f97316; color: #f1f1f8; }
+.upload-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+.file-names-list { text-align: left; color: #f97316; margin-top: 10px; display: inline-block; }
+.file-names-list ul { padding-left: 20px; margin-top: 5px; }
 </style>

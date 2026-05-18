@@ -129,7 +129,7 @@
           </div>
         </div>
 
-        <!-- STATS RAPIDES -->
+        <!-- STATS RAPIDES
         <div class="stats-mini-row">
           <div class="stat-mini">
             <span class="stat-mini-value">{{ totalOrders }}</span>
@@ -146,6 +146,73 @@
           <div class="stat-mini">
             <span class="stat-mini-value">{{ formatCurrency(panierMoyen) }}</span>
             <span class="stat-mini-label">Panier Moyen TTC</span>
+          </div>
+        </div> -->
+
+        <!-- STATISTIQUES PAR CATÉGORIE -->
+        <div class="stats-grid">
+          <div class="stats-section">
+            <div class="section-header">
+              <h2>Bénéfice par catégorie</h2>
+            </div>
+            <div class="stats-table-wrapper">
+              <table class="stats-table">
+                <thead>
+                  <tr>
+                    <th>Catégorie</th>
+                    <th class="right">Ventes HT</th>
+                    <th class="right">Achat HT</th>
+                    <th class="right">Bénéfice</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="cat in beneficeParCategorie" :key="cat.catId">
+                    <td class="cat-name-cell">{{ cat.nom }}</td>
+                    <td class="right amount-cell">{{ formatCurrency(cat.ventesHT) }}</td>
+                    <td class="right amount-cell achat">{{ formatCurrency(cat.achatHT) }}</td>
+                    <td class="right amount-cell" :class="cat.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
+                      {{ formatCurrency(cat.benefice) }}
+                    </td>
+                  </tr>
+                  <tr v-if="beneficeParCategorie.length === 0">
+                    <td colspan="4" class="empty-state">
+                      <div class="empty-message"><p>Aucune donnée</p></div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-header">
+              <h2>Stock par catégorie</h2>
+            </div>
+            <div class="stats-table-wrapper">
+              <table class="stats-table">
+                <thead>
+                  <tr>
+                    <th>Catégorie</th>
+                    <th class="right">Qté physique</th>
+                    <th class="right">Qté réservé</th>
+                    <th class="right">Qté disponible</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="cat in stockParCategorie" :key="cat.catId">
+                    <td class="cat-name-cell">{{ cat.nom }}</td>
+                    <td class="right stock-physique">{{ cat.physique }}</td>
+                    <td class="right stock-reserve">{{ cat.reserve }}</td>
+                    <td class="right stock-disponible">{{ cat.disponible }}</td>
+                  </tr>
+                  <tr v-if="stockParCategorie.length === 0">
+                    <td colspan="4" class="empty-state">
+                      <div class="empty-message"><p>Aucune donnée de stock</p></div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -248,6 +315,7 @@ interface Order {
   id: string;
   date: string;
   customer_id: string;
+  current_state: string;
   totalHT: number;
   totalTTC: number;
   totalAchat: number;
@@ -262,7 +330,10 @@ const error = ref('');
 const dateDebut = ref('');
 const dateFin = ref('');
 const orders = ref<Order[]>([]);
-const cacheProduits = ref<Record<string, { price: number; wholesale_price: number }>>({});
+const cacheProduits = ref<Record<string, { price: number; wholesale_price: number; id_category?: string }>>({});
+const cacheCategories = ref<Record<string, string>>({});
+const categorieParProduit = ref<Record<string, string>>({});
+const stockDisponibles = ref<Array<{ id_product: string; physical: number; reserved: number; available: number }>>([]);
 
 // Computed
 const hasActiveFilter = computed(() => !!(dateDebut.value || dateFin.value));
@@ -317,6 +388,69 @@ const panierMoyen = computed(() => {
   return totalTTC.value / totalOrders.value;
 });
 
+const beneficeParCategorie = computed(() => {
+  const map: Record<string, { nom: string; ventesHT: number; achatHT: number }> = {};
+
+  for (const order of ordersFiltered.value) {
+    for (const product of order.products) {
+      const cached = cacheProduits.value[product.id];
+      if (!cached) continue;
+      const catId = cached.id_category || '';
+      if (!catId) continue;
+      const catNom = cacheCategories.value[catId] || `Catégorie ${catId}`;
+      if (!map[catId]) map[catId] = { nom: catNom, ventesHT: 0, achatHT: 0 };
+      map[catId].ventesHT += (cached.price || 0) * product.quantity;
+      map[catId].achatHT += (cached.wholesale_price || 0) * product.quantity;
+    }
+  }
+
+  return Object.entries(map).map(([catId, d]) => ({
+    catId,
+    nom: d.nom,
+    ventesHT: d.ventesHT,
+    achatHT: d.achatHT,
+    benefice: d.ventesHT - d.achatHT,
+    marge: d.ventesHT > 0 ? ((d.ventesHT - d.achatHT) / d.ventesHT) * 100 : 0
+  })).sort((a, b) => b.ventesHT - a.ventesHT);
+});
+
+const stockParCategorie = computed(() => {
+  // PS WebService n'expose pas physical_quantity ni reserved_quantity.
+  // Formule PS : physical = available + reserved
+  // réservé = qtés des commandes à l'état 2 (paiement accepté)
+  const reservedByProduct: Record<string, number> = {};
+  for (const order of orders.value) {
+    if (order.current_state === '2') {
+      for (const product of order.products) {
+        reservedByProduct[product.id] = (reservedByProduct[product.id] || 0) + product.quantity;
+      }
+    }
+  }
+
+  const map: Record<string, { nom: string; physique: number; reserve: number; disponible: number }> = {};
+
+  for (const stock of stockDisponibles.value) {
+    const catId = cacheProduits.value[stock.id_product]?.id_category || '';
+    if (!catId) continue;
+    const catNom = cacheCategories.value[catId] || `Catégorie ${catId}`;
+    if (!map[catId]) map[catId] = { nom: catNom, physique: 0, reserve: 0, disponible: 0 };
+
+    const reserve    = reservedByProduct[stock.id_product] || 0;
+    const disponible = stock.available;
+    map[catId].reserve    += reserve;
+    map[catId].disponible += disponible;
+    map[catId].physique   += disponible + reserve;  // physical = available + reserved
+  }
+
+  return Object.entries(map).map(([catId, d]) => ({
+    catId,
+    nom: d.nom,
+    physique:   d.physique,
+    reserve:    d.reserve,
+    disponible: d.disponible
+  })).sort((a, b) => a.nom.localeCompare(b.nom));
+});
+
 // Méthodes
 const loadOrders = async () => {
   loading.value = true;
@@ -336,6 +470,7 @@ const loadOrders = async () => {
       const orderId = orderEl.querySelector('id')?.textContent?.trim() || '';
       const dateAdd = orderEl.querySelector('date_add')?.textContent?.trim() || '';
       const customerId = orderEl.querySelector('id_customer')?.textContent?.trim() || '';
+      const currentState = orderEl.querySelector('current_state')?.textContent?.trim() || '';
       const totalPaidTTC = parseFloat(orderEl.querySelector('total_paid_tax_incl')?.textContent?.trim() || '0');
       const totalProductsHT = parseFloat(orderEl.querySelector('total_products')?.textContent?.trim() || '0');
 
@@ -372,6 +507,7 @@ const loadOrders = async () => {
         id: orderId,
         date: dateAdd,
         customer_id: customerId,
+        current_state: currentState,
         totalHT: totalProductsHT,
         totalTTC: totalPaidTTC,
         totalAchat,
@@ -393,24 +529,81 @@ const loadOrders = async () => {
 
 const loadProductCache = async () => {
   try {
-    const response = await api.get('/products?output_format=XML&display=[id,price,wholesale_price]&limit=5000');
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
-    const products = xmlDoc.querySelectorAll('product');
+    const [prodRes, catRes] = await Promise.all([
+      api.get('/products?output_format=XML&display=[id,price,wholesale_price,id_category_default]&limit=5000'),
+      api.get('/categories?output_format=XML&display=[id,name]&limit=5000')
+    ]);
 
-    products.forEach(product => {
+    const parser = new DOMParser();
+
+    const catDoc = parser.parseFromString(catRes.data, 'text/xml');
+    catDoc.querySelectorAll('category').forEach(cat => {
+      const id = cat.querySelector('id')?.textContent?.trim() || '';
+      const name = cat.querySelector('name language')?.textContent?.trim()
+                || cat.querySelector('name')?.textContent?.trim()
+                || '';
+      if (id) cacheCategories.value[id] = name;
+    });
+
+    const xmlDoc = parser.parseFromString(prodRes.data, 'text/xml');
+    xmlDoc.querySelectorAll('product').forEach(product => {
       const id = product.querySelector('id')?.textContent?.trim() || '';
       const price = parseFloat(product.querySelector('price')?.textContent?.trim() || '0');
       const wholesalePrice = parseFloat(product.querySelector('wholesale_price')?.textContent?.trim() || '0');
-      
+      const categoryId = product.querySelector('id_category_default')?.textContent?.trim() || '';
+
       if (id) {
-        cacheProduits.value[id] = { price, wholesale_price: wholesalePrice };
+        cacheProduits.value[id] = { price, wholesale_price: wholesalePrice, id_category: categoryId };
+        categorieParProduit.value[id] = categoryId;
       }
     });
 
-    console.log(`Produits chargés: ${Object.keys(cacheProduits.value).length}`);
+    await loadStock();
+
+    console.log(`Produits chargés: ${Object.keys(cacheProduits.value).length}, Catégories: ${Object.keys(cacheCategories.value).length}`);
   } catch (e) {
     console.warn('Erreur chargement cache produits:', e);
+  }
+};
+
+const loadStock = async () => {
+  try {
+    const res = await api.get('/stock_availables?output_format=XML&display=full&limit=5000');
+    const doc = new DOMParser().parseFromString(res.data, 'text/xml');
+
+    // Grouper par id_product — pour produits avec combinaisons, sommer les lignes attr>0
+    const byProduct: Record<string, { hasCombinations: boolean; entries: { idAttr: string; physical: number; reserved: number; available: number }[] }> = {};
+
+    Array.from(doc.querySelectorAll('stock_available')).forEach(s => {
+      const idProduct = s.querySelector('id_product')?.textContent?.trim() || '';
+      const idAttr   = s.querySelector('id_product_attribute')?.textContent?.trim() || '0';
+      if (!idProduct) return;
+
+      if (!byProduct[idProduct]) byProduct[idProduct] = { hasCombinations: false, entries: [] };
+      if (idAttr !== '0') byProduct[idProduct].hasCombinations = true;
+
+      byProduct[idProduct].entries.push({
+        idAttr,
+        physical:  0,
+        reserved:  0,
+        available: parseInt(s.querySelector('quantity')?.textContent?.trim() || '0'),
+      });
+    });
+
+    stockDisponibles.value = Object.entries(byProduct).map(([id_product, data]) => {
+      const rows = data.hasCombinations
+        ? data.entries.filter(e => e.idAttr !== '0')
+        : data.entries;
+
+      return {
+        id_product,
+        physical:  rows.reduce((s, e) => s + e.physical,  0),
+        reserved:  rows.reduce((s, e) => s + e.reserved,  0),
+        available: rows.reduce((s, e) => s + e.available, 0),
+      };
+    });
+  } catch (e) {
+    console.warn('Erreur chargement stocks:', e);
   }
 };
 
@@ -461,16 +654,14 @@ onMounted(() => {
 
 <style scoped>
 .dashboard-layout {
-  display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+  background: #0d0d14;
 }
 
 .dashboard {
-  flex: 1;
-  margin-left: 260px;
+  margin-left: 240px;
   padding: 2rem 2.5rem;
-  max-width: calc(100% - 260px);
+  min-height: 100vh;
 }
 
 .dashboard-header {
@@ -478,19 +669,17 @@ onMounted(() => {
 }
 
 .dashboard-header h1 {
-  font-size: 2rem;
+  font-size: 1.875rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #1e293b 0%, #2d3a4f 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #f1f1f8;
   margin: 0 0 0.25rem;
+  letter-spacing: -0.02em;
 }
 
 .dashboard-header p {
-  color: #6c86a3;
+  color: #6b7280;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .filter-section {
@@ -498,11 +687,10 @@ onMounted(() => {
 }
 
 .filter-card {
-  background: white;
-  border-radius: 20px;
+  background: #13131f;
+  border-radius: 16px;
   padding: 1.25rem 1.5rem;
-  border: 1px solid rgba(203, 213, 225, 0.3);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .filter-header {
@@ -515,15 +703,15 @@ onMounted(() => {
 .filter-icon {
   width: 20px;
   height: 20px;
-  color: #3b82f6;
+  color: #f97316;
 }
 
 .filter-title {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: #6b7280;
 }
 
 .filter-controls {
@@ -540,29 +728,30 @@ onMounted(() => {
 
 .date-input-group label {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: #6b7280;
   margin-bottom: 0.5rem;
 }
 
 .date-input {
   width: 100%;
   padding: 0.65rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  color: #1e293b;
-  background: white;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  color: #e2e2f0;
+  background: #0d0d14;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .date-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
 }
 
 .date-arrow {
@@ -574,7 +763,7 @@ onMounted(() => {
 .date-arrow svg {
   width: 20px;
   height: 20px;
-  color: #94a3b8;
+  color: #4b5563;
 }
 
 .reset-btn {
@@ -582,14 +771,15 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1.25rem;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
+  background: rgba(239,68,68,0.12);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.22);
+  border-radius: 10px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .reset-btn svg {
@@ -598,22 +788,22 @@ onMounted(() => {
 }
 
 .reset-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.22);
+  border-color: rgba(239,68,68,0.38);
 }
 
 .filter-stats {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
 .filter-badge {
   display: inline-block;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #3b82f6;
-  background: #eff6ff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #f97316;
+  background: rgba(249,115,22,0.12);
   padding: 0.35rem 1rem;
   border-radius: 30px;
 }
@@ -623,19 +813,19 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   padding: 4rem;
-  background: white;
-  border-radius: 24px;
+  background: #13131f;
+  border-radius: 20px;
   gap: 1rem;
-  color: #6c86a3;
+  color: #6b7280;
 }
 
 .spinner {
-  width: 45px;
-  height: 45px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #3b82f6;
+  width: 42px;
+  height: 42px;
+  border: 3px solid rgba(255,255,255,0.07);
+  border-top-color: #f97316;
   border-radius: 50%;
-  animation: spin 0.8s infinite;
+  animation: spin 0.75s linear infinite;
 }
 
 @keyframes spin {
@@ -643,27 +833,35 @@ onMounted(() => {
 }
 
 .error-message {
-  background: white;
-  border-radius: 20px;
+  background: #13131f;
+  border-radius: 16px;
   padding: 2rem;
   text-align: center;
-  border: 1px solid #fee2e2;
+  border: 1px solid rgba(239,68,68,0.18);
 }
 
 .error-message h3 {
-  color: #dc2626;
+  color: #f87171;
   margin: 0 0 0.5rem;
 }
 
+.error-message p {
+  color: #6b7280;
+}
+
 .retry-btn {
-  background: #3b82f6;
+  background: #f97316;
   color: white;
   border: none;
   padding: 0.65rem 1.5rem;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
+  font-family: inherit;
+  transition: opacity 0.15s;
 }
+
+.retry-btn:hover { opacity: 0.88; }
 
 .summary-row {
   display: grid;
@@ -673,15 +871,14 @@ onMounted(() => {
 }
 
 .summary-card {
-  background: white;
-  border-radius: 20px;
+  background: #13131f;
+  border-radius: 16px;
   padding: 1.25rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 1px solid rgba(203,213,225,0.3);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  transition: all 0.3s;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.2s;
   position: relative;
   overflow: hidden;
 }
@@ -695,34 +892,34 @@ onMounted(() => {
   height: 100%;
 }
 
-.summary-card.accent-blue::before { background: #3b82f6; }
-.summary-card.accent-indigo::before { background: #6366f1; }
-.summary-card.accent-amber::before { background: #f59e0b; }
-.summary-card.accent-green::before { background: #10b981; }
-.summary-card.accent-red::before { background: #ef4444; }
+.summary-card.accent-blue::before   { background: #f97316; }
+.summary-card.accent-indigo::before { background: #a855f7; }
+.summary-card.accent-amber::before  { background: #f59e0b; }
+.summary-card.accent-green::before  { background: #10b981; }
+.summary-card.accent-red::before    { background: #ef4444; }
 
 .summary-card:hover {
+  border-color: rgba(255,255,255,0.12);
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
 }
 
 .summary-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #f1f5f9;
-  color: #64748b;
+  background: rgba(255,255,255,0.05);
+  color: #6b7280;
 }
 
-.summary-card.accent-blue .summary-icon { background: rgba(59,130,246,0.1); color: #3b82f6; }
-.summary-card.accent-indigo .summary-icon { background: rgba(99,102,241,0.1); color: #6366f1; }
-.summary-card.accent-amber .summary-icon { background: rgba(245,158,11,0.1); color: #f59e0b; }
-.summary-card.accent-green .summary-icon { background: rgba(16,185,129,0.1); color: #10b981; }
-.summary-card.accent-red .summary-icon { background: rgba(239,68,68,0.1); color: #ef4444; }
+.summary-card.accent-blue .summary-icon   { background: rgba(249,115,22,0.12);  color: #f97316; }
+.summary-card.accent-indigo .summary-icon { background: rgba(168,85,247,0.12);  color: #a855f7; }
+.summary-card.accent-amber .summary-icon  { background: rgba(245,158,11,0.12);  color: #f59e0b; }
+.summary-card.accent-green .summary-icon  { background: rgba(16,185,129,0.12);  color: #10b981; }
+.summary-card.accent-red .summary-icon    { background: rgba(239,68,68,0.12);   color: #ef4444; }
 
 .summary-icon svg {
   width: 22px;
@@ -736,17 +933,17 @@ onMounted(() => {
 }
 
 .summary-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #94a3b8;
+  letter-spacing: 0.06em;
+  color: #6b7280;
 }
 
 .summary-value {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 800;
-  color: #1e293b;
+  color: #f1f1f8;
 }
 
 .summary-sub {
@@ -755,7 +952,7 @@ onMounted(() => {
 }
 
 .text-green { color: #10b981; }
-.text-red { color: #ef4444; }
+.text-red   { color: #ef4444; }
 
 .stats-mini-row {
   display: grid;
@@ -765,37 +962,35 @@ onMounted(() => {
 }
 
 .stat-mini {
-  background: white;
-  border-radius: 16px;
+  background: #13131f;
+  border-radius: 14px;
   padding: 1rem;
   text-align: center;
-  border: 1px solid rgba(203,213,225,0.3);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .stat-mini-value {
   display: block;
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #f1f1f8;
 }
 
 .stat-mini-label {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #6b7280;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   margin-top: 0.25rem;
 }
 
 .orders-section {
-  background: white;
-  border-radius: 20px;
+  background: #13131f;
+  border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(203,213,225,0.3);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .section-header {
@@ -803,21 +998,21 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.75rem;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .section-header h2 {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #f1f1f8;
   margin: 0;
 }
 
 .section-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  background: #eff6ff;
-  color: #2563eb;
+  background: rgba(249,115,22,0.12);
+  color: #f97316;
   padding: 0.35rem 0.9rem;
   border-radius: 30px;
 }
@@ -833,17 +1028,17 @@ table {
 }
 
 thead {
-  background: #f8fafc;
+  background: rgba(255,255,255,0.03);
 }
 
 th {
   padding: 0.85rem 1rem;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  color: #64748b;
+  color: #6b7280;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   white-space: nowrap;
 }
 
@@ -851,32 +1046,32 @@ th.right { text-align: right; }
 
 td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
   font-size: 0.85rem;
-  color: #334155;
+  color: #a0a0b8;
 }
 
 td.right { text-align: right; }
 
 tbody tr:hover {
-  background: #f8fafc;
+  background: rgba(255,255,255,0.03);
 }
 
 .order-id-cell {
   font-weight: 700;
-  color: #2563eb;
+  color: #f97316;
   font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .date-cell {
   font-weight: 600;
-  color: #1e293b;
+  color: #d4d4e0;
   white-space: nowrap;
 }
 
 .customer-id-cell {
-  color: #64748b;
+  color: #6b7280;
   font-family: 'Courier New', monospace;
 }
 
@@ -886,11 +1081,11 @@ tbody tr:hover {
 
 .product-count-badge {
   display: inline-block;
-  background: #e0e7ff;
-  color: #4f46e5;
-  font-size: 0.75rem;
+  background: rgba(168,85,247,0.14);
+  color: #a855f7;
+  font-size: 0.72rem;
   font-weight: 700;
-  padding: 0.25rem 0.7rem;
+  padding: 0.25rem 0.65rem;
   border-radius: 30px;
 }
 
@@ -900,7 +1095,7 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
-.amount-cell.ttc { color: #2563eb; }
+.amount-cell.ttc   { color: #f97316; }
 .amount-cell.achat { color: #f59e0b; }
 
 .benefice-positif { color: #10b981; font-weight: 700; }
@@ -910,31 +1105,32 @@ tbody tr:hover {
   display: inline-block;
   padding: 0.2rem 0.6rem;
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .marge-positive {
-  background: #d1fae5;
-  color: #065f46;
+  background: rgba(16,185,129,0.12);
+  color: #10b981;
 }
 
 .marge-negative {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(239,68,68,0.12);
+  color: #f87171;
 }
 
 .marge-badge.total {
   padding: 0.35rem 0.9rem;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 tfoot .total-row td {
-  background: #fefce8;
-  border-top: 2px solid #e2e8f0;
+  background: rgba(249,115,22,0.06);
+  border-top: 1px solid rgba(249,115,22,0.15);
   font-weight: 700;
   padding: 1rem;
+  color: #f1f1f8;
 }
 
 .empty-state {
@@ -947,22 +1143,52 @@ tfoot .total-row td {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  color: #94a3b8;
+  color: #4b5563;
 }
 
 .empty-message svg {
   width: 48px;
   height: 48px;
-  opacity: 0.5;
+  opacity: 0.3;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stats-section {
+  background: #13131f;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.stats-table-wrapper {
+  overflow-x: auto;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 0;
+}
+
+.cat-name-cell {
+  font-weight: 600;
+  color: #d4d4e0;
+}
+
+.stock-physique  { color: #a855f7; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stock-reserve   { color: #f59e0b; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stock-disponible { color: #10b981; font-weight: 600; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 1200px) {
-  .summary-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .stats-mini-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .stats-grid         { grid-template-columns: 1fr; }
+  .summary-row        { grid-template-columns: repeat(2, 1fr); }
+  .stats-mini-row     { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
@@ -971,14 +1197,8 @@ tfoot .total-row td {
     padding: 1rem;
     max-width: 100%;
   }
-  .summary-row {
-    grid-template-columns: 1fr;
-  }
-  .stats-mini-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  .summary-value {
-    font-size: 1.2rem;
-  }
+  .summary-row    { grid-template-columns: 1fr; }
+  .stats-mini-row { grid-template-columns: 1fr 1fr; }
+  .summary-value  { font-size: 1.2rem; }
 }
 </style>

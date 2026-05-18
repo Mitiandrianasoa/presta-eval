@@ -515,63 +515,32 @@ const lancerImportation = async () => {
 
 <style scoped>
 .import-container {
-  font-family: Arial, sans-serif;
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #f9f9f9;
+  max-width: 1200px; margin: 20px auto; padding: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; background: #13131f; color: #a0a0b8;
 }
-.upload-zone {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  align-items: center;
-}
+.import-container h2 { color: #f1f1f8; font-size: 18px; margin: 0 0 20px; }
+.upload-zone { display: flex; gap: 20px; margin-bottom: 20px; align-items: center; }
 .btn-import {
-  padding: 10px 20px;
-  background-color: #4ed282;
-  border: none;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 4px;
+  padding: 10px 20px; background: #f97316; border: none; color: white;
+  font-weight: 600; cursor: pointer; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3); transition: opacity 0.2s; font-family: inherit;
 }
-.btn-import:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.status-box {
-  padding: 15px;
-  margin-bottom: 20px;
-  border-left: 5px solid;
-  border-radius: 4px;
-}
-.status-box.success { background-color: #e6f9ed; border-left-color: #28a745; color: #155724; }
-.status-box.error { background-color: #fdf2f2; border-left-color: #dc3545; color: #721c24; }
-
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background: white;
-  font-size: 13px;
-}
-.report-table th, .report-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-.report-table th { background-color: #f1f1f1; font-size: 12px; }
+.btn-import:hover:not(:disabled) { opacity: 0.88; }
+.btn-import:disabled { opacity: 0.4; cursor: not-allowed; }
+.status-box { padding: 15px; margin-bottom: 20px; border-left: 4px solid; border-radius: 8px; }
+.status-box.success { background: rgba(16,185,129,0.10); border-left-color: #10b981; color: #10b981; }
+.status-box.error { background: rgba(239,68,68,0.10); border-left-color: #ef4444; color: #f87171; }
+.report-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+.report-table th, .report-table td { border: 1px solid rgba(255,255,255,0.06); padding: 8px 12px; text-align: left; }
+.report-table th { background: rgba(255,255,255,0.03); font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; }
+.report-table td { color: #a0a0b8; }
 .center { text-align: center; }
-
-.success { background-color: #f3fbf6; }
-.error { background-color: #fff5f5; }
-.rolled_back { background-color: #fffdf0; color: #7c6e10; }
-
-.txt-success { color: #28a745; font-weight: bold; }
-.txt-error { color: #dc3545; font-weight: bold; }
-.txt-rollback { color: #b78a00; font-style: italic; }
-.txt-pending { color: #666; }
+.success td { background: rgba(16,185,129,0.06); }
+.error td { background: rgba(239,68,68,0.06); }
+.rolled_back td { background: rgba(245,158,11,0.06); color: #f59e0b; }
+.txt-success { color: #10b981; font-weight: bold; }
+.txt-error { color: #ef4444; font-weight: bold; }
+.txt-rollback { color: #f59e0b; font-style: italic; }
+.txt-pending { color: #6b7280; }
 </style>

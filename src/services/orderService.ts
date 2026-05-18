@@ -1,4 +1,6 @@
+import axios from 'axios';
 import api from '../api/api';
+import { API_CONFIG } from '../api/config';
 import { updateResource } from '../api/schemaService';
 
 // ─── Utilitaires XML ───────────────────────────────────────────────────────────
@@ -36,9 +38,10 @@ export interface OrderState {
   name: string;
 }
 
-// ─── ID de l'état "Annulée" dans PrestaShop ────────────────────────────────────
-// Modifiez cette constante si votre boutique utilise un ID différent
-export const CANCELED_STATE_ID = '6';
+// ─── IDs des états dans PrestaShop ────────────────────────────────────────────
+// ⚠️ Vérifiez ces IDs dans votre boutique (table ps_order_state ou logs console)
+export const CANCELED_STATE_ID  = '6';
+export const DELIVERED_STATE_ID = '4';
 
 // ─── Helpers internes ──────────────────────────────────────────────────────────
 
@@ -124,7 +127,6 @@ export const orderService = {
     return canceled;
   },
 
-
   /**
    * Récupère une commande par son ID.
    */
@@ -152,6 +154,34 @@ export const orderService = {
   /** Met à jour la méthode de paiement d'une commande. */
   async updatePayment(orderId: string, paymentMethod: string): Promise<void> {
     await this.updateOrder(orderId, { payment: paymentMethod });
+  },
+
+  /**
+   * Appelle shiporder.php pour changer l'état ET gérer le stock.
+   *   state '2' (Payé)   → réserve le stock (reserved_quantity += qty, quantity -= qty).
+   *   state '4' (Livré)  → décrémente quantity et physical_quantity.
+   *   state '6' (Annulé) → libère la réservation (reserved_quantity -= qty, quantity += qty).
+   * Utilise le proxy Vite /shiporder → index.php (pas de CORS).
+   */
+  async callShiporder(orderId: string, state: '2' | '4' | '6'): Promise<void> {
+    const res = await axios.get('/shiporder', {
+      params: {
+        fc:         'module',
+        module:     'mon_module',
+        controller: 'shiporder',
+        id_order:   orderId,
+        state,
+        token:      API_CONFIG.SHIPORDER_TOKEN,
+      },
+    });
+
+    const xmlDoc  = new DOMParser().parseFromString(res.data, 'text/xml');
+    const success = xmlDoc.querySelector('success')?.textContent?.trim();
+
+    if (success !== 'true') {
+      const msg = xmlDoc.querySelector('error')?.textContent?.trim() || 'Erreur shiporder';
+      throw new Error(msg);
+    }
   },
 
   /** Retourne le libellé d'un statut à partir de son ID. */

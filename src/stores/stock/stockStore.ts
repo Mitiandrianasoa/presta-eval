@@ -12,7 +12,9 @@ export interface Stock {
   id_product: string;
   id_product_attribute: string;
 
-  quantity: number;
+  quantity: number;  // stock physique (seul champ fiable, PS en mode simplifié)
+  reserved: number;  // calculé depuis les commandes état=2
+  available: number; // quantity - reserved
 
   price_te: number;
 
@@ -47,7 +49,7 @@ export const useStockStore = defineStore('stock', {
 
       try {
 
-        const [sRes, pRes, cRes, ovRes] =
+        const [sRes, pRes, cRes, ovRes, ordersRes] =
           await Promise.all([
 
             api.get(
@@ -64,6 +66,13 @@ export const useStockStore = defineStore('stock', {
 
             api.get(
               '/product_option_values?output_format=XML&display=full&limit=5000'
+            ),
+
+            // PS est en mode stock simplifié (depends_on_stock=0) :
+            // reserved_quantity n'est pas maintenu automatiquement.
+            // On calcule les réservations depuis les commandes payées (état 2).
+            api.get(
+              '/orders?filter[current_state]=2&output_format=XML&display=full&limit=5000'
             ),
           ]);
 
@@ -144,6 +153,26 @@ export const useStockStore = defineStore('stock', {
           });
 
         // =========================================
+        // Réservations depuis les commandes payées
+        // =========================================
+
+        const reservedMap: Record<string, number> = {};
+
+        parse(ordersRes.data)
+          .querySelectorAll('order')
+          .forEach(orderEl => {
+            orderEl.querySelectorAll('associations order_row').forEach(rowEl => {
+              const pid  = rowEl.querySelector('product_id')?.textContent?.trim() || '';
+              const attr = rowEl.querySelector('product_attribute_id')?.textContent?.trim() || '0';
+              const qty  = parseInt(rowEl.querySelector('product_quantity')?.textContent?.trim() || '0');
+              if (pid && qty > 0) {
+                const key = `${pid}_${attr}`;
+                reservedMap[key] = (reservedMap[key] || 0) + qty;
+              }
+            });
+          });
+
+        // =========================================
         // Stocks
         // =========================================
 
@@ -158,6 +187,12 @@ export const useStockStore = defineStore('stock', {
           const idAttr =
             text(el, 'id_product_attribute');
 
+          const quantity =
+            parseInt(text(el, 'quantity')) || 0;
+
+          const reserved =
+            reservedMap[`${idProduct}_${idAttr}`] || 0;
+
           return {
 
             id:
@@ -169,8 +204,9 @@ export const useStockStore = defineStore('stock', {
             id_product_attribute:
               idAttr,
 
-            quantity:
-              parseInt(text(el, 'quantity')) || 0,
+            quantity,
+            reserved,
+            available: Math.max(0, quantity - reserved),
 
             price_te:
               productPriceMap[idProduct] || 0,

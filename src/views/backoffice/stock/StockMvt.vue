@@ -380,11 +380,10 @@ const goToStockList = () => {
 
 <style scoped>
 .movements-page {
-  background: white;
-  border-radius: 12px;
-  padding: 50px;
-  min-height: 80vh;
-  margin-left: 15%;
+  background: #0d0d14;
+  padding: 32px 40px;
+  min-height: 100vh;
+  margin-left: 240px;
 }
 
 .page-header {
@@ -397,28 +396,31 @@ const goToStockList = () => {
 .page-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #2c3e50;
+  color: #f1f1f8;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   margin: 4px 0 0;
-  color: #7f8c8d;
+  color: #6b7280;
   font-size: 14px;
 }
 
 .refresh-btn {
   padding: 10px 20px;
-  background: #3498db;
+  background: #f97316;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+  font-family: inherit;
 }
 
 .refresh-btn:hover {
-  background: #2980b9;
+  opacity: 0.88;
 }
 
 /* ============================================ */
@@ -432,34 +434,34 @@ const goToStockList = () => {
 }
 
 .stat-card {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 6px;
+  background: #13131f;
+  border-radius: 10px;
+  padding: 12px;
   text-align: center;
-  border: 1px solid #e9ecef;
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .stat-number {
   display: block;
   font-size: 24px;
   font-weight: bold;
-  color: #2c3e50;
+  color: #f1f1f8;
 }
 
 .stat-label {
   display: block;
   font-size: 12px;
-  color: #7f8c8d;
+  color: #6b7280;
   margin-top: 4px;
   text-transform: uppercase;
 }
 
 .stat-green .stat-number {
-  color: #27ae60;
+  color: #10b981;
 }
 
 .stat-red .stat-number {
-  color: #e74c3c;
+  color: #ef4444;
 }
 
 /* ============================================ */
@@ -472,8 +474,9 @@ const goToStockList = () => {
   flex-wrap: wrap;
   align-items: flex-end;
   padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  background: #13131f;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .filter-group {
@@ -484,46 +487,55 @@ const goToStockList = () => {
 
 .filter-group label {
   font-size: 12px;
-  color: #7f8c8d;
+  color: #6b7280;
   font-weight: 500;
 }
 
 .search-input {
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 6px;
   width: 300px;
   font-size: 14px;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
 }
 
 .date-input {
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 6px;
   font-size: 14px;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
 }
 
 .select-input {
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 6px;
   font-size: 14px;
-  background: white;
+  background: #0d0d14;
+  color: #e2e2f0;
+  font-family: inherit;
 }
 
 .btn-reset {
   padding: 10px 16px;
-  background: #e74c3c;
-  color: white;
-  border: none;
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.22);
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   transition: background 0.2s;
+  font-family: inherit;
 }
 
 .btn-reset:hover {
-  background: #c0392b;
+  background: rgba(239,68,68,0.25);
 }
 
 /* ============================================ */
@@ -542,48 +554,52 @@ const goToStockList = () => {
 .movements-table th,
 .movements-table td {
   padding: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
   text-align: left;
 }
 
 .movements-table th {
-  background: #f5f5f5;
+  background: rgba(255,255,255,0.03);
   font-weight: 600;
-  color: #2c3e50;
+  color: #6b7280;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   position: sticky;
   top: 0;
   z-index: 1;
 }
 
 .movements-table tbody tr:hover {
-  background: #f8f9fa;
+  background: rgba(255,255,255,0.03);
 }
 
 .row-positive {
-  border-left: 3px solid #27ae60;
+  border-left: 3px solid #10b981;
 }
 
 .row-negative {
-  border-left: 3px solid #e74c3c;
+  border-left: 3px solid #ef4444;
 }
 
 .date-cell {
   white-space: nowrap;
-  color: #7f8c8d;
+  color: #6b7280;
 }
 
 .product-cell {
   font-weight: 500;
+  color: #e2e2f0;
 }
 
 .qty-positive {
-  color: #27ae60;
+  color: #10b981;
   font-weight: bold;
   font-size: 16px;
 }
 
 .qty-negative {
-  color: #e74c3c;
+  color: #ef4444;
   font-weight: bold;
   font-size: 16px;
 }
@@ -598,12 +614,12 @@ const goToStockList = () => {
   font-weight: 500;
 }
 
-.reason-1 { background: #d4edda; color: #155724; }
-.reason-2 { background: #f8d7da; color: #721c24; }
-.reason-3 { background: #fff3cd; color: #856404; }
-.reason-4 { background: #cce5ff; color: #004085; }
-.reason-5 { background: #e2d9f3; color: #5a3d7c; }
-.reason-6 { background: #d1ecf1; color: #0c5460; }
+.reason-1 { background: rgba(16,185,129,0.15);  color: #10b981; }
+.reason-2 { background: rgba(239,68,68,0.15);   color: #f87171; }
+.reason-3 { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+.reason-4 { background: rgba(249,115,22,0.15);  color: #f97316; }
+.reason-5 { background: rgba(168,85,247,0.15);  color: #a855f7; }
+.reason-6 { background: rgba(6,182,212,0.15);   color: #22d3ee; }
 
 /* ============================================ */
 /* PAGINATION */
@@ -619,28 +635,30 @@ const goToStockList = () => {
 
 .page-btn {
   padding: 8px 12px;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: #13131f;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  color: #a0a0b8;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: #3498db;
+  background: #f97316;
   color: white;
-  border-color: #3498db;
+  border-color: #f97316;
 }
 
 .page-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .page-info {
   padding: 0 16px;
-  color: #7f8c8d;
+  color: #6b7280;
   font-size: 14px;
 }
 
@@ -653,16 +671,16 @@ const goToStockList = () => {
   align-items: center;
   justify-content: center;
   padding: 60px;
-  color: #7f8c8d;
+  color: #6b7280;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
+  border: 3px solid rgba(255,255,255,0.07);
+  border-top-color: #f97316;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.75s linear infinite;
   margin-bottom: 16px;
 }
 
@@ -674,13 +692,14 @@ const goToStockList = () => {
 .empty-state {
   text-align: center;
   padding: 60px;
-  color: #7f8c8d;
+  color: #4b5563;
   font-size: 16px;
 }
 
 .error-message {
-  background: #f8d7da;
-  color: #721c24;
+  background: rgba(239,68,68,0.10);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.18);
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 16px;
