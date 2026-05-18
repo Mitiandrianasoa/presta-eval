@@ -5,12 +5,26 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-const emit = defineEmits(['select-category', 'show-categories', 'show-products', 'show-stock', 'show-customers', 'show-brands-suppliers', 'show-import']);
-
 const showConfig = ref(false);
 
-const goToConfig = () => {
-  router.push('/admin/config');
+const goToDashboard = () => {
+  router.push('/admin/dashboard');
+};
+
+const goToProducts = () => {
+  router.push('/admin?view=products');
+};
+
+const goToCategories = () => {
+  router.push('/admin?view=categories');
+};
+
+const goToStock = () => {
+  router.push('/admin?view=stock');
+};
+
+const goToCustomers = () => {
+  router.push('/admin?view=customers');
 };
 
 const goToCarts = () => {
@@ -25,17 +39,12 @@ const goToPayments = () => {
   router.push('/admin/payments');
 };
 
-const showBrandsSuppliers = () => {
-  emit('show-brands-suppliers');
-};
-
 const goToImport = () => {
   router.push('/import');
 };
 
-const goToDashboard = () => {
-  router.push('/admin/dashboard');
-
+const goToConfig = () => {
+  router.push('/admin/config');
 };
 </script>
 
@@ -68,7 +77,7 @@ const goToDashboard = () => {
 
 
       <!-- Tous les produits -->
-      <button @click="$emit('show-products')" class="menu-item main-item">
+      <button @click="goToProducts" class="menu-item main-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
@@ -78,7 +87,7 @@ const goToDashboard = () => {
       </button>
 
       <!-- Gérer les catégories -->
-      <button @click="$emit('show-categories')" class="menu-item main-item">
+      <button @click="goToCategories" class="menu-item main-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1"/>
           <rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -89,7 +98,7 @@ const goToDashboard = () => {
       </button>
 
       <!-- Gérer le stock -->
-      <button @click="$emit('show-stock')" class="menu-item main-item stock-item">
+      <button @click="goToStock" class="menu-item main-item stock-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
@@ -103,7 +112,7 @@ const goToDashboard = () => {
       </button>
 
       <!-- Gérer les clients -->
-      <button @click="$emit('show-customers')" class="menu-item main-item customer-item">
+      <button @click="goToCustomers" class="menu-item main-item customer-item">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>

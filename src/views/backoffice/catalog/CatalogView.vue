@@ -1,6 +1,6 @@
 <!-- views/CatalogView.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import Sidebar from '../../../components/Sidebar.vue';
 import ProductList from '../../../components/product/productList.vue';
@@ -53,6 +53,14 @@ onMounted(() => {
   const view = route.query.view as string;
   if (view && ['products', 'categories', 'stock', 'customers'].includes(view)) {
     currentView.value = view as typeof currentView.value;
+  }
+});
+
+// Watch pour mettre à jour la vue quand le query parameter change
+watch(() => route.query.view, (newView) => {
+  if (newView && ['products', 'categories', 'stock', 'customers'].includes(newView as string)) {
+    currentView.value = newView as typeof currentView.value;
+    selectedCategory.value = null;
   }
 });
 
@@ -116,13 +124,7 @@ const handleKeyPress = (event: KeyboardEvent) => {
 
   <!-- Afficher l'application si authentifié -->
   <div v-else class="layout">
-    <Sidebar 
-      @show-products="currentView = 'products'; selectedCategory = null"
-      @show-categories="currentView = 'categories'"
-      @show-stock="currentView = 'stock'"
-      @show-customers="currentView = 'customers'"
-      @select-category="currentView = 'products'; selectedCategory = $event"
-    />
+    <Sidebar />
     
     <main class="main-content">
       <div class="content-wrapper">
