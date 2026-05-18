@@ -204,15 +204,15 @@ const selectAnon = () => {
 const handleContinue = () => {
   if (!selected.value) return;
 
-  if (selected.value.id === 'anon') {
-    // Utilisateur anonyme : stocker en sessionStorage et aller sur /home
-    sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
-    router.push('/home');
-  } else {
+  // if (selected.value.id === 'anon') {
+  //   // Utilisateur anonyme : stocker en sessionStorage et aller sur /home
+  //   sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
+  //   router.push('/home');
+  // } else {
     // Utilisateur réel : stocker la pré-sélection (email) pour pré-remplir LoginView
     sessionStorage.setItem('prestashop_preselected_user', JSON.stringify(selected.value));
     router.push('/login');
-  }
+  // }
 };
 </script>
 

@@ -261,11 +261,8 @@ const router = useRouter();
 const featuredProducts = ref<any[]>([]);
 
 const categories = ref<any[]>([]);
-
 const loading = ref(false);
-
 const categoriesLoading = ref(false);
-
 const error = ref('');
 
 
@@ -277,7 +274,6 @@ const cart = ref<any[]>([]);
 
 
 const cartItemCount = computed(() => {
-
   return cart.value.reduce((total, item) => total + item.quantity, 0);
 
 });

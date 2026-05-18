@@ -929,8 +929,27 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
         cmd.id_order = orderResult.id;
         console.log(`   ✅ Commande créée (#${cmd.id_order}) avec la date du CSV`);
 
-        await enregistrerMouvementsStocks(items, 1);
+        // await enregistrerMouvementsStocks(items, 1);
       }
+      if (cmd.etat && cmd.etat.toLowerCase().includes('livré') ) {
+        // Passage de `items` pour le calcul fallback
+        const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback, cmd.date);
+        cmd.id_order = orderResult.id;
+        console.log(`   ✅ Commande créée (#${cmd.id_order}) avec la date du CSV`);
+
+        await enregistrerMouvementsStocks(items, 1);
+        updateResource('orders', cmd.id_order, { current_state: '5' }); // 5 = Livré
+      }
+      if (cmd.etat && cmd.etat.toLowerCase().includes('annulé') ) {
+        // Passage de `items` pour le calcul fallback
+        const orderResult = await creerCommande(idCart, idCustomer, idAddress, items, registreRollback, cmd.date);
+        cmd.id_order = orderResult.id;
+        console.log(`   ✅ Commande créée (#${cmd.id_order}) avec la date du CSV`);
+        updateResource('orders', cmd.id_order, { current_state: '6' }); // 6 = Annulé
+        // await enregistrerMouvementsStocks(items, 1);
+      }
+      
+      
       
       cmd.status = 'success';
     } catch (err) {

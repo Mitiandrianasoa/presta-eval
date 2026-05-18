@@ -71,23 +71,6 @@
           </div>
         </div>
         
-        <!-- <div class="tabs-container">
-          <button 
-            class="tab-btn" 
-            :class="{ active: currentTab === 'orders' }" 
-            @click="currentTab = 'orders'"
-          >
-            Liste des commandes
-          </button>
-          <button 
-            class="tab-btn" 
-            :class="{ active: currentTab === 'stats' }" 
-            @click="currentTab = 'stats'"
-          >
-            Statistiques par Catégorie
-          </button>
-        </div> -->
-
         <!-- SUMMARY CARDS -->
         <div class="summary-row">
           <div class="summary-card accent-blue">
@@ -115,7 +98,7 @@
             </div>
           </div>
 
-          <!-- <div class="summary-card accent-amber">
+          <div class="summary-card accent-amber">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
@@ -127,9 +110,9 @@
               <span class="summary-label">Prix d'Achat Total</span>
               <span class="summary-value">{{ formatCurrency(totalAchat) }}</span>
             </div>
-          </div> -->
+          </div>
 
-          <!-- <div class="summary-card" :class="benefice >= 0 ? 'accent-green' : 'accent-red'">
+          <div class="summary-card" :class="benefice >= 0 ? 'accent-green' : 'accent-red'">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
@@ -143,7 +126,7 @@
                 {{ margePourcentage >= 0 ? '+' : '' }}{{ margePourcentage.toFixed(1) }}%
               </span>
             </div>
-          </div> -->
+          </div>
         </div>
 
         <!-- STATS RAPIDES -->
@@ -183,9 +166,9 @@
                   <th>Produits</th>
                   <th class="right">CA HT</th>
                   <th class="right">CA TTC</th>
-                  <!-- <th class="right">Prix Achat</th> -->
-                  <!-- <th class="right">Bénéfice</th> -->
-                  <!-- <th class="right">Marge</th> -->
+                  <th class="right">Prix Achat</th>
+                  <th class="right">Bénéfice</th>
+                  <th class="right">Marge</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,15 +181,15 @@
                   </td>
                   <td class="right amount-cell">{{ formatCurrency(order.totalHT) }}</td>
                   <td class="right amount-cell ttc">{{ formatCurrency(order.totalTTC) }}</td>
-                  <!-- <td class="right amount-cell achat">{{ formatCurrency(order.totalAchat) }}</td> -->
-                  <!-- <td class="right amount-cell" :class="order.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
+                  <td class="right amount-cell achat">{{ formatCurrency(order.totalAchat) }}</td> 
+                   <td class="right amount-cell" :class="order.benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
                     {{ formatCurrency(order.benefice) }}
-                  </td> -->
-                  <!-- <td class="right">
+                  </td> 
+                   <td class="right">
                     <span class="marge-badge" :class="order.marge >= 0 ? 'marge-positive' : 'marge-negative'">
                       {{ order.marge >= 0 ? '+' : '' }}{{ order.marge.toFixed(1) }}%
                     </span>
-                  </td> -->
+                  </td>
                 </tr>
                 <tr v-if="ordersFiltered.length === 0">
                   <td colspan="9" class="empty-state">
@@ -226,15 +209,15 @@
                   <td colspan="4"><strong>TOTAL</strong></td>
                   <td class="right amount-cell"><strong>{{ formatCurrency(totalHT) }}</strong></td>
                   <td class="right amount-cell ttc"><strong>{{ formatCurrency(totalTTC) }}</strong></td>
-                  <!-- <td class="right amount-cell achat"><strong>{{ formatCurrency(totalAchat) }}</strong></td> -->
-                  <!-- <td class="right amount-cell" :class="benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
+                  <td class="right amount-cell achat"><strong>{{ formatCurrency(totalAchat) }}</strong></td>
+                 <td class="right amount-cell" :class="benefice >= 0 ? 'benefice-positif' : 'benefice-negatif'">
                     <strong>{{ formatCurrency(benefice) }}</strong>
                   </td>
                   <td class="right">
                     <span class="marge-badge total" :class="margePourcentage >= 0 ? 'marge-positive' : 'marge-negative'">
                       {{ margePourcentage >= 0 ? '+' : '' }}{{ margePourcentage.toFixed(1) }}%
                     </span>
-                  </td> -->
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -380,7 +363,7 @@ const statsParCategorie = computed(() => {
         statsMap[catId].achat += totalProduitAchat;
       }
     });
-  });
+  }); 
 
   // 2. Transformer la Map en tableau trié par bénéfice décroissant
   return Object.keys(statsMap).map(catId => {
