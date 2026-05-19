@@ -25,6 +25,8 @@ export interface Order {
    id_cart: string;
   id_customer: string;
   customer_name: string;
+  total_products: string;
+  total_paid_tax_incl: string;
   total_paid: string;
   payment: string;
   current_state: string;
@@ -64,6 +66,8 @@ function parseOrderElement(orderEl: Element): Order {
     reference:      text(orderEl, 'reference'),
     id_customer:    text(orderEl, 'id_customer'),
     customer_name:  text(orderEl, 'customer_name'),
+    total_products: text(orderEl, 'total_products'),
+    total_paid_tax_incl: text(orderEl, 'total_paid_tax_incl'),
     total_paid:     text(orderEl, 'total_paid'),
     id_cart:        text(orderEl, 'id_cart'),
     payment:        text(orderEl, 'payment'),

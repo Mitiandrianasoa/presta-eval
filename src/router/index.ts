@@ -24,6 +24,7 @@ import ImportView from '../views/backoffice/import/ImportView.vue';
 import CanceledOrders from '@/components/order/CanceledOrders.vue';
 import CartList from '@/components/order/CartList.vue';
 import PaymentList from '@/components/order/PaymentList.vue';
+import OrderInvoiceList from '@/components/order/OrderInvoiceList.vue';
 import ImportProduits from '@/views/backoffice/import/ImportProduits.vue';
 import ImportDeclinaison from '@/views/backoffice/import/ImportDeclinaison.vue';
 import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
@@ -185,6 +186,12 @@ const routes = [
   path: '/admin/payments',
   name: 'payment-list',
   component: PaymentList}
+,
+  {
+    path: '/admin/orders/invoices',
+    name: 'order-invoice-list',
+    component: OrderInvoiceList
+  }
 ];
 
 export default createRouter({
