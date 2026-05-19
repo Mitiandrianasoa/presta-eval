@@ -527,7 +527,7 @@ async fetchAllMovements(limit: number = 500) {
       
       allMvts.push(...Array.from(movements));
       
-      if (allMovements.length >= limit || movements.length < pageLimit) {
+      if (allMvts.length >= limit || movements.length < pageLimit) {
         hasMore = false;
       } else {
         offset += pageLimit;
@@ -540,8 +540,6 @@ async fetchAllMovements(limit: number = 500) {
     return [];
   }
 }
-
-
 
   }
 });

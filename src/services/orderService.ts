@@ -7,10 +7,12 @@ const text  = (el: Element, tag: string) => el.querySelector(tag)?.textContent?.
 const attr  = (el: Element, attName: string) => el.getAttribute(attName) || '';
 
 // ─── Types exportés ────────────────────────────────────────────────────────────
+const livre_STATE_ID = '5';// LIVRE
 
 export interface OrderItem {
   id: string;
   product_id: string;
+  product_attribute_id: string;
   product_name: string;
   product_reference: string;
   quantity: string;
@@ -39,6 +41,7 @@ export interface OrderState {
 // ─── ID de l'état "Annulée" dans PrestaShop ────────────────────────────────────
 // Modifiez cette constante si votre boutique utilise un ID différent
 export const CANCELED_STATE_ID = '6';
+export const DELIVERED_STATE_ID = '5'; // État "Livrée"
 
 // ─── Helpers internes ──────────────────────────────────────────────────────────
 
@@ -47,12 +50,13 @@ function parseOrderElement(orderEl: Element): Order {
   const items: OrderItem[] = Array.from(
     orderEl.querySelectorAll('associations order_row')
   ).map(itemEl => ({
-    id:                text(itemEl, 'id'),
-    product_id:        text(itemEl, 'product_id'),
-    product_name:      text(itemEl, 'product_name'),
-    product_reference: text(itemEl, 'product_reference'),
-    quantity:          text(itemEl, 'product_quantity'),
-    price:             text(itemEl, 'product_price'),
+    id:                   text(itemEl, 'id'),
+    product_id:           text(itemEl, 'product_id'),
+    product_attribute_id: text(itemEl, 'product_attribute_id') || '0',
+    product_name:         text(itemEl, 'product_name'),
+    product_reference:    text(itemEl, 'product_reference'),
+    quantity:             text(itemEl, 'product_quantity'),
+    price:                text(itemEl, 'product_price'),
   }));
 
   return {
@@ -147,6 +151,113 @@ export const orderService = {
   /** Met à jour l'état d'une commande. */
   async updateState(orderId: string, newState: string): Promise<void> {
     await this.updateOrder(orderId, { current_state: newState });
+    
+    // Enregistrer un mouvement de stock si la commande devient livrée
+    if (newState === DELIVERED_STATE_ID) {
+      await this.recordDeliveryStockMovement(orderId);
+    }
+  },
+
+  /** Enregistre les mouvements de stock pour une commande livrée. */
+  async recordDeliveryStockMovement(orderId: string): Promise<void> {
+    try {
+      const order = await this.fetchOne(orderId);
+      if (!order) {
+        console.warn(`Commande ${orderId} introuvable`);
+        return;
+      }
+
+      // Obtenir les informations de stock pour chaque produit (avec attributs)
+      const stockResponse = await api.get('/stock_availables?output_format=XML&display=full&limit=5000');
+      const parser = new DOMParser();
+      const stockDoc = parser.parseFromString(stockResponse.data, 'text/xml');
+      
+      // Map avec clé composite: "product_id:attribute_id"
+      const stockMap: Record<string, { id: string; id_warehouse: string; depends_on_stock: string; out_of_stock: string; location: string; quantity: number; id_product_attribute: string }> = {};
+
+      stockDoc.querySelectorAll('stock_available').forEach(el => {
+        const productId = text(el, 'id_product');
+        const attributeId = text(el, 'id_product_attribute') || '0';
+        
+        if (productId) {
+          const key = `${productId}:${attributeId}`;
+          stockMap[key] = {
+            id: text(el, 'id'),
+            id_warehouse: text(el, 'id_warehouse') || '0',
+            depends_on_stock: text(el, 'depends_on_stock') || '0',
+            out_of_stock: text(el, 'out_of_stock') || '0',
+            location: text(el, 'location') || '',
+            quantity: parseInt(text(el, 'quantity')) || 0,
+            id_product_attribute: attributeId
+          };
+        }
+      });
+
+      // Enregistrer un mouvement de stock pour chaque article de la commande
+      for (const item of order.items) {
+        const quantity = parseInt(item.quantity) || 0;
+        if (quantity <= 0) continue;
+        
+        // Rechercher avec clé composite (product_id:attribute_id)
+        const attributeId = item.product_attribute_id || '0';
+        const key = `${item.product_id}:${attributeId}`;
+        const stockData = stockMap[key];
+        
+        if (!stockData) {
+          console.warn(`⚠️ Stock non trouvé pour produit ${item.product_id} (attribut: ${attributeId})`);
+          continue;
+        }
+        
+        const newQuantity = Math.max(0, stockData.quantity - quantity);
+
+        // Créer le mouvement de stock via l'API
+        const mvtXml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_mvt>
+    <id_product><![CDATA[${item.product_id}]]></id_product>
+    <id_product_attribute><![CDATA[${stockData.id_product_attribute}]]></id_product_attribute>
+    <id_warehouse><![CDATA[0]]></id_warehouse>
+    <id_currency><![CDATA[1]]></id_currency>
+    <id_employee><![CDATA[1]]></id_employee>
+    <id_stock><![CDATA[${stockData.id}]]></id_stock>
+    <id_stock_mvt_reason><![CDATA[3]]></id_stock_mvt_reason>
+    <physical_quantity><![CDATA[${quantity}]]></physical_quantity>
+    <sign><![CDATA[-1]]></sign>
+    <price_te><![CDATA[0.000000]]></price_te>
+    <date_add><![CDATA[${new Date().toISOString().slice(0, 19).replace('T', ' ')}]]></date_add>
+  </stock_mvt>
+</prestashop>`;
+
+        await api.post('/stock_movements?output_format=XML', mvtXml, {
+          headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+        });
+
+        // Mettre à jour la quantité du stock
+        const updateXml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_available>
+    <id><![CDATA[${stockData.id}]]></id>
+    <id_product><![CDATA[${item.product_id}]]></id_product>
+    <id_product_attribute><![CDATA[${stockData.id_product_attribute}]]></id_product_attribute>
+    <id_warehouse><![CDATA[${stockData.id_warehouse}]]></id_warehouse>
+    <id_shop><![CDATA[1]]></id_shop>
+    <id_shop_group><![CDATA[0]]></id_shop_group>
+    <quantity><![CDATA[${newQuantity}]]></quantity>
+    <depends_on_stock><![CDATA[${stockData.depends_on_stock}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${stockData.out_of_stock}]]></out_of_stock>
+    <location><![CDATA[${stockData.location}]]></location>
+  </stock_available>
+</prestashop>`;
+
+        await api.put(`/stock_availables/${stockData.id}`, updateXml, {
+          headers: { 'Content-Type': 'text/xml; charset=utf-8' }
+        });
+      }
+
+      console.log(`✅ Mouvements de stock enregistrés pour la livraison de la commande #${order.reference}`);
+    } catch (error: any) {
+      console.error(`⚠️ Erreur enregistrement mouvements de stock:`, error.message);
+    }
   },
 
   /** Met à jour la méthode de paiement d'une commande. */

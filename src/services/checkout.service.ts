@@ -48,7 +48,7 @@ const getCustomerSecureKey = async (customerId: string): Promise<string> => {
   }
 };
 
-const createStockMovementLines = async (products: CartProduct[], employeeId = 1): Promise<void> => {
+export const createStockMovementLines = async (products: CartProduct[], employeeId = 1): Promise<void> => {
   const stockStore = useStockStore();
 
   if (stockStore.stocks.length === 0) {
@@ -343,7 +343,7 @@ export const processCheckout = async (cartData: CartData): Promise<any> => {
     // Créer la commande
     const orderId = await createOrder(cartId, customerId, customerSecureKey, addressId, totals.totalHT, totals.totalTTC);
 
-    await createStockMovementLines(cartData.products);
+    // await createStockMovementLines(cartData.products);
     
     // Vider le panier local
     localStorage.removeItem('prestashop_cart');
