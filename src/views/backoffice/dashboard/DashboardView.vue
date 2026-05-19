@@ -272,6 +272,7 @@ interface OrderProduct {
   attribute_id: string;
   name: string;
   quantity: number;
+  unit_price_tax_excl: number;
 }
 
 interface Order {
@@ -535,8 +536,9 @@ const loadOrders = async () => {
           const productName = row.querySelector('product_name')?.textContent?.trim() || '';
           const productAttributeId = row.querySelector('product_attribute_id')?.textContent?.trim() || '0';
           const quantity = parseInt(row.querySelector('product_quantity')?.textContent?.trim() || '1');
+          const unitPriceTaxExcl = parseFloat(row.querySelector('unit_price_tax_excl')?.textContent?.trim() || '0');
           
-          products.push({ id: productId, attribute_id: productAttributeId, name: productName, quantity });
+          products.push({ id: productId, attribute_id: productAttributeId, name: productName, quantity, unit_price_tax_excl: unitPriceTaxExcl });
 
           if (productId && cacheProduits.value[productId]) {
             const wholesalePrice = cacheProduits.value[productId].wholesale_price || 0;

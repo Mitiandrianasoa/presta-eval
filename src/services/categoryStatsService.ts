@@ -5,6 +5,7 @@ interface OrderProduct {
   id: string;
   attribute_id?: string;
   quantity: number;
+  unit_price_tax_excl?: number;
 }
 
 interface Order {
@@ -52,10 +53,11 @@ export function calculateCategoryBenefitStats(
   productCache: Record<string, ProductCacheItem>,
   categoryCache: Record<string, string>
 ): CategoryStat[] {
-  console.log('[StatsService] Début du calcul des bénéfices par catégorie.');
+  console.log('--- Début du calcul des bénéfices par catégorie ---');
 
-  return Object.keys(categoryCache)
+  const stats = Object.keys(categoryCache)
     .map(catId => {
+      console.log(`[Catégorie] Traitement de la catégorie ID: ${catId} (${categoryCache[catId] || 'Nom inconnu'})`);
       let totalVentesHT = 0;
       let totalAchat = 0;
       const logDetails: string[] = [];
@@ -65,7 +67,7 @@ export function calculateCategoryBenefitStats(
           const productInfo = productCache[product.id];
           if (productInfo && productInfo.category_id === catId) {
             const quantity = product.quantity || 0;
-            const price = productInfo.price || 0;
+            const price = product.unit_price_tax_excl ?? productInfo.price ?? 0;
             const wholesalePrice = productInfo.wholesale_price || 0;
             
             const vente = price * quantity;
@@ -74,7 +76,7 @@ export function calculateCategoryBenefitStats(
             totalVentesHT += vente;
             totalAchat += achat;
             
-            logDetails.push(`  - Commande #${order.id}, Produit #${product.id}: qté=${quantity}, vente=${vente.toFixed(2)}, achat=${achat.toFixed(2)}`);
+            logDetails.push(`  - Produit #${product.id} (Cmd #${order.id}): qté=${quantity}, vente=${vente.toFixed(2)}, achat=${achat.toFixed(2)}`);
           }
         });
       });
@@ -82,9 +84,10 @@ export function calculateCategoryBenefitStats(
       const benefice = totalVentesHT - totalAchat;
       const marge = totalVentesHT > 0 ? (benefice / totalVentesHT) * 100 : 0;
 
-      if (totalVentesHT > 0 || totalAchat > 0) {
-        console.log(`[StatsService] Catégorie [${catId}] ${categoryCache[catId]}: VentesHT=${totalVentesHT.toFixed(2)}, Achat=${totalAchat.toFixed(2)}, Bénéfice=${benefice.toFixed(2)}`);
+      if (logDetails.length > 0) {
+        console.log(`[Catégorie ID: ${catId}] Détails des calculs :`);
         logDetails.forEach(log => console.log(log));
+        console.log(`[Catégorie ID: ${catId}] Résumé: VentesHT=${totalVentesHT.toFixed(2)}, Achat=${totalAchat.toFixed(2)}, Bénéfice=${benefice.toFixed(2)}`);
       }
 
       return {
@@ -98,6 +101,11 @@ export function calculateCategoryBenefitStats(
     })
     .filter(stat => stat.totalVentesHT > 0 || stat.totalAchat > 0)
     .sort((a, b) => b.benefice - a.benefice);
+
+  const totalBeneficeToutesCategories = stats.reduce((acc, stat) => acc + stat.benefice, 0);
+  console.log(`--- Fin du calcul --- Bénéfice total sur toutes les catégories: ${totalBeneficeToutesCategories.toFixed(2)} €`);
+
+  return stats;
 }
 
 /**
