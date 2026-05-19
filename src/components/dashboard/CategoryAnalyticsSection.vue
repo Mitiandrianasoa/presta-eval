@@ -100,6 +100,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { calculateCategoryBenefitStats, calculateCategoryStockStats } from '../../services/categoryStatsService';
 
 interface OrderProduct {
   id: string;
@@ -125,23 +126,6 @@ interface ProductCacheItem {
   category_id: string;
 }
 
-interface CategoryStat {
-  id: string;
-  name: string;
-  totalVentesHT: number;
-  totalAchat: number;
-  benefice: number;
-  marge: number;
-}
-
-interface CategoryStockStat {
-  id: string;
-  name: string;
-  availableQuantity: number;
-  reservedQuantity: number;
-  physicalQuantity: number;
-}
-
 const props = defineProps<{
   orders: Order[];
   productCache: Record<string, ProductCacheItem>;
@@ -160,52 +144,8 @@ const formatCurrency = (amount: number) => {
 
 const activeOrders = computed(() => props.orders.filter(order => !order.isCancelled));
 
-const categoryBenefitStats = computed<CategoryStat[]>(() => {
-  const statsMap: Record<string, { ventesHT: number; achat: number }> = {};
-
-  activeOrders.value.forEach(order => {
-    order.products.forEach(product => {
-      const productInfo = props.productCache[product.id];
-      if (!productInfo) return;
-
-      const catId = productInfo.category_id || 'Non classé';
-      const quantity = product.quantity;
-
-      if (!statsMap[catId]) {
-        statsMap[catId] = { ventesHT: 0, achat: 0 };
-      }
-
-      statsMap[catId].ventesHT += productInfo.price * quantity;
-      statsMap[catId].achat += productInfo.wholesale_price * quantity;
-    });
-  });
-
-  return Object.keys(statsMap)
-    .map(catId => {
-      const row = statsMap[catId];
-      if (!row) {
-        return {
-          id: catId,
-          name: props.categoryCache[catId] || `Catégorie #${catId}`,
-          totalVentesHT: 0,
-          totalAchat: 0,
-          benefice: 0,
-          marge: 0
-        };
-      }
-      const benefice = row.ventesHT - row.achat;
-      const marge = row.ventesHT > 0 ? (benefice / row.ventesHT) * 100 : 0;
-
-      return {
-        id: catId,
-        name: props.categoryCache[catId] || `Catégorie #${catId}`,
-        totalVentesHT: row.ventesHT,
-        totalAchat: row.achat,
-        benefice,
-        marge
-      };
-    })
-    .sort((a, b) => b.benefice - a.benefice);
+const categoryBenefitStats = computed(() => {
+  return calculateCategoryBenefitStats(activeOrders.value, props.productCache, props.categoryCache);
 });
 
 const benefitTotals = computed(() => {
@@ -224,58 +164,8 @@ const benefitTotals = computed(() => {
   return totals;
 });
 
-const categoryStockStats = computed<CategoryStockStat[]>(() => {
-  const statsMap: Record<string, { availableQuantity: number; reservedQuantity: number }> = {};
-
-  props.stockAvailables.forEach(stock => {
-    const productInfo = props.productCache[stock.id_product];
-    if (!productInfo) return;
-
-    const catId = productInfo.category_id || 'Non classé';
-    if (!statsMap[catId]) {
-      statsMap[catId] = { availableQuantity: 0, reservedQuantity: 0 };
-    }
-
-    statsMap[catId].availableQuantity += stock.quantity;
-  });
-
-  activeOrders.value.forEach(order => {
-    order.products.forEach(product => {
-      const productInfo = props.productCache[product.id];
-      if (!productInfo) return;
-
-      const catId = productInfo.category_id || 'Non classé';
-      if (!statsMap[catId]) {
-        statsMap[catId] = { availableQuantity: 0, reservedQuantity: 0 };
-      }
-
-      statsMap[catId].reservedQuantity += product.quantity;
-    });
-  });
-
-  return Object.keys(statsMap)
-    .map(catId => {
-      const row = statsMap[catId];
-      if (!row) {
-        return {
-          id: catId,
-          name: props.categoryCache[catId] || `Catégorie #${catId}`,
-          availableQuantity: 0,
-          reservedQuantity: 0,
-          physicalQuantity: 0
-        };
-      }
-      const physicalQuantity = row.availableQuantity + row.reservedQuantity;
-
-      return {
-        id: catId,
-        name: props.categoryCache[catId] || `Catégorie #${catId}`,
-        availableQuantity: row.availableQuantity,
-        reservedQuantity: row.reservedQuantity,
-        physicalQuantity
-      };
-    })
-    .sort((a, b) => b.physicalQuantity - a.physicalQuantity);
+const categoryStockStats = computed(() => {
+  return calculateCategoryStockStats(activeOrders.value, props.productCache, props.categoryCache, props.stockAvailables);
 });
 
 const stockTotals = computed(() => {

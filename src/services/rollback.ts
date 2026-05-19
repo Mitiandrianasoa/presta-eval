@@ -45,7 +45,7 @@ const RESET_PRIORITY: ResetItem[] = [
 
   // Catégories
   { ref: "categories", priority: 4 },
-  // { ref: "stock_availables", priority: 7 }
+  { ref: "stock_availables", priority: 7 }
 ];
 
 function shouldSkip(resource: string, id: number): boolean {

@@ -285,7 +285,7 @@ interface Order {
   benefice: number;
   marge: number;
   products: OrderProduct[];
-  order_state?: string;
+  current_state?: string;
   isCancelled?: boolean;
 }
 
@@ -565,7 +565,7 @@ const loadOrders = async () => {
         benefice: beneficeOrder,
         marge: margeOrder,
         products,
-        order_state: orderState,
+        current_state: orderState,
         isCancelled
       });
     }
