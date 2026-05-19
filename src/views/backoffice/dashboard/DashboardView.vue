@@ -128,7 +128,7 @@
             </div>
           </div>
 
-          <div class="summary-card accent-teal">
+          <!-- <div class="summary-card accent-teal">
             <div class="summary-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M3 3h18v4H3z" />
@@ -139,7 +139,7 @@
               <span class="summary-label">Valeur du stock</span>
               <span class="summary-value">{{ formatCurrency(totalStockValue) }}</span>
             </div>
-          </div>
+          </div> -->
         </div>
 
         <!-- STATS RAPIDES -->
