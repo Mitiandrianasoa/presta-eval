@@ -833,6 +833,8 @@ export const decrementerStocks = async (items) => {
         const qtyActuelle = parseInt(stocks[0].getElementsByTagName('quantity')[0]?.textContent?.trim() || '0');
         const nouvelleQty = Math.max(0, qtyActuelle - item.quantite);
         await updateResource('stock_availables', idStock, { quantity: String(nouvelleQty) });
+         // ✅ AJOUT : mise à jour de la date du stock avec available_date du produit
+        // await patcherDateStock(idStock, idProduct);
       }
     } catch (error) {
       console.warn(`⚠️ Erreur décrémentation stock pour ${item.reference}:`, error);
@@ -918,6 +920,45 @@ export const patcherDatesCommande = async (orderId, dateCsv) => {
   }
 };
 
+
+/**
+ * Met à jour la date d'insertion d'un stock_available
+ * avec le champ available_date du produit correspondant.
+ */
+export const patcherDateStock = async (idStock, idProduct) => {  try {
+    const parser = new DOMParser();
+
+    // 1. Récupérer available_date depuis le produit
+    const productRes = await api.get(
+      `/products/${idProduct}?output_format=XML&display=[id,available_date]`
+    );
+    const productDoc = parser.parseFromString(productRes.data, 'text/xml');
+    const availableDate = productDoc
+      .querySelector('product available_date')
+      ?.textContent?.trim();
+
+    // Ignorer si la date est vide ou invalide (PrestaShop retourne '0000-00-00')
+    if (!availableDate || availableDate === '0000-00-00') {
+      console.log(`[StockImport] Pas de available_date pour produit #${idProduct}, date ignorée.`);
+      return;
+    }
+
+    // Convertir en format SQL datetime si nécessaire (available_date est déjà YYYY-MM-DD)
+    const dateSql = `${availableDate} 00:00:00`;
+
+    // 2. Patcher le stock_available avec cette date
+    await updateResource('stock_availables', idStock, {
+      date_add: dateSql,
+      date_upd: dateSql,
+    });
+
+    console.log(`[StockImport] Date stock #${idStock} mise à jour : ${dateSql}`);
+  } catch (error) {
+    // Non bloquant : on loggue mais on ne fait pas échouer l'import
+    console.warn(`⚠️ Impossible de patcher la date du stock #${idStock}:`, error);
+  }
+};
+
 /**
  * Lance l'importation des commandes.
  * @param {Object[]} commandesTraitees
@@ -975,7 +1016,8 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
         // await enregistrerMouvementsStocks(items, 1);
       }
       
-      
+      // Après avoir obtenu idStock et idProduct :
+      // await patcherDateStock(idStock, idProduct);
       
       cmd.status = 'success';
     } catch (err) {
@@ -1017,3 +1059,4 @@ export const importerCommandes = async (commandesTraitees, onProgress) => {
     message: '✅ Importation des commandes réussie !' 
   };
 };
+

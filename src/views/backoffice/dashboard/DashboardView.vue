@@ -298,6 +298,7 @@ const dateFin = ref('');
 const orders = ref<Order[]>([]);
 const carts = ref<{ id: string; date: string }[]>([]);
 const stockAvailables = ref<{ id: string; id_product: string; id_product_attribute: string; quantity: number }[]>([]);
+const stockMovements = ref<{ id: string; id_product: string; id_product_attribute: string; quantity: number; sign: number; date_add: string }[]>([]);
 const currentTab = ref('orders');
 // const cacheProduits = ref<Record<string, { price: number; wholesale_price: number }>>({});
 const cacheProduits = ref<Record<string, { price: number; wholesale_price: number, category_id: string }>>({});
@@ -388,16 +389,39 @@ const reservedByProduct = computed(() => {
 });
 
 const totalStockValue = computed(() => {
-  // Somme des prix d'achat unitaires * quantités physiques (disponible + réservé)
-  return stockAvailables.value.reduce((acc, s) => {
-    const prod = cacheProduits.value[s.id_product];
-    const unitPrice = prod ? (prod.wholesale_price ?? prod.price ?? 0) : 0;
-    const available = typeof s.quantity === 'number' ? s.quantity : parseInt(String(s.quantity) || '0', 10);
-    const reserved = reservedByProduct.value[s.id_product] || 0;
-    const physical = available + reserved;
-    return acc + unitPrice * physical;
+  return Object.entries(physicalStockByProduct.value).reduce((acc, [productId, quantity]) => {
+    const prod = cacheProduits.value[productId];
+    const wholesalePrice = prod ? prod.wholesale_price : 0;
+    return acc + (wholesalePrice * quantity);
   }, 0);
 });
+
+const physicalStockByProduct = computed(() => {
+  const stockMap: Record<string, number> = {};
+
+  // 1. Ajouter le stock disponible
+  stockAvailables.value
+    .filter(s => s.id_product_attribute === '0')
+    .forEach(s => {
+      stockMap[s.id_product] = (stockMap[s.id_product] || 0) + s.quantity;
+    });
+
+  // 2. Ajouter le stock réservé (commandes non livrées)
+  const DELIVERED_STATE_ID = '5';
+  orders.value
+    .filter(order => !order.isCancelled && order.current_state !== DELIVERED_STATE_ID)
+    .forEach(order => {
+      order.products.forEach(p => {
+        // On ne compte que les produits de base pour la valeur du stock physique
+        if (p.attribute_id === '0' || !p.attribute_id) {
+           stockMap[p.id] = (stockMap[p.id] || 0) + p.quantity;
+        }
+      });
+    });
+  
+  return stockMap;
+});
+
 
 // const benefice = computed(() => totalTTC.value - totalAchat.value);
 
@@ -509,6 +533,7 @@ const loadOrders = async () => {
     await loadProductCache();
     await loadCategoryCache();
     await loadStockAvailables();
+    await loadStockMovements();
 
     const ordersArray: Order[] = [];
 
@@ -620,6 +645,30 @@ const loadStockAvailables = async () => {
   } catch (e) {
     console.warn('Erreur chargement stocks disponibles:', e);
     stockAvailables.value = [];{}
+  }
+};
+
+const loadStockMovements = async () => {
+  try {
+    const response = await api.get('/stock_movements?output_format=XML&display=full');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const movementElements = xmlDoc.querySelectorAll('stock_mvt');
+
+    stockMovements.value = Array.from(movementElements)
+      .map(mvt => ({
+        id: mvt.querySelector('id')?.textContent?.trim() || '',
+        id_product: mvt.querySelector('id_product')?.textContent?.trim() || '',
+        id_product_attribute: mvt.querySelector('id_product_attribute')?.textContent?.trim() || '0',
+        quantity: parseInt(mvt.querySelector('physical_quantity')?.textContent?.trim() || '0', 10),
+        sign: parseInt(mvt.querySelector('sign')?.textContent?.trim() || '0', 10),
+        date_add: mvt.querySelector('date_add')?.textContent?.trim() || '',
+      }))
+      .filter(mvt => mvt.id_product)
+    console.log(`Mouvements de stock chargés: ${stockMovements.value.length}`);
+  } catch (e) {
+    console.warn('Erreur chargement mouvements de stock:', e);
+    stockMovements.value = [];
   }
 };
 
