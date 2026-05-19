@@ -576,76 +576,27 @@ const lancerImportation = async () => {
 </script>
 
 <style scoped>
-.import-container {
-  font-family: Arial, sans-serif;
-  max-width: 1000px;
-  margin: 20px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #f9f9f9;
-}
-.upload-zone {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  align-items: center;
-}
-.btn-import {
-  padding: 10px 20px;
-  background-color: #4ed282;
-  border: none;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.btn-import:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.status-box {
-  padding: 15px;
-  margin-bottom: 20px;
-  border-left: 5px solid;
-  border-radius: 4px;
-}
-.status-box.success { background-color: #e6f9ed; border-left-color: #28a745; color: #155724; }
-.status-box.error { background-color: #fdf2f2; border-left-color: #dc3545; color: #721c24; }
 
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background: white;
-}
-.report-table th, .report-table td {
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: left;
-  font-size: 14px;
-}
-.report-table th { background-color: #f1f1f1; }
-.center { text-align: center; }
 
-/* Couleurs des lignes du tableau selon le statut transactionnel */
-.success { background-color: #f3fbf6; }
-.error { background-color: #fff5f5; }
-.rolled_back { background-color: #fffdf0; color: #7c6e10; }
+.bo-page { background: #0d1117; min-height: 100vh; margin-left: 240px; padding: 2rem; color: #e6edf3; }
+.bo-page-header { margin-bottom: 2rem; }
+.bo-page-header h1 { font-size: 1.4rem; font-weight: 700; color: #e6edf3; margin: 0 0 0.3rem; }
+.bo-page-header p { color: #7d8590; margin: 0; font-size: 0.875rem; }
 
-.badge {
-  background: #007bff;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-.error .badge { background: #dc3545; }
-.success .badge { background: #28a745; }
-.rolled_back .badge { background: #ffc107; color: #333; }
+.import-section { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 1.75rem; margin-bottom: 1.5rem; }
+.section-title { font-size: 0.95rem; font-weight: 700; color: #e6edf3; margin: 0 0 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #21262d; }
+.action-btn { padding: 0.6rem 1.5rem; background: #388bfd; border: none; border-radius: 7px; color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; }
+.action-btn:hover { background: #1f6feb; }
+.action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.results-table { width: 100%; border-collapse: collapse; }
+.results-table th { font-size: 0.72rem; color: #7d8590; text-transform: uppercase; letter-spacing: 0.06em; padding: 0 1rem 0.75rem; text-align: left; border-bottom: 1px solid #21262d; }
+.results-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #21262d; font-size: 0.875rem; color: #e6edf3; }
+.results-table tr:last-child td { border-bottom: none; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+.badge-success { background: rgba(63,185,80,0.12); color: #3fb950; }
+.badge-error { background: rgba(248,81,73,0.12); color: #f85149; }
+.badge-warn { background: rgba(210,153,34,0.12); color: #d29922; }
+.spinner { width: 32px; height: 32px; border: 2px solid #30363d; border-top-color: #388bfd; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.txt-success { color: #28a745; font-weight: bold; }
-.txt-error { color: #dc3545; font-weight: bold; }
-.txt-rollback { color: #b78a00; font-style: italic; }
-.txt-pending { color: #666; }
 </style>

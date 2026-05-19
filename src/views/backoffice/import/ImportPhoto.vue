@@ -311,92 +311,26 @@ const lancerImportation = async () => {
 </script>
 
 <style scoped>
-.import-container {
-  font-family: Arial, sans-serif;
-  max-width: 1000px;
-  margin: 20px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #f9f9f9;
-}
-.upload-zone {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  align-items: center;
-}
-.btn-import {
-  padding: 10px 20px;
-  background-color: #4ed282;
-  border: none;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.btn-import:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.status-box {
-  padding: 15px;
-  margin-bottom: 20px;
-  border-left: 5px solid;
-  border-radius: 4px;
-}
-.status-box.success { background-color: #e6f9ed; border-left-color: #28a745; color: #155724; }
-.status-box.error { background-color: #fdf2f2; border-left-color: #dc3545; color: #721c24; }
 
-.progress-section {
-  margin-bottom: 20px;
-}
-.progress-bar {
-  width: 100%;
-  height: 24px;
-  background: #e9ecef;
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4ed282, #28a745);
-  transition: width 0.3s ease;
-  border-radius: 12px;
-}
-.progress-text {
-  text-align: center;
-  color: #666;
-  font-size: 14px;
-  margin: 0;
-}
 
-.report-section {
-  margin-top: 20px;
-}
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background: white;
-  font-size: 13px;
-}
-.report-table th, .report-table td {
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: left;
-}
-.report-table th { background-color: #f1f1f1; font-size: 12px; }
-.center { text-align: center; }
+.bo-page { background: #0d1117; min-height: 100vh; margin-left: 240px; padding: 2rem; color: #e6edf3; }
+.bo-page-header { margin-bottom: 2rem; }
+.bo-page-header h1 { font-size: 1.4rem; font-weight: 700; color: #e6edf3; margin: 0 0 0.3rem; }
+.bo-page-header p { color: #7d8590; margin: 0; font-size: 0.875rem; }
 
-.success { background-color: #f3fbf6; }
-.not_found { background-color: #fffdf0; }
-.error { background-color: #fff5f5; }
+.import-section { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 1.75rem; margin-bottom: 1.5rem; }
+.section-title { font-size: 0.95rem; font-weight: 700; color: #e6edf3; margin: 0 0 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #21262d; }
+.drop-zone { border: 2px dashed #30363d; border-radius: 10px; padding: 3rem; text-align: center; color: #7d8590; cursor: pointer; transition: border-color 0.2s; }
+.drop-zone:hover, .drop-zone.drag-over { border-color: rgba(56,139,253,0.5); color: #388bfd; }
+.drop-zone p { margin: 0.5rem 0 0; font-size: 0.875rem; }
+.action-btn { padding: 0.6rem 1.5rem; background: #388bfd; border: none; border-radius: 7px; color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; }
+.action-btn:hover { background: #1f6feb; }
+.action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem; }
+.photo-item { aspect-ratio: 1; background: #21262d; border-radius: 8px; overflow: hidden; position: relative; }
+.photo-item img { width: 100%; height: 100%; object-fit: cover; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+.badge-success { background: rgba(63,185,80,0.12); color: #3fb950; }
+.badge-error { background: rgba(248,81,73,0.12); color: #f85149; }
 
-.txt-success { color: #28a745; font-weight: bold; }
-.txt-warning { color: #e67e22; font-weight: bold; }
-.txt-error { color: #dc3545; font-weight: bold; }
-.txt-skip { color: #95a5a6; font-style: italic; }
-.txt-pending { color: #666; }
 </style>

@@ -203,312 +203,38 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.orders-page {
-  min-height: 100vh;
-  background: #f8fafc;
-}
 
-.orders-main {
-  padding: 2.5rem 0 4rem;
-}
+.orders-page { background: #07070e; min-height: 100vh; color: #e8e8f5; padding-bottom: 4rem; }
+.page-hero { background: linear-gradient(160deg, #0c0c18, #07070e); border-bottom: 1px solid #1e1e35; padding: 2.5rem 0 2rem; }
+.page-hero h1 { font-size: 1.5rem; font-weight: 700; color: #e8e8f5; margin: 0 0 0.3rem; }
+.page-hero p { color: #5a5a85; margin: 0; font-size: 0.875rem; }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-header h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 0.3rem;
-  letter-spacing: -0.02em;
-}
-
-.page-header p {
-  color: #64748b;
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-/* Loading */
-.loading {
-  text-align: center;
-  padding: 4rem 1rem;
-  color: #64748b;
-}
-
-.spinner {
-  border: 3px solid #e2e8f0;
-  border-top: 3px solid #3b82f6;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  animation: spin 0.7s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Error */
-.error-message {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  padding: 2.5rem 2rem;
-  text-align: center;
-}
-
-.error-content h3 {
-  color: #dc2626;
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-}
-
-.error-content p {
-  color: #7f1d1d;
-  margin: 0 0 1rem;
-}
-
-.retry-btn {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-family: inherit;
-}
-
-.retry-btn:hover {
-  background: #2563eb;
-}
-
-/* Empty */
-.empty-orders {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-
-.empty-icon {
-  font-size: 3.5rem;
-  margin-bottom: 1rem;
-}
-
-.empty-orders h2 {
-  color: #1e293b;
-  margin-bottom: 0.5rem;
-  font-size: 1.3rem;
-}
-
-.empty-orders p {
-  color: #64748b;
-  margin-bottom: 1.5rem;
-}
-
-.shop-btn {
-  display: inline-block;
-  background: #3b82f6;
-  color: white;
-  padding: 0.7rem 1.75rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.shop-btn:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-}
-
-/* Orders List - CARDS COMPACTES */
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
+.orders-list { padding: 2rem 0; }
 .order-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  background: #0e0e1a;
+  border: 1px solid #1e1e35;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 1.5rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  gap: 1rem;
+  transition: border-color 0.2s;
+  text-decoration: none;
 }
+.order-card:hover { border-color: rgba(167,139,250,0.3); }
+.order-id { font-size: 0.875rem; font-weight: 600; color: #a78bfa; min-width: 100px; }
+.order-date { font-size: 0.8rem; color: #5a5a85; flex: 1; }
+.order-total { font-size: 1rem; font-weight: 700; color: #f59e0b; min-width: 100px; text-align: right; }
+.order-status { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.status-delivered { background: rgba(52,211,153,0.12); color: #34d399; }
+.status-shipped { background: rgba(56,139,253,0.12); color: #388bfd; }
+.status-processing { background: rgba(210,153,34,0.12); color: #d29922; }
+.status-cancelled { background: rgba(248,113,113,0.12); color: #f87171; }
+.status-default { background: rgba(128,128,176,0.12); color: #8080b0; }
+.order-arrow { color: #2a2a4a; margin-left: auto; }
 
-.order-card:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
-  transform: translateX(2px);
-}
+.loading-state, .empty-state { text-align: center; padding: 4rem 2rem; color: #5a5a85; }
+.spinner { width: 36px; height: 36px; border: 2px solid #1e1e35; border-top-color: #a78bfa; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.order-card:active {
-  transform: scale(0.995);
-}
-
-/* Partie gauche */
-.order-left {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  min-width: 0;
-  flex-shrink: 1;
-}
-
-.order-main-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.order-id {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 1rem;
-  letter-spacing: -0.01em;
-}
-
-.order-date {
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-
-.order-payment-info {
-  display: flex;
-  align-items: center;
-}
-
-.payment-method {
-  font-size: 0.8rem;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-/* Partie droite */
-.order-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-shrink: 0;
-}
-
-.order-total {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 1rem;
-  white-space: nowrap;
-}
-
-/* Statuts - badges compacts */
-.order-status {
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
-}
-
-.status-pending {
-  background: #fef9c3;
-  color: #a16207;
-}
-
-.status-processing {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.status-ready {
-  background: #e0e7ff;
-  color: #4338ca;
-}
-
-.status-shipped {
-  background: #f3e8ff;
-  color: #7c3aed;
-}
-
-.status-delivered {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.status-cancelled {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.status-refunded {
-  background: #ffe4e6;
-  color: #be123c;
-}
-
-.status-error {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.status-default {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-/* Flèche discrète */
-.detail-arrow {
-  color: #cbd5e1;
-  font-size: 1rem;
-  transition: all 0.2s;
-}
-
-.order-card:hover .detail-arrow {
-  color: #3b82f6;
-  transform: translateX(3px);
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .order-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .order-left {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-    width: 100%;
-  }
-
-  .order-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .detail-arrow {
-    display: none;
-  }
-}
 </style>

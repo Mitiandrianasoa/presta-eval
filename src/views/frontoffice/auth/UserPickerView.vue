@@ -217,300 +217,38 @@ const handleContinue = () => {
 </script>
 
 <style scoped>
-/* ── Page ─────────────────────────────────────────────── */
-.picker-page {
-  min-height: 100vh;
-  background: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-}
 
-/* ── Card ─────────────────────────────────────────────── */
-.picker-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  width: 100%;
-  max-width: 480px;
-  padding: 2.5rem;
-}
-
-/* ── Header ───────────────────────────────────────────── */
-.picker-header {
-  text-align: center;
-  margin-bottom: 1.75rem;
-}
-
-.logo-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  background: var(--primary-light, #dbeafe);
-  color: var(--primary);
-  border-radius: 14px;
-  margin-bottom: 1rem;
-}
-
-.picker-header h1 {
-  color: var(--navy);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.35rem;
-}
-
-.picker-header p {
-  color: var(--muted);
-  font-size: 0.875rem;
-  margin: 0;
-}
-
-/* ── Alert ────────────────────────────────────────────── */
-.alert-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--error-bg, #fee2e2);
-  color: var(--error, #dc2626);
-  border: 1px solid #fecaca;
-  padding: 0.65rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
-}
-
-/* ── Search ───────────────────────────────────────────── */
-.search-wrap {
-  position: relative;
-  margin-bottom: 0.75rem;
-}
-
-.search-icon {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
-}
-
+.user-picker-page { background: #07070e; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; color: #e8e8f5; }
+.picker-card { background: #0e0e1a; border: 1px solid #1e1e35; border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 480px; }
+.picker-header { text-align: center; margin-bottom: 2rem; }
+.picker-header h2 { font-size: 1.25rem; font-weight: 700; color: #e8e8f5; margin: 0 0 0.35rem; }
+.picker-header p { color: #5a5a85; font-size: 0.875rem; margin: 0; }
+.search-bar { margin-bottom: 1.25rem; position: relative; }
 .search-input {
-  width: 100%;
-  padding: 0.65rem 0.875rem 0.65rem 2.2rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--bg);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  box-sizing: border-box;
+  width: 100%; padding: 0.65rem 0.875rem 0.65rem 2.5rem;
+  background: #07070e; border: 1px solid #1e1e35;
+  border-radius: 8px; color: #e8e8f5; font-size: 0.875rem;
+  transition: border-color 0.2s; box-sizing: border-box;
 }
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  background: var(--surface);
-}
-
-.search-input::placeholder { color: #94a3b8; }
-
-/* ── User list ────────────────────────────────────────── */
-.list-count {
-  font-size: 0.75rem;
-  color: var(--muted);
+.search-input:focus { outline: none; border-color: #a78bfa; }
+.search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #5a5a85; font-size: 0.9rem; pointer-events: none; }
+.users-list { max-height: 380px; overflow-y: auto; }
+.user-item {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #1e1e35;
+  border-radius: 10px;
+  cursor: pointer;
   margin-bottom: 0.5rem;
+  transition: border-color 0.2s, background 0.2s;
 }
+.user-item:hover { border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.04); }
+.user-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(167,139,250,0.15); color: #a78bfa; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0; }
+.user-name { font-size: 0.9rem; font-weight: 600; color: #e8e8f5; }
+.user-email { font-size: 0.75rem; color: #5a5a85; }
+.user-arrow { margin-left: auto; color: #2a2a4a; font-size: 0.875rem; }
+.loading-state, .empty-state { text-align: center; padding: 2rem; color: #5a5a85; font-size: 0.875rem; }
+.spinner { width: 28px; height: 28px; border: 2px solid #1e1e35; border-top-color: #a78bfa; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.user-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 360px;
-  overflow-y: auto;
-  padding-right: 2px;
-}
-
-/* ── User card ────────────────────────────────────────── */
-.user-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  flex-shrink: 0;
-}
-
-.user-card:hover {
-  border-color: var(--primary);
-  background: var(--surface);
-}
-
-.user-card.selected {
-  border-color: var(--primary);
-  background: var(--surface);
-}
-
-/* ── Avatar ───────────────────────────────────────────── */
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.avatar-user {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.avatar-anon {
-  background: var(--surface);
-  color: var(--muted);
-  border: 1px dashed var(--border);
-}
-
-/* ── Info ─────────────────────────────────────────────── */
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-email {
-  font-size: 0.75rem;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── Badge ────────────────────────────────────────────── */
-.badge {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 20px;
-  flex-shrink: 0;
-  font-weight: 500;
-}
-
-.badge-client {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.badge-anon {
-  background: var(--surface);
-  color: var(--muted);
-  border: 1px solid var(--border);
-}
-
-.check-icon {
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-/* ── Divider ──────────────────────────────────────────── */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 0;
-}
-
-.divider span {
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.divider em {
-  font-size: 0.75rem;
-  color: var(--muted);
-  font-style: normal;
-  white-space: nowrap;
-}
-
-/* ── Status ───────────────────────────────────────────── */
-.status-msg {
-  text-align: center;
-  padding: 2rem;
-  color: var(--muted);
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-/* ── Continue button ──────────────────────────────────── */
-.continue-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 1.25rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.8rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  font-family: inherit;
-}
-
-.continue-btn:hover:not(:disabled) {
-  background: var(--primary-dark);
-}
-
-.continue-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* ── Spinner ──────────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid #cbd5e1;
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (max-width: 480px) {
-  .picker-card { padding: 1.75rem 1.25rem; }
-}
 </style>

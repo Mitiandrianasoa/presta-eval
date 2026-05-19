@@ -89,144 +89,19 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <style scoped>
-.confirmation-page {
-  min-height: 100vh;
-  background: var(--bg);
-}
 
-.confirmation-main {
-  padding: 5rem 0;
-}
+.confirm-page { background: #07070e; min-height: 100vh; color: #e8e8f5; display: flex; align-items: center; justify-content: center; padding: 3rem 1rem; }
+.confirm-card { background: #0e0e1a; border: 1px solid #1e1e35; border-radius: 16px; padding: 3rem 2.5rem; max-width: 540px; width: 100%; text-align: center; }
+.success-icon { width: 72px; height: 72px; border-radius: 50%; background: rgba(52,211,153,0.12); border: 2px solid rgba(52,211,153,0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem; }
+.confirm-card h1 { font-size: 1.5rem; font-weight: 700; color: #e8e8f5; margin: 0 0 0.75rem; }
+.confirm-card p { color: #8080b0; margin: 0 0 2rem; line-height: 1.6; }
+.order-number { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px; padding: 1rem; margin-bottom: 2rem; }
+.order-number .label { font-size: 0.75rem; color: #5a5a85; text-transform: uppercase; letter-spacing: 0.06em; }
+.order-number .value { font-size: 1.1rem; font-weight: 700; color: #a78bfa; margin-top: 0.25rem; }
+.confirm-actions { display: flex; flex-direction: column; gap: 0.75rem; }
+.btn-primary { padding: 0.85rem; background: linear-gradient(135deg, #7c3aed, #a78bfa); border: none; border-radius: 8px; color: white; font-weight: 700; font-size: 0.95rem; cursor: pointer; text-decoration: none; display: block; transition: opacity 0.2s; }
+.btn-primary:hover { opacity: 0.88; }
+.btn-ghost { padding: 0.85rem; background: transparent; border: 1px solid #1e1e35; border-radius: 8px; color: #8080b0; font-size: 0.875rem; cursor: pointer; text-decoration: none; display: block; transition: all 0.2s; }
+.btn-ghost:hover { border-color: rgba(167,139,250,0.3); color: #a78bfa; }
 
-.confirmation-card {
-  background: white;
-  border-radius: 16px;
-  padding: 4rem 3rem;
-  text-align: center;
-  max-width: 550px;
-  margin: 0 auto;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-}
-
-.success-icon {
-  font-size: 5rem;
-  margin-bottom: 1.5rem;
-  animation: bounce 0.6s ease;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
-}
-
-h1 {
-  color: var(--navy);
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-  font-weight: 700;
-}
-
-.success-message {
-  color: var(--text);
-  font-size: 1.1rem;
-  margin: 0 0 0.5rem;
-}
-
-.success-detail {
-  color: var(--muted);
-  font-size: 0.9rem;
-  margin: 0 0 2rem;
-}
-
-.order-details {
-  background: var(--bg);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin: 2rem 0;
-  text-align: left;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.detail-item:last-child {
-  border-bottom: none;
-}
-
-.label {
-  color: var(--muted);
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.value {
-  font-weight: 600;
-  color: var(--navy);
-  font-size: 0.95rem;
-}
-
-.order-id {
-  color: var(--primary);
-}
-
-.price {
-  color: var(--success);
-  font-size: 1.1rem;
-}
-
-.actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 1.5rem;
-}
-
-.orders-btn,
-.continue-btn {
-  display: inline-block;
-  padding: 0.85rem 2rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-}
-
-.orders-btn {
-  background: var(--primary);
-  color: white;
-}
-
-.orders-btn:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-}
-
-.continue-btn {
-  background: var(--bg);
-  color: var(--text);
-  border: 2px solid var(--border);
-}
-
-.continue-btn:hover {
-  background: var(--surface);
-  border-color: var(--primary);
-  transform: translateY(-2px);
-}
-
-@media (max-width: 480px) {
-  .confirmation-card {
-    padding: 2.5rem 1.5rem;
-  }
-  
-  .actions {
-    flex-direction: column;
-  }
-}
 </style>

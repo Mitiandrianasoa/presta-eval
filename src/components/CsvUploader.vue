@@ -86,35 +86,30 @@ const triggerFileInput = () => {
 </template>
 
 <style scoped>
-.csv-uploader {
-  margin-bottom: 20px;
-}
-.upload-box {
-  border: 2px dashed #4caf50;
-  border-radius: 8px;
-  padding: 30px;
+
+.csv-uploader { }
+.drop-zone {
+  border: 2px dashed #30363d;
+  border-radius: 10px;
+  padding: 2.5rem;
   text-align: center;
+  color: #7d8590;
   cursor: pointer;
-  background-color: #f9fdf9;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s, background 0.2s;
 }
-.upload-box:hover {
-  background-color: #f1f8f1;
-  border-color: #388e3c;
-}
-.upload-icon {
-  font-size: 2rem;
-  margin-bottom: 10px;
-  display: block;
-}
-.file-names-list {
-  text-align: left;
-  color: #2e7d32;
-  margin-top: 10px;
-  display: inline-block;
-}
-.file-names-list ul {
-  padding-left: 20px;
-  margin-top: 5px;
-}
+.drop-zone:hover, .drop-zone.drag-over { border-color: rgba(56,139,253,0.5); background: rgba(56,139,253,0.03); color: #388bfd; }
+.drop-icon { font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.6; }
+.drop-zone h4 { font-size: 0.95rem; font-weight: 600; color: #e6edf3; margin: 0 0 0.35rem; }
+.drop-zone p { font-size: 0.8rem; margin: 0; }
+.file-input { display: none; }
+.file-selected { display: flex; align-items: center; gap: 0.75rem; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 0.875rem 1rem; }
+.file-icon { font-size: 1.25rem; }
+.file-name { font-size: 0.875rem; font-weight: 500; color: #e6edf3; flex: 1; }
+.file-size { font-size: 0.75rem; color: #7d8590; }
+.remove-file { background: transparent; border: none; color: #7d8590; cursor: pointer; padding: 0.25rem; border-radius: 4px; transition: color 0.2s; font-size: 1rem; }
+.remove-file:hover { color: #f85149; }
+.upload-btn { margin-top: 1rem; padding: 0.6rem 1.5rem; background: #388bfd; border: none; border-radius: 7px; color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; }
+.upload-btn:hover { background: #1f6feb; }
+.upload-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 </style>

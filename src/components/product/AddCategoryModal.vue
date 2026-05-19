@@ -42,88 +42,25 @@ const close = () => {
 </template>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
 
-.modal {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  min-width: 400px;
-  max-width: 500px;
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9000; }
+.modal { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.75rem; width: 90%; max-width: 480px; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.modal-header h3 { font-size: 1rem; font-weight: 700; color: #e6edf3; margin: 0; }
+.close-btn { background: transparent; border: none; color: #7d8590; cursor: pointer; font-size: 1.25rem; padding: 0; line-height: 1; transition: color 0.2s; }
+.close-btn:hover { color: #e6edf3; }
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.form-group label { font-size: 0.8rem; color: #7d8590; font-weight: 500; }
+.form-input, .form-select {
+  padding: 0.55rem 0.75rem; background: #0d1117; border: 1px solid #30363d;
+  border-radius: 6px; color: #e6edf3; font-size: 0.875rem; transition: border-color 0.2s;
 }
+.form-input:focus, .form-select:focus { outline: none; border-color: #388bfd; }
+.form-select option { background: #161b22; }
+.modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+.btn-primary { padding: 0.55rem 1.25rem; background: #388bfd; border: none; border-radius: 7px; color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; }
+.btn-primary:hover { background: #1f6feb; }
+.btn-cancel { padding: 0.55rem 1.25rem; background: transparent; border: 1px solid #30363d; border-radius: 7px; color: #7d8590; font-weight: 500; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
+.btn-cancel:hover { border-color: #484f58; color: #e6edf3; }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px;
-  border-bottom: 1px solid #ddd;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #999;
-}
-
-.modal-body {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.modal-body label {
-  font-weight: 600;
-}
-
-.modal-body input {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 18px;
-  border-top: 1px solid #ddd;
-}
-
-.btn-save, .btn-cancel {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.btn-save {
-  background: #4CAF50;
-  color: white;
-}
-
-.btn-cancel {
-  background: #999;
-  color: white;
-}
 </style>

@@ -9,7 +9,7 @@
       <nav class="main-nav">
         <router-link to="/" class="nav-link">Accueil</router-link>
         <router-link to="/products" class="nav-link">Produits</router-link>
-        <router-link v-if="isAuthenticated" to="/cart" class="nav-link cart-link">
+        <router-link to="/cart" class="nav-link cart-link">
           Panier
           <span v-if="cartItemCount" class="cart-count">{{ cartItemCount }}</span>
         </router-link>
@@ -89,14 +89,18 @@ const loadUser = () => {
 // Charger le panier
 const loadCart = () => {
   try {
-    const cartStr = sessionStorage.getItem('prestashop_cart');
-    if (cartStr) {
-      cart.value = JSON.parse(cartStr);
-    }
+    const cartStr = localStorage.getItem('prestashop_cart');
+    cart.value = cartStr ? JSON.parse(cartStr) : [];
   } catch (err) {
-    console.error('Erreur lors du chargement du panier:', err);
+    cart.value = [];
   }
 };
+
+const onStorageChange = (e: StorageEvent) => {
+  if (e.key === 'prestashop_cart') loadCart();
+};
+
+const onCartUpdate = () => loadCart();
 
 // Basculer le menu déroulant
 const toggleDropdown = () => {
@@ -115,9 +119,8 @@ const getUserInitials = () => {
 const handleLogout = () => {
   sessionStorage.removeItem('prestashop_token');
   sessionStorage.removeItem('prestashop_user');
-  if (!sessionStorage.getItem('prestashop_remember')) {
-    sessionStorage.removeItem('prestashop_cart');
-  }
+  localStorage.removeItem('prestashop_cart');
+  cart.value = [];
   currentUser.value = null;
   showDropdown.value = false;
   router.push('/');
@@ -135,22 +138,26 @@ onMounted(() => {
   loadUser();
   loadCart();
   document.addEventListener('click', handleClickOutside);
+  window.addEventListener('storage', onStorageChange);
+  window.addEventListener('prestashop:cart-updated', onCartUpdate);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('storage', onStorageChange);
+  window.removeEventListener('prestashop:cart-updated', onCartUpdate);
 });
 </script>
 
 <style scoped>
+
 .home-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: #0e0e1a;
+  border-bottom: 1px solid #1e1e35;
   position: sticky;
   top: 0;
   z-index: 100;
 }
-
 .header-content {
   max-width: 1200px;
   margin: 0 auto;
@@ -161,222 +168,39 @@ onUnmounted(() => {
   align-items: center;
   gap: 2rem;
 }
+.logo { display: flex; flex-direction: column; line-height: 1.2; text-decoration: none; }
+.logo h1 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #e8e8f5; letter-spacing: -0.02em; }
+.logo h1 span { color: #a78bfa; }
+.logo > span { font-size: 0.7rem; color: #5a5a85; font-weight: 400; letter-spacing: 0.02em; }
 
-/* Logo */
-.logo {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-  text-decoration: none;
-}
+.main-nav { display: flex; gap: 0.25rem; }
+.nav-link { text-decoration: none; color: #5a5a85; font-size: 0.875rem; font-weight: 500; padding: 0.4rem 0.75rem; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+.nav-link:hover { color: #e8e8f5; background: rgba(255,255,255,0.04); }
+.nav-link.router-link-active { color: #a78bfa; background: rgba(167,139,250,0.08); }
+.cart-link { display: flex; align-items: center; gap: 0.4rem; }
+.cart-count { background: #a78bfa; color: white; border-radius: 10px; padding: 0.1rem 0.45rem; font-size: 0.72rem; font-weight: 700; min-width: 1.2rem; text-align: center; }
 
-.logo h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--navy);
-  letter-spacing: -0.02em;
-}
+.user-menu { display: flex; align-items: center; }
+.user-info { display: flex; align-items: center; gap: 0.75rem; }
+.user-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(167,139,250,0.15); color: #a78bfa; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; border: 1px solid rgba(167,139,250,0.25); }
+.user-dropdown { position: relative; }
+.user-name { background: none; border: 1px solid #1e1e35; color: #e8e8f5; font-weight: 500; font-size: 0.875rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; border-radius: 6px; transition: background 0.2s, border-color 0.2s; }
+.user-name:hover { background: rgba(255,255,255,0.04); border-color: #2a2a4a; }
+.dropdown-menu { position: absolute; top: calc(100% + 8px); right: 0; background: #0e0e1a; border: 1px solid #1e1e35; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); min-width: 168px; z-index: 1000; overflow: hidden; }
+.dropdown-item { display: block; width: 100%; padding: 0.65rem 1rem; border: none; background: none; text-align: left; color: #e8e8f5; text-decoration: none; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; }
+.dropdown-item:hover { background: rgba(255,255,255,0.04); }
+.dropdown-item.logout { color: #f87171; border-top: 1px solid #1e1e35; }
 
-.logo h1 span {
-  color: var(--primary);
-}
+.auth-buttons { display: flex; gap: 0.75rem; }
+.btn-login { color: #a78bfa; border: 1.5px solid rgba(167,139,250,0.4); background: transparent; padding: 0.4rem 1.1rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.875rem; transition: background 0.2s, border-color 0.2s; }
+.btn-login:hover { background: rgba(167,139,250,0.08); border-color: #a78bfa; }
+.btn-register { background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; border: none; padding: 0.4rem 1.1rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.875rem; transition: opacity 0.2s; }
+.btn-register:hover { opacity: 0.88; }
 
-.logo > span {
-  font-size: 0.72rem;
-  color: var(--muted);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-}
-
-/* Nav */
-.main-nav {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  transition: color var(--transition), background var(--transition);
-}
-
-.nav-link:hover {
-  color: var(--text);
-  background: var(--bg);
-}
-
-.nav-link.router-link-active {
-  color: var(--primary);
-  background: var(--primary-light);
-}
-
-.cart-link {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.cart-count {
-  background: var(--error);
-  color: white;
-  border-radius: 10px;
-  padding: 0.1rem 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  min-width: 1.25rem;
-  text-align: center;
-  line-height: 1.4;
-}
-
-/* User Menu */
-.user-menu {
-  display: flex;
-  align-items: center;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.8rem;
-  flex-shrink: 0;
-}
-
-.user-dropdown {
-  position: relative;
-}
-
-.user-name {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  transition: background var(--transition), border-color var(--transition);
-}
-
-.user-name:hover {
-  background: var(--bg);
-  border-color: #cbd5e1;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  min-width: 168px;
-  z-index: 1000;
-  overflow: hidden;
-}
-
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 0.65rem 1rem;
-  border: none;
-  background: none;
-  text-align: left;
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-
-.dropdown-item:hover {
-  background: var(--bg);
-}
-
-.dropdown-item.logout {
-  color: var(--error);
-  border-top: 1px solid var(--border);
-}
-
-/* Auth Buttons */
-.auth-buttons {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-login {
-  color: var(--primary);
-  border: 1.5px solid var(--primary);
-  background: transparent;
-  padding: 0.45rem 1.25rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: background var(--transition), color var(--transition);
-}
-
-.btn-login:hover {
-  background: var(--primary-light);
-}
-
-.btn-register {
-  background: var(--primary);
-  color: white;
-  border: 1.5px solid var(--primary);
-  padding: 0.45rem 1.25rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: background var(--transition);
-}
-
-.btn-register:hover {
-  background: var(--primary-dark);
-  border-color: var(--primary-dark);
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-  .header-content {
-    height: auto;
-    flex-wrap: wrap;
-    padding: 0.75rem 1rem;
-    gap: 0.75rem;
-  }
-
-  .main-nav {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-
-  .auth-buttons {
-    gap: 0.5rem;
-  }
+  .header-content { height: auto; flex-wrap: wrap; padding: 0.75rem 1rem; gap: 0.75rem; }
+  .main-nav { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .auth-buttons { gap: 0.5rem; }
 }
+
 </style>

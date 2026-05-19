@@ -209,129 +209,27 @@ const startImport = async () => {
 </template>
 
 <style scoped>
-.import-view {
-  padding: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 25px;
-}
-.badge {
-  background-color: #673ab7;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: bold;
-}
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.resource-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.search-box {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 10px;
-  transition: border-color 0.2s;
-  outline: none;
-}
-.search-box:focus {
-  border-color: #4CAF50;
-}
-.select-box {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 13px;
-  background: white;
-  cursor: pointer;
-  transition: border-color 0.2s;
-  max-height: 300px;
-}
-.select-box:focus {
-  outline: none;
-  border-color: #4CAF50;
-}
-.select-box option {
-  padding: 6px 8px;
-}
-.no-results {
-  color: #666;
-  font-style: italic;
-  text-align: center;
-  padding: 10px;
-}
-.loading-state {
-  text-align: center;
-  padding: 50px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  color: #666;
-}
-.action-bar {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 15px;
-}
-.btn-import {
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-.btn-import:hover:not(:disabled) {
-  background-color: #43a047;
-  transform: translateY(-2px);
-}
-.btn-import:disabled {
-  background-color: #9e9e9e;
-  cursor: not-allowed;
-}
-.logs-container {
-  background: #fdfdfd;
-}
-.stats {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
-  font-weight: bold;
-}
-.stat-success { color: #2e7d32; }
-.stat-error { color: #c62828; }
-.log-list {
-  list-style: none;
-  padding: 0;
-  max-height: 300px;
-  overflow-y: auto;
-}
-.log-item {
-  padding: 10px;
-  border-left: 4px solid transparent;
-  margin-bottom: 5px;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-.log-success { border-left-color: #4caf50; color: #2e7d32; }
-.log-error { border-left-color: #f44336; color: #c62828; }
+
+
+.bo-page { background: #0d1117; min-height: 100vh; margin-left: 240px; padding: 2rem; color: #e6edf3; }
+.bo-page-header { margin-bottom: 2rem; }
+.bo-page-header h1 { font-size: 1.4rem; font-weight: 700; color: #e6edf3; margin: 0 0 0.3rem; }
+.bo-page-header p { color: #7d8590; margin: 0; font-size: 0.875rem; }
+
+.import-section { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 1.75rem; margin-bottom: 1.5rem; }
+.section-title { font-size: 0.95rem; font-weight: 700; color: #e6edf3; margin: 0 0 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #21262d; }
+.action-btn { padding: 0.6rem 1.5rem; background: #388bfd; border: none; border-radius: 7px; color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: background 0.2s; }
+.action-btn:hover { background: #1f6feb; }
+.action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.bo-table { width: 100%; border-collapse: collapse; }
+.bo-table th { font-size: 0.72rem; color: #7d8590; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.875rem 1rem; text-align: left; border-bottom: 1px solid #21262d; }
+.bo-table td { padding: 0.875rem 1rem; border-bottom: 1px solid #21262d; font-size: 0.875rem; color: #e6edf3; }
+.bo-table tr:last-child td { border-bottom: none; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+.badge-success { background: rgba(63,185,80,0.12); color: #3fb950; }
+.badge-error { background: rgba(248,81,73,0.12); color: #f85149; }
+.badge-warn { background: rgba(210,153,34,0.12); color: #d29922; }
+.spinner { width: 32px; height: 32px; border: 2px solid #30363d; border-top-color: #388bfd; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 </style>

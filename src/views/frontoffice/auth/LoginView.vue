@@ -167,217 +167,38 @@ const handleLogin = () => {
 </script>
 
 <style scoped>
-.login-page {
-  min-height: 100vh;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
-}
 
-.login-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-}
-
-/* ── Card ─────────────────────────────────────────────── */
-.login-container {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  width: 100%;
-  max-width: 420px;
-  padding: 2.5rem;
-}
-
-/* ── Header ───────────────────────────────────────────── */
-.login-header {
-  text-align: center;
-  margin-bottom: 1.75rem;
-}
-
-.user-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 0.875rem;
-}
-
-.login-header h1 {
-  color: var(--navy);
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.4rem;
-}
-
-.login-header p {
-  color: var(--muted);
-  font-size: 0.875rem;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.login-header p strong { color: var(--text); }
-
-/* ── Form ─────────────────────────────────────────────── */
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--navy);
-  margin-bottom: 0.4rem;
-  letter-spacing: 0.01em;
-}
-
+.login-page { background: #07070e; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; color: #e8e8f5; }
+.login-card { background: #0e0e1a; border: 1px solid #1e1e35; border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 400px; }
+.brand { text-align: center; margin-bottom: 2rem; }
+.brand-icon { width: 56px; height: 56px; border-radius: 14px; background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem; }
+.brand h2 { font-size: 1.25rem; font-weight: 700; color: #e8e8f5; margin: 0 0 0.25rem; }
+.brand p { font-size: 0.875rem; color: #5a5a85; margin: 0; }
+.form-group { margin-bottom: 1.1rem; }
+.form-group label { display: block; font-size: 0.8rem; color: #8080b0; font-weight: 500; margin-bottom: 0.4rem; }
 .form-input {
-  width: 100%;
-  padding: 0.65rem 0.875rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--bg);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  box-sizing: border-box;
+  width: 100%; padding: 0.7rem 0.875rem;
+  background: #07070e; border: 1px solid #1e1e35;
+  border-radius: 8px; color: #e8e8f5; font-size: 0.9rem;
+  transition: border-color 0.2s; box-sizing: border-box;
 }
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  background: var(--surface);
+.form-input:focus { outline: none; border-color: #a78bfa; }
+.form-input::placeholder { color: #2a2a4a; }
+.error-msg { color: #f87171; font-size: 0.8rem; margin-top: 0.35rem; }
+.submit-btn {
+  width: 100%; padding: 0.85rem;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  border: none; border-radius: 8px;
+  color: white; font-weight: 700; font-size: 0.95rem;
+  cursor: pointer; transition: opacity 0.2s; margin-top: 0.5rem;
 }
+.submit-btn:hover { opacity: 0.88; }
+.submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.form-footer { text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: #5a5a85; }
+.form-footer a { color: #a78bfa; text-decoration: none; }
+.form-footer a:hover { text-decoration: underline; }
+.alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; margin-bottom: 1.25rem; }
+.alert.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; }
+.alert.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: #34d399; }
 
-.form-input[readonly] {
-  background: var(--surface);
-  color: var(--muted);
-  cursor: default;
-}
-
-.form-input::placeholder { color: #94a3b8; }
-
-/* ── Change user link ─────────────────────────────────── */
-.change-user-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.78rem;
-  color: var(--primary);
-  text-decoration: none;
-  margin-top: 0.4rem;
-  transition: opacity 0.15s;
-}
-
-.change-user-link:hover {
-  opacity: 0.75;
-  text-decoration: underline;
-}
-
-/* ── Password toggle ──────────────────────────────────── */
-.password-wrap {
-  position: relative;
-}
-
-.password-wrap .form-input {
-  padding-right: 2.5rem;
-}
-
-.toggle-password {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted);
-  padding: 0;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-.toggle-password:hover { color: var(--text); }
-
-/* ── Login button ─────────────────────────────────────── */
-.login-btn {
-  width: 100%;
-  margin-top: 0.5rem;
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.8rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  font-family: inherit;
-}
-
-.login-btn:hover:not(:disabled) { background: var(--primary-dark); }
-
-.login-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* ── Register link ────────────────────────────────────── */
-.register-link {
-  text-align: center;
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin-top: 1.25rem;
-  margin-bottom: 0;
-}
-
-.register-link a {
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.register-link a:hover { text-decoration: underline; }
-
-/* ── Spinner ──────────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid #cbd5e1;
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  vertical-align: -2px;
-  margin-right: 6px;
-}
-
-.spinner-white {
-  border-color: rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (max-width: 480px) {
-  .login-container { padding: 1.75rem 1.25rem; }
-}
 </style>

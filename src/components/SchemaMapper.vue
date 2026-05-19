@@ -80,72 +80,38 @@ const autoMap = () => {
 </template>
 
 <style scoped>
-.schema-mapper {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  padding: 20px;
-  margin-bottom: 20px;
+
+.schema-mapper { }
+.mapper-title { font-size: 0.875rem; font-weight: 700; color: #e6edf3; margin: 0 0 1.25rem; }
+.mapper-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.75rem; align-items: center; }
+.mapper-header { font-size: 0.72rem; color: #7d8590; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.arrow { color: #7d8590; text-align: center; }
+.mapper-row { display: contents; }
+.csv-col {
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
 }
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-.btn-auto {
-  background-color: #2196f3;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.btn-auto:hover {
-  background-color: #1976d2;
-}
-.mapper-table {
+.field-select {
+  padding: 0.5rem 0.75rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.8rem;
+  transition: border-color 0.2s;
   width: 100%;
-  border-collapse: collapse;
 }
-.mapper-table th, .mapper-table td {
-  border-bottom: 1px solid #eee;
-  padding: 12px;
-  text-align: left;
-}
-.mapper-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #333;
-}
-.field-name {
-  font-weight: 500;
-}
-.required-star {
-  color: red;
-  font-weight: bold;
-  margin-left: 4px;
-}
-.badge {
-  font-size: 0.75rem;
-  padding: 3px 6px;
-  border-radius: 12px;
-  margin-left: 8px;
-}
-.lang-badge {
-  background-color: #e3f2fd;
-  color: #1565c0;
-}
-.format-badge {
-  background-color: #f5f5f5;
-  color: #616161;
-  font-family: monospace;
-}
-.col-select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
+.field-select:focus { outline: none; border-color: #388bfd; }
+.field-select option { background: #161b22; }
+.field-select.mapped { border-color: rgba(63,185,80,0.3); }
+.preview-table { width: 100%; border-collapse: collapse; margin-top: 1.25rem; }
+.preview-table th { font-size: 0.72rem; color: #7d8590; text-transform: uppercase; padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #21262d; }
+.preview-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #21262d; font-size: 0.8rem; color: #e6edf3; }
+.preview-table tr:last-child td { border-bottom: none; }
+
 </style>

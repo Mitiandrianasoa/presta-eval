@@ -334,39 +334,18 @@ const getStatusText = (status) => {
 </script>
 
 <style scoped>
-.import-container { font-family: Arial, sans-serif; max-width: 1400px; margin: 20px auto; padding: 20px; background: #f9f9f9; border-radius: 8px; }
 
-.uploads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
-.upload-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
-.upload-card h3 { margin: 0 0 15px 0; font-size: 1.1em; color: #333; }
-.upload-card input { margin: 10px 0; }
-.file-status { margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 12px; }
-.file-status.success { background: #e6f9ed; color: #28a745; }
-.file-status.error { background: #fdf2f2; color: #dc3545; }
 
-.import-action { text-align: center; margin: 20px 0; }
-.btn-import-all { padding: 15px 40px; font-size: 18px; background-color: #4ed282; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 8px; transition: all 0.3s; }
-.btn-import-all:hover:not(:disabled) { background-color: #3db86b; transform: scale(1.02); }
-.btn-import-all:disabled { background-color: #ccc; cursor: not-allowed; }
+.bo-page { background: #0d1117; min-height: 100vh; margin-left: 240px; padding: 2rem; color: #e6edf3; }
+.bo-page-header { margin-bottom: 2rem; }
+.bo-page-header h1 { font-size: 1.4rem; font-weight: 700; color: #e6edf3; margin: 0 0 0.3rem; }
+.bo-page-header p { color: #7d8590; margin: 0; font-size: 0.875rem; }
 
-.status-box { padding: 15px; margin: 20px 0; border-left: 5px solid; border-radius: 4px; }
-.status-box.success { background-color: #e6f9ed; border-left-color: #28a745; }
-.status-box.error { background-color: #fdf2f2; border-left-color: #dc3545; }
+.import-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+.import-card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 1.5rem; cursor: pointer; text-decoration: none; display: block; transition: border-color 0.2s, transform 0.2s; }
+.import-card:hover { border-color: rgba(56,139,253,0.5); transform: translateY(-2px); }
+.import-icon { font-size: 2rem; margin-bottom: 1rem; }
+.import-card h3 { font-size: 0.95rem; font-weight: 700; color: #e6edf3; margin: 0 0 0.5rem; }
+.import-card p { font-size: 0.8rem; color: #7d8590; margin: 0; line-height: 1.5; }
 
-.progress-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
-.progress-bar { width: 100%; height: 30px; background: #e9ecef; border-radius: 15px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #4ed282, #28a745); transition: width 0.3s ease; border-radius: 15px; }
-.progress-text { text-align: center; margin-top: 10px; font-weight: bold; color: #28a745; }
-
-.report-section { margin-top: 30px; background: white; border-radius: 8px; padding: 15px; }
-.report-section h3 { margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #4ed282; }
-.report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.report-table th, .report-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-.report-table th { background-color: #f1f1f1; }
-.center { text-align: center; }
-.success { background-color: #f3fbf6; }
-.error { background-color: #fff5f5; }
-.txt-success { color: #28a745; font-weight: bold; }
-.txt-error { color: #dc3545; font-weight: bold; }
-.txt-pending { color: #666; }
 </style>
