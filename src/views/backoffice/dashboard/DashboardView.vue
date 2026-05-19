@@ -133,7 +133,11 @@
         <div class="stats-mini-row">
           <div class="stat-mini">
             <span class="stat-mini-value">{{ totalOrders }}</span>
-            <span class="stat-mini-label">Commandes</span>
+            <span class="stat-mini-label">Commandes Valides</span>
+          </div>
+          <div class="stat-mini stat-mini-cancelled">
+            <span class="stat-mini-value cancelled">{{ totalCancelledOrders }}</span>
+            <span class="stat-mini-label">Commandes Annulées</span>
           </div>
           <!-- <div class="stat-mini">
             <span class="stat-mini-value">{{ formatCurrency(tvaTotale) }}</span>
@@ -254,6 +258,8 @@ interface Order {
   benefice: number;
   marge: number;
   products: OrderProduct[];
+  order_state?: string;
+  isCancelled?: boolean;
 }
 
 // État
@@ -272,13 +278,18 @@ const cacheCategories = ref<Record<string, string>>({});
 const hasActiveFilter = computed(() => !!(dateDebut.value || dateFin.value));
 
 const ordersFiltered = computed(() => {
-  if (!hasActiveFilter.value) return orders.value;
+  let result = orders.value;
+  
+  // Exclure les commandes annulées
+  result = result.filter(order => !order.isCancelled);
+  
+  if (!hasActiveFilter.value) return result;
   
   const debut = dateDebut.value ? new Date(dateDebut.value) : null;
   const fin = dateFin.value ? new Date(dateFin.value) : null;
   if (fin) fin.setHours(23, 59, 59, 999);
   
-  return orders.value.filter(order => {
+  return result.filter(order => {
     const orderDate = new Date(order.date);
     let include = true;
     if (debut && orderDate < debut) include = false;
@@ -288,6 +299,10 @@ const ordersFiltered = computed(() => {
 });
 
 const totalOrders = computed(() => ordersFiltered.value.length);
+
+const totalCancelledOrders = computed(() => 
+  orders.value.filter(order => order.isCancelled).length
+);
 
 const totalHT = computed(() => 
   ordersFiltered.value.reduce((sum, o) => sum + o.totalHT, 0)
@@ -405,6 +420,8 @@ const loadOrders = async () => {
       const customerId = orderEl.querySelector('id_customer')?.textContent?.trim() || '';
       const totalPaidTTC = parseFloat(orderEl.querySelector('total_paid_tax_incl')?.textContent?.trim() || '0');
       const totalProductsHT = parseFloat(orderEl.querySelector('total_products')?.textContent?.trim() || '0');
+      const orderState = orderEl.querySelector('current_state')?.textContent?.trim() || '';
+      const isCancelled = orderState === '6'; // 6 = cancelled state in PrestaShop
 
       if (!dateAdd || !orderId) continue;
 
@@ -448,7 +465,9 @@ const loadOrders = async () => {
         totalAchat,
         benefice: beneficeOrder,
         marge: margeOrder,
-        products
+        products,
+        order_state: orderState,
+        isCancelled
       });
     }
 
@@ -906,6 +925,16 @@ onMounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-top: 0.25rem;
+}
+
+.stat-mini-cancelled {
+  border-left: 4px solid #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.stat-mini-value.cancelled {
+  color: #ef4444;
+  font-weight: 900;
 }
 
 .orders-section {

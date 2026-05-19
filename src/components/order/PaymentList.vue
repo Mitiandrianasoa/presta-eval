@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Sidebar from '../../components/Sidebar.vue';
 import { paymentService, type Payment, type PaymentSummary } from '../../services/paymentService';
+import api from '../../api/api';
 
 // ─── État ──────────────────────────────────────────────────────────────────────
 
@@ -13,15 +14,39 @@ const error            = ref<string | null>(null);
 const sidebarCollapsed = ref(false);
 const search           = ref('');
 const activeMethod     = ref('');   // filtre par méthode
+const cancelledOrders  = ref<Map<string, boolean>>(new Map()); // Map: order id/reference -> is cancelled
 
 const router = useRouter();
 
 // ─── Chargement ────────────────────────────────────────────────────────────────
 
+const loadCancelledOrders = async () => {
+  try {
+    const response = await api.get('/orders?output_format=XML&display=[id,reference,current_state]&limit=5000');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const orders = xmlDoc.querySelectorAll('order');
+    
+    orders.forEach(order => {
+      const id = order.querySelector('id')?.textContent?.trim() || '';
+      const ref = order.querySelector('reference')?.textContent?.trim() || '';
+      const state = order.querySelector('current_state')?.textContent?.trim() || '';
+      const isCancelled = state === '6';
+      
+      // Mapper à la fois par ID et par référence pour une correspondance flexible
+      if (id) cancelledOrders.value.set(id, isCancelled);
+      if (ref) cancelledOrders.value.set(ref, isCancelled);
+    });
+  } catch (e) {
+    console.warn('Erreur chargement commandes annulées:', e);
+  }
+};
+
 const loadData = async () => {
   loading.value = true;
   error.value   = null;
   try {
+    await loadCancelledOrders();
     const [data, sumData] = await Promise.all([
       paymentService.fetchAll(),
       paymentService.getPaymentSummary(),
@@ -167,7 +192,7 @@ onMounted(loadData);
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="p in filteredPayments" :key="p.id">
+                  <tr v-for="p in filteredPayments" :key="p.id" :class="{ 'row-cancelled': cancelledOrders.get(p.order_reference) }">
 
                     <td class="col-id">{{ p.id }}</td>
 
@@ -287,6 +312,9 @@ onMounted(loadData);
 .payments-table td { padding: 12px 14px; border-bottom: 1px solid #f0f2f5; color: #444; }
 .payments-table tbody tr:last-child td { border-bottom: none; }
 .payments-table tbody tr:hover { background: #f8fbff; }
+.payments-table tbody tr.row-cancelled { background: #ffebee; }
+.payments-table tbody tr.row-cancelled:hover { background: #ffcdd2; }
+.payments-table tbody tr.row-cancelled td { color: #c62828; }
 
 /* ── Colonnes ───────────────────────────────────────────────── */
 .col-id          { color: #bbb; font-size: .8rem; }
