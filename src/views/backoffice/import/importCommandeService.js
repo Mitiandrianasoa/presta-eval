@@ -53,6 +53,26 @@ export const estDateValide = (dateStr) => {
   if (!dateStr) return true;
   return /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr.trim());
 };
+// export const estDateValide = (dateStr) => {
+//   if (!dateStr) return false;
+
+//   const match = dateStr.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+//   if (!match) return false;
+
+//   const [, day, month, year] = match;
+
+//   const date = new Date(`${year}-${month}-${day}`);
+
+//   return (
+//     date instanceof Date &&
+//     !isNaN(date) &&
+//     date.getFullYear() === parseInt(year) &&
+//     date.getMonth() + 1 === parseInt(month) &&
+//     date.getDate() === parseInt(day)
+//   );
+// };
+
 
 export const convertirDateCsvEnSql = (dateStr) => {
   if (!dateStr) {
@@ -167,7 +187,13 @@ export const parserAchat = (achatStr) => {
       
       if (parts.length >= 2) {
         const reference = parts[0].trim();
-        const quantite = parseInt(parts[1].trim()) || 1;
+        // const quantite = parseInt(parts[1].trim()) || 1;
+        const quantite = parseInt(parts[1].trim());
+
+        if (isNaN(quantite) || quantite <= 0) {
+          console.warn(`⚠️ Quantité invalide pour ${reference}:`, parts[1]);
+          continue;
+        }
         const karazany = parts[2] ? parts[2].trim() : '';
         
         if (reference) {

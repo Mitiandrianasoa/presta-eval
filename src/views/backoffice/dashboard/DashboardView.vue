@@ -127,6 +127,19 @@
               </span>
             </div>
           </div>
+
+          <div class="summary-card accent-teal">
+            <div class="summary-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 3h18v4H3z" />
+                <path d="M5 11h14v10H5z" />
+              </svg>
+            </div>
+            <div class="summary-info">
+              <span class="summary-label">Valeur du stock</span>
+              <span class="summary-value">{{ formatCurrency(totalStockValue) }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- STATS RAPIDES -->
@@ -360,6 +373,31 @@ const totalAchat = computed(() =>
   ordersFiltered.value.reduce((sum, o) => sum + o.totalAchat, 0)
 );
 
+const reservedByProduct = computed(() => {
+  const map: Record<string, number> = {};
+  // Somme des quantités réservées par produit (toutes commandes non annulées)
+  orders.value.forEach(order => {
+    if (order.isCancelled) return;
+    order.products.forEach(p => {
+      if (!p.id) return;
+      map[p.id] = (map[p.id] || 0) + (p.quantity || 0);
+    });
+  });
+  return map;
+});
+
+const totalStockValue = computed(() => {
+  // Somme des prix d'achat unitaires * quantités physiques (disponible + réservé)
+  return stockAvailables.value.reduce((acc, s) => {
+    const prod = cacheProduits.value[s.id_product];
+    const unitPrice = prod ? (prod.wholesale_price ?? prod.price ?? 0) : 0;
+    const available = typeof s.quantity === 'number' ? s.quantity : parseInt(String(s.quantity) || '0', 10);
+    const reserved = reservedByProduct.value[s.id_product] || 0;
+    const physical = available + reserved;
+    return acc + unitPrice * physical;
+  }, 0);
+});
+
 // const benefice = computed(() => totalTTC.value - totalAchat.value);
 
 // const margePourcentage = computed(() => {
@@ -576,9 +614,10 @@ const loadStockAvailables = async () => {
         quantity: parseInt(stockEl.querySelector('quantity')?.textContent?.trim() || '0', 10) || 0
       }))
       .filter(stock => !!stock.id && !!stock.id_product);
+      console.log(`Stocks disponibles chargés: ${stockAvailables.value.length}`);
   } catch (e) {
     console.warn('Erreur chargement stocks disponibles:', e);
-    stockAvailables.value = [];
+    stockAvailables.value = [];{}
   }
 };
 
