@@ -118,18 +118,25 @@ export function calculateCategoryStockStats(
       const logDispo: string[] = [];
       const logReserve: string[] = [];
 
-      // Calcul du stock disponible
-      stockAvailables.forEach(stock => {
-        const productInfo = productCache[stock.id_product];
-        if (productInfo && productInfo.category_id === catId) {
-          const qte = stock.quantity || 0;
-          availableQuantity += qte;
-          logDispo.push(`  - Stock dispo pour produit #${stock.id_product}: qté=${qte}`);
-        }
+      // Calcul du stock disponible (uniquement pour l'attribut produit 0)
+      const dispoPerProduct: Record<string, number> = {};
+      stockAvailables
+        .filter(stock => stock.id_product_attribute === '0')
+        .forEach(stock => {
+          const productInfo = productCache[stock.id_product];
+          if (productInfo && productInfo.category_id === catId) {
+            const qte = stock.quantity || 0;
+            dispoPerProduct[stock.id_product] = (dispoPerProduct[stock.id_product] || 0) + qte;
+          }
+        });
+      Object.entries(dispoPerProduct).forEach(([productId, qte]) => {
+        availableQuantity += qte;
+        logDispo.push(`  - Stock dispo pour produit #${productId}: qté=${qte}`);
       });
 
       // Calcul du stock réservé (uniquement pour les commandes non livrées)
       const DELIVERED_STATE_ID = '5';
+      const reservePerProduct: Record<string, number> = {};
       activeOrders
         .filter(order => order.current_state !== DELIVERED_STATE_ID)
         .forEach(order => {
@@ -137,11 +144,14 @@ export function calculateCategoryStockStats(
             const productInfo = productCache[product.id];
             if (productInfo && productInfo.category_id === catId) {
               const qte = product.quantity || 0;
-              reservedQuantity += qte;
-              logReserve.push(`  - Stock réservé par commande #${order.id} (non livrée) pour produit #${product.id}: qté=${qte}`);
+              reservePerProduct[product.id] = (reservePerProduct[product.id] || 0) + qte;
             }
           });
         });
+      Object.entries(reservePerProduct).forEach(([productId, qte]) => {
+        reservedQuantity += qte;
+        logReserve.push(`  - Stock réservé pour produit #${productId}: qté=${qte}`);
+      });
       
       const physicalQuantity = availableQuantity + reservedQuantity;
 
