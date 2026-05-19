@@ -135,6 +135,10 @@
             <span class="stat-mini-value">{{ totalOrders }}</span>
             <span class="stat-mini-label">Commandes Valides</span>
           </div>
+          <div class="stat-mini">
+            <span class="stat-mini-value">{{ totalCarts }}</span>
+            <span class="stat-mini-label">Paniers</span>
+          </div>
           <div class="stat-mini stat-mini-cancelled">
             <span class="stat-mini-value cancelled">{{ totalCancelledOrders }}</span>
             <span class="stat-mini-label">Commandes Annulées</span>
@@ -152,6 +156,13 @@
             <span class="stat-mini-label">Panier Moyen TTC</span>
           </div> -->
         </div>
+
+        <CategoryAnalyticsSection
+          :orders="ordersFiltered"
+          :product-cache="cacheProduits"
+          :category-cache="cacheCategories"
+          :stock-availables="stockAvailables"
+        />
 
         <!-- TABLEAU DÉTAILLÉ DES COMMANDES -->
         <div class="orders-section">
@@ -238,18 +249,21 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../../api/api';
 import Sidebar from '../../../components/Sidebar.vue';
+import CategoryAnalyticsSection from '../../../components/dashboard/CategoryAnalyticsSection.vue';
 
 const router = useRouter();
 
 // Types
 interface OrderProduct {
   id: string;
+  attribute_id: string;
   name: string;
   quantity: number;
 }
 
 interface Order {
   id: string;
+  id_cart: string;
   date: string;
   customer_id: string;
   totalHT: number;
@@ -268,6 +282,8 @@ const error = ref('');
 const dateDebut = ref('');
 const dateFin = ref('');
 const orders = ref<Order[]>([]);
+const carts = ref<{ id: string; date: string }[]>([]);
+const stockAvailables = ref<{ id: string; id_product: string; id_product_attribute: string; quantity: number }[]>([]);
 const currentTab = ref('orders');
 // const cacheProduits = ref<Record<string, { price: number; wholesale_price: number }>>({});
 const cacheProduits = ref<Record<string, { price: number; wholesale_price: number, category_id: string }>>({});
@@ -299,6 +315,34 @@ const ordersFiltered = computed(() => {
 });
 
 const totalOrders = computed(() => ordersFiltered.value.length);
+
+const linkedCartIds = computed(() => {
+  return new Set(
+    orders.value
+      .map(order => order.id_cart?.trim())
+      .filter((idCart): idCart is string => !!idCart)
+  );
+});
+
+const cartsFiltered = computed(() => {
+  const availableCarts = carts.value.filter(cart => !linkedCartIds.value.has(cart.id));
+
+  if (!hasActiveFilter.value) return availableCarts;
+
+  const debut = dateDebut.value ? new Date(dateDebut.value) : null;
+  const fin = dateFin.value ? new Date(dateFin.value) : null;
+  if (fin) fin.setHours(23, 59, 59, 999);
+
+  return availableCarts.filter(cart => {
+    const cartDate = new Date(cart.date);
+    let include = true;
+    if (debut && cartDate < debut) include = false;
+    if (fin && cartDate > fin) include = false;
+    return include;
+  });
+});
+
+const totalCarts = computed(() => cartsFiltered.value.length);
 
 const totalCancelledOrders = computed(() => 
   orders.value.filter(order => order.isCancelled).length
@@ -382,8 +426,20 @@ const statsParCategorie = computed(() => {
 
   // 2. Transformer la Map en tableau trié par bénéfice décroissant
   return Object.keys(statsMap).map(catId => {
-    const ventesHT = statsMap[catId].ventesHT;
-    const achat = statsMap[catId].achat;
+    const stat = statsMap[catId];
+    if (!stat) {
+      return {
+        id: catId,
+        name: cacheCategories.value[catId] || `Catégorie #${catId}`,
+        totalVentesHT: 0,
+        totalAchat: 0,
+        benefice: 0,
+        marge: 0
+      };
+    }
+
+    const ventesHT = stat.ventesHT;
+    const achat = stat.achat;
     const beneficeCat = ventesHT - achat;
     const margeCat = ventesHT > 0 ? (beneficeCat / ventesHT) * 100 : 0;
 
@@ -409,8 +465,11 @@ const loadOrders = async () => {
     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
     const orderElements = xmlDoc.querySelectorAll('order');
 
+    await loadCarts();
+
     await loadProductCache();
     await loadCategoryCache();
+    await loadStockAvailables();
 
     const ordersArray: Order[] = [];
 
@@ -436,9 +495,10 @@ const loadOrders = async () => {
         for (const row of Array.from(orderRows)) {
           const productId = row.querySelector('product_id')?.textContent?.trim() || '';
           const productName = row.querySelector('product_name')?.textContent?.trim() || '';
+          const productAttributeId = row.querySelector('product_attribute_id')?.textContent?.trim() || '0';
           const quantity = parseInt(row.querySelector('product_quantity')?.textContent?.trim() || '1');
           
-          products.push({ id: productId, name: productName, quantity });
+          products.push({ id: productId, attribute_id: productAttributeId, name: productName, quantity });
 
           if (productId && cacheProduits.value[productId]) {
             const wholesalePrice = cacheProduits.value[productId].wholesale_price || 0;
@@ -458,6 +518,7 @@ const loadOrders = async () => {
 
       ordersArray.push({
         id: orderId,
+        id_cart: orderEl.querySelector('id_cart')?.textContent?.trim() || '',
         date: dateAdd,
         customer_id: customerId,
         totalHT: totalProductsHT,
@@ -478,6 +539,46 @@ const loadOrders = async () => {
     error.value = `Erreur lors du chargement: ${err.message}`;
   } finally {
     loading.value = false;
+  }
+};
+
+const loadCarts = async () => {
+  try {
+    const response = await api.get('/carts?output_format=XML&display=[id,date_add]&limit=5000');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const cartElements = xmlDoc.querySelectorAll('cart');
+
+    carts.value = Array.from(cartElements)
+      .map(cartEl => ({
+        id: cartEl.querySelector('id')?.textContent?.trim() || '',
+        date: cartEl.querySelector('date_add')?.textContent?.trim() || ''
+      }))
+      .filter(cart => !!cart.id && !!cart.date);
+  } catch (e) {
+    console.warn('Erreur chargement paniers:', e);
+    carts.value = [];
+  }
+};
+
+const loadStockAvailables = async () => {
+  try {
+    const response = await api.get('/stock_availables?output_format=XML&display=[id,id_product,id_product_attribute,quantity]&limit=5000');
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(response.data, 'text/xml');
+    const stockElements = xmlDoc.querySelectorAll('stock_available');
+
+    stockAvailables.value = Array.from(stockElements)
+      .map(stockEl => ({
+        id: stockEl.querySelector('id')?.textContent?.trim() || '',
+        id_product: stockEl.querySelector('id_product')?.textContent?.trim() || '',
+        id_product_attribute: stockEl.querySelector('id_product_attribute')?.textContent?.trim() || '0',
+        quantity: parseInt(stockEl.querySelector('quantity')?.textContent?.trim() || '0', 10) || 0
+      }))
+      .filter(stock => !!stock.id && !!stock.id_product);
+  } catch (e) {
+    console.warn('Erreur chargement stocks disponibles:', e);
+    stockAvailables.value = [];
   }
 };
 
