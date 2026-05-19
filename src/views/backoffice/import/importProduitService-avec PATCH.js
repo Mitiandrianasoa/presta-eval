@@ -2,9 +2,10 @@
  * Service d'importation des Produits PrestaShop (Fichier 1)
  * Logique identique à ImportProduits.vue + gestion des erreurs CSV :
  *  1. Noms de colonnes non conformes
- *  2. Format de date différent de DD/MM/YYYY
- *  3. Montants négatifs
- *  4. PATCH de la available_date après création/update du produit
+ *  2. Format de date différent de DD/MM/YYYY (validation calendaire complète)
+ *  3. Montants négatifs / séparateurs quelconques
+ *  4. Taxe obligatoire
+ *  5. PATCH de la available_date après création/update du produit
  */
 
 import { buildPrestashopXml } from '../../../utils/prestashopXmlBuilder';
@@ -40,29 +41,93 @@ export const validerColonnesProduits = (colonnesDetectees) => {
 };
 
 /**
- * Vérifie qu'une date est au format DD/MM/YYYY.
+ * Vérifie qu'une date est au format DD<sep>MM<sep>YYYY (tout séparateur accepté)
+ * ET qu'elle existe réellement dans le calendrier (jours max par mois,
+ * années bissextiles pour février).
+ * Exemples valides   : "01/01/2026"  "31-12-2025"  "29.02.2024"
+ * Exemples invalides : "36/01/2026"  "29/02/2025"  "31/04/2026"
  * @param {string} dateStr
  * @returns {boolean}
  */
 export const estDateValide = (dateStr) => {
   if (!dateStr) return true; // champ optionnel
-  return /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr.trim());
+
+  // 1. Accepter n'importe quel séparateur non-chiffre unique (/, -, ., espace…)
+  const match = dateStr.trim().match(/^(\d{2})[^\d](\d{2})[^\d](\d{4})$/);
+  if (!match) return false;
+
+  const day   = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year  = parseInt(match[3], 10);
+
+  // 2. Bornes basiques
+  if (month < 1 || month > 12) return false;
+  if (day   < 1)               return false;
+
+  // 3. Validation calendaire réelle (gère bissextiles automatiquement) :
+  //    JS reporte les jours débordants sur le mois suivant → la comparaison échoue
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year    &&
+    date.getMonth()    === month - 1 &&
+    date.getDate()     === day
+  );
 };
 
 /**
- * Vérifie qu'un montant est positif (>= 0).
+ * Normalise un montant en supprimant les séparateurs de milliers
+ * (espace, apostrophe) et en convertissant le séparateur décimal en point.
+ * Gère tous les formats courants :
+ *   "1234"       → 1234
+ *   "1234,56"    → 1234.56   (virgule = décimal)
+ *   "1234.56"    → 1234.56   (point = décimal)
+ *   "1 234,56"   → 1234.56   (espace milliers + virgule décimal)
+ *   "1.234,56"   → 1234.56   (point milliers + virgule décimal)
+ *   "1,234.56"   → 1234.56   (virgule milliers + point décimal)
+ *   "1'234.56"   → 1234.56   (apostrophe milliers + point décimal)
+ * @param {string|number} valeur
+ * @returns {number} float parsé (NaN si invalide)
+ */
+export const normaliserMontant = (valeur) => {
+  if (valeur === null || valeur === undefined || valeur === '') return NaN;
+  let s = String(valeur).trim();
+
+  const hasComma = s.includes(',');
+  const hasDot   = s.includes('.');
+
+  if (hasComma && hasDot) {
+    // Les deux présents : le DERNIER est le séparateur décimal
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      // ex: "1.234,56" → virgule = décimal, point = milliers
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // ex: "1,234.56" → point = décimal, virgule = milliers
+      s = s.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    // Virgule seule → séparateur décimal
+    s = s.replace(',', '.');
+  }
+  // Supprimer espaces et apostrophes (séparateurs de milliers restants)
+  s = s.replace(/[\s']/g, '');
+
+  return parseFloat(s);
+};
+
+/**
+ * Vérifie qu'un montant est >= 0, quel que soit son format de saisie.
  * @param {string|number} valeur
  * @returns {boolean}
  */
 export const estMontantPositif = (valeur) => {
   if (valeur === null || valeur === undefined || valeur === '') return true;
-  const n = parseFloat(String(valeur).replace(',', '.'));
+  const n = normaliserMontant(valeur);
   return !isNaN(n) && n >= 0;
 };
 
 /**
  * Valide une ligne CSV produit.
- * @param {Object} row - Ligne brute du CSV
+ * @param {Object} row   - Ligne brute du CSV
  * @param {number} index - Numéro de ligne (pour le message d'erreur)
  * @returns {string[]} Liste des erreurs sur cette ligne
  */
@@ -70,11 +135,20 @@ export const validerLigneProduit = (row, index) => {
   const erreurs = [];
   const ligne = `Ligne ${index + 1} (ref: ${row.reference || '?'})`;
 
+  // Taxe obligatoire
+  if (!row.Taxe || row.Taxe.toString().trim() === '') {
+    erreurs.push(`${ligne} : la colonne "Taxe" est obligatoire et ne peut pas être vide`);
+  }
+
+  // Date optionnelle mais valide si renseignée
   if (!estDateValide(row.date_availability_produit)) {
     erreurs.push(
-      `${ligne} : date_availability_produit "${row.date_availability_produit}" invalide (attendu DD/MM/YYYY)`
+      `${ligne} : date_availability_produit "${row.date_availability_produit}" invalide ` +
+      `(attendu DD/MM/YYYY avec une date calendaire réelle)`
     );
   }
+
+  // Montants positifs (tout séparateur accepté)
   if (!estMontantPositif(row.prix_ttc)) {
     erreurs.push(`${ligne} : prix_ttc "${row.prix_ttc}" doit être un montant positif`);
   }
@@ -109,7 +183,7 @@ export const validerCSVProduits = (rows) => {
   }
 };
 
-// ─── Logique métier (identique à ImportProduits.vue) ─────────────────────────
+// ─── Logique métier ───────────────────────────────────────────────────────────
 
 export const normaliserFormatTaxe = (taxeTxt) => {
   if (!taxeTxt) return { taux: '0', label: 'TVA 0%' };
@@ -126,46 +200,44 @@ export const normaliserFormatTaxe = (taxeTxt) => {
 };
 
 /**
- * Convertit une date CSV (DD/MM/YYYY) en format SQL (YYYY-MM-DD).
+ * Convertit une date CSV (DD<sep>MM<sep>YYYY, tout séparateur) en format SQL (YYYY-MM-DD).
  * @param {string} dateStr
  * @returns {string|null}
  */
 export const convertirDateCsvEnSql = (dateStr) => {
   if (!dateStr) return null;
-  const match = dateStr.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const match = dateStr.trim().match(/^(\d{2})[^\d](\d{2})[^\d](\d{4})$/);
   if (!match) {
-    throw new Error(`Format de date invalide : "${dateStr}" (attendu DD/MM/YYYY)`);
+    throw new Error(
+      `Format de date invalide : "${dateStr}" (attendu DD/MM/YYYY ou DD-MM-YYYY ou DD.MM.YYYY…)`
+    );
   }
   const [, day, month, year] = match;
   return `${year}-${month}-${day}`;
 };
 
 export const preparerLigneProduit = (row) => {
-  const taxeInfo = normaliserFormatTaxe(row.Taxe);
-  const prixTtcStr = row.prix_ttc ? row.prix_ttc.toString().trim().replace(',', '.') : '0';
-  const prixTtc = parseFloat(prixTtcStr);
-  const prixAchatStr = row.prix_achat ? row.prix_achat.toString().trim().replace(',', '.') : '0';
-  const prixAchat = parseFloat(prixAchatStr);
+  const taxeInfo  = normaliserFormatTaxe(row.Taxe);
+  const prixTtc   = row.prix_ttc   ? normaliserMontant(row.prix_ttc)   : 0;
+  const prixAchat = row.prix_achat ? normaliserMontant(row.prix_achat) : 0;
   const tauxDecimal = parseFloat(taxeInfo.taux);
-  let prixHt = tauxDecimal > 0 && prixTtc > 0 ? prixTtc / (1 + tauxDecimal / 100) : prixTtc;
-  const prixHtFormate = prixHt.toFixed(6);
+  const prixHt = tauxDecimal > 0 && prixTtc > 0 ? prixTtc / (1 + tauxDecimal / 100) : prixTtc;
 
-  // Stocker la date CSV brute, la conversion se fera au moment du PATCH
   const dateCsvBrute = row.date_availability_produit?.trim() || '';
 
   return {
-    reference: row.reference?.trim(),
-    nom: row.nom?.trim(),
-    prix_ht: prixHtFormate,
-    prix_achat: prixAchat.toFixed(6),
-    date_csv_brute: dateCsvBrute,           // Date brute du CSV (DD/MM/YYYY)
-    date_dispo: null,                        // Sera remplie après conversion
-    categorie: row.categorie?.trim() || 'Accueil',
-    taxe_label: taxeInfo.label,
-    taxe_taux: taxeInfo.taux,
-    id_prestashop: null,
-    status: 'pending',
-    erreur: '',
+    reference:      row.reference?.trim(),
+    nom:            row.nom?.trim(),
+    prix_ht:        prixHt.toFixed(6),
+    prix_achat:     prixAchat.toFixed(6),
+    date_csv_brute: dateCsvBrute,
+    date_dispo:     null,
+    categorie:      row.categorie?.trim() || 'Accueil',
+    taxe_label:     taxeInfo.label,
+    taxe_taux:      taxeInfo.taux,
+    id_prestashop:  null,
+    status:         'pending',
+    erreur:         '',
     tables: { ps_product: 'En attente', ps_product_lang: 'En attente', ps_product_shop: 'En attente' },
   };
 };
@@ -296,19 +368,6 @@ export const obtenirOuCreerGroupeTaxe = async (labelTaxe, tauxTaxe, idPays, cach
   return idTaxRuleGroup;
 };
 
-// export const verifierExistenceReference = async (refProduct) => {
-//   try {
-//     const res = await api.get(`/products?filter[reference]=[${refProduct}]&display=[id]`);
-//     if (!res.data) return null;
-//     const parser = new DOMParser();
-//     const xmlDoc = parser.parseFromString(res.data, 'application/xml');
-//     const id = xmlDoc.getElementsByTagName('id')[0]?.textContent;
-//     return id || null;
-//   } catch (error) {
-//     return null;
-//   }
-// };
-
 export const verifierExistenceReference = async (refProduct) => {
   try {
     const res = await api.get(`/products?filter[reference]=[${refProduct}]&display=[id]`);
@@ -322,13 +381,12 @@ export const verifierExistenceReference = async (refProduct) => {
   }
 };
 
-// ─── NOUVELLE FONCTION : PATCH de la available_date ──────────────────────────
+// ─── PATCH de la available_date ───────────────────────────────────────────────
 
 /**
  * Met à jour UNIQUEMENT la available_date d'un produit existant.
- * Simule un PATCH en n'envoyant que les champs nécessaires.
  * @param {string} productId - ID du produit PrestaShop
- * @param {string} dateSql - Date au format YYYY-MM-DD
+ * @param {string} dateSql   - Date au format YYYY-MM-DD
  * @returns {Promise<void>}
  */
 export const patcherAvailableDate = async (productId, dateSql) => {
@@ -337,21 +395,18 @@ export const patcherAvailableDate = async (productId, dateSql) => {
     return;
   }
 
-  // On récupère d'abord le produit existant pour préserver tous les champs obligatoires
   const existingProductRes = await api.get(`/products/${productId}?output_format=XML`);
   const parser = new DOMParser();
   const existingDoc = parser.parseFromString(existingProductRes.data, 'application/xml');
 
-  // Extraire les champs qu'on doit renvoyer obligatoirement
-  const price = existingDoc.querySelector('product price')?.textContent?.trim() || '0';
+  const price             = existingDoc.querySelector('product price')?.textContent?.trim()              || '0';
   const idCategoryDefault = existingDoc.querySelector('product id_category_default')?.textContent?.trim() || '2';
-  const idTaxRulesGroup = existingDoc.querySelector('product id_tax_rules_group')?.textContent?.trim() || '1';
-  const active = existingDoc.querySelector('product active')?.textContent?.trim() || '1';
-  const state = existingDoc.querySelector('product state')?.textContent?.trim() || '1';
+  const idTaxRulesGroup   = existingDoc.querySelector('product id_tax_rules_group')?.textContent?.trim()  || '1';
+  const active            = existingDoc.querySelector('product active')?.textContent?.trim()              || '1';
+  const state             = existingDoc.querySelector('product state')?.textContent?.trim()               || '1';
 
   console.log(`📅 PATCH available_date pour produit #${productId} : "${dateSql}"`);
 
-  // Construire un XML minimal avec la nouvelle date
   const xmlPatch = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <product>
@@ -366,30 +421,30 @@ export const patcherAvailableDate = async (productId, dateSql) => {
 </prestashop>`;
 
   await api.put(`/products/${productId}`, xmlPatch, {
-    headers: { 'Content-Type': 'application/xml; charset=utf-8' }
+    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
   });
 
   console.log(`✅ PATCH available_date réussi pour produit #${productId} : ${dateSql}`);
 };
 
-// ─── MODIFICATION DE importerProduits ────────────────────────────────────────
+// ─── Importation principale ───────────────────────────────────────────────────
 
 /**
  * Lance l'importation des produits.
  * Étape 1 : Création/Mise à jour du produit (sans available_date)
  * Étape 2 : PATCH de la available_date si une date est fournie dans le CSV
- * 
+ *
  * @param {Object[]} produitsTraites - Tableau réactif des produits préparés
- * @param {Function} onProgress - Callback appelé après chaque ligne (produit modifié en place)
+ * @param {Function} onProgress      - Callback appelé après chaque ligne
  * @returns {{ success: boolean, message: string }}
  */
 export const importerProduits = async (produitsTraites, onProgress) => {
-  const produitsCreesIds = [];
+  const produitsCreesIds   = [];
   const categoriesCreesIds = [];
-  const taxesCreesIds = [];
-  const cacheCategories = {};
-  const cacheTaxes = {};
-  let transactionEnEchec = false;
+  const taxesCreesIds      = [];
+  const cacheCategories    = {};
+  const cacheTaxes         = {};
+  let transactionEnEchec   = false;
 
   for (let prod of produitsTraites) {
     if (transactionEnEchec) {
@@ -399,16 +454,16 @@ export const importerProduits = async (produitsTraites, onProgress) => {
     }
     try {
       const idCategoryDefault = await obtenirOuCreerCategorie(prod.categorie, cacheCategories, categoriesCreesIds);
-      const idTaxRulesGroup = await obtenirOuCreerGroupeTaxe(
+      const idTaxRulesGroup   = await obtenirOuCreerGroupeTaxe(
         prod.taxe_label || 'TVA 0%',
-        prod.taxe_taux || '0.000',
+        prod.taxe_taux  || '0.000',
         3,
         cacheTaxes,
         taxesCreesIds
       );
       const existId = await verifierExistenceReference(prod.reference);
 
-      // ─── ÉTAPE 1 : Créer/Mettre à jour le produit SANS available_date ──────
+      // Étape 1 : créer/mettre à jour le produit SANS available_date
       const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <product>
@@ -430,33 +485,32 @@ export const importerProduits = async (produitsTraites, onProgress) => {
   </product>
 </prestashop>`;
 
-      const url = existId ? `/products/${existId}` : '/products';
+      const url     = existId ? `/products/${existId}` : '/products';
       const methode = existId ? 'PUT' : 'POST';
-      let response;
-      if (methode === 'PUT') {
-        response = await api.put(url, xmlPayload, { headers: { 'Content-Type': 'application/xml' } });
-      } else {
-        response = await api.post(url, xmlPayload, { headers: { 'Content-Type': 'application/xml' } });
-      }
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(response.data, 'application/xml');
+      const response = methode === 'PUT'
+        ? await api.put(url,  xmlPayload, { headers: { 'Content-Type': 'application/xml' } })
+        : await api.post(url, xmlPayload, { headers: { 'Content-Type': 'application/xml' } });
+
+      const parser     = new DOMParser();
+      const xmlDoc     = parser.parseFromString(response.data, 'application/xml');
       const insertedId = xmlDoc.getElementsByTagName('id')[0]?.textContent;
-      const productId = insertedId || existId;
+      const productId  = insertedId || existId;
+
       prod.id_prestashop = productId;
-      prod.status = 'success';
-      prod.tables = { ps_product: 'Écrit ✔', ps_product_lang: 'Écrit ✔', ps_product_shop: 'Écrit ✔' };
+      prod.status        = 'success';
+      prod.tables        = { ps_product: 'Écrit ✔', ps_product_lang: 'Écrit ✔', ps_product_shop: 'Écrit ✔' };
       if (!existId && insertedId) produitsCreesIds.push(insertedId);
 
-      // ─── ÉTAPE 2 : PATCH de la available_date SI une date est fournie ──────
+      // Étape 2 : PATCH de la available_date si une date est fournie
       if (prod.date_csv_brute && prod.date_csv_brute !== '') {
         try {
-          const dateSql = convertirDateCsvEnSql(prod.date_csv_brute);
-          prod.date_dispo = dateSql;
+          const dateSql    = convertirDateCsvEnSql(prod.date_csv_brute);
+          prod.date_dispo  = dateSql;
           await patcherAvailableDate(productId, dateSql);
           console.log(`📅 Date dispo patchée pour "${prod.reference}" : ${dateSql}`);
         } catch (dateErr) {
           console.error(`❌ Erreur PATCH date pour "${prod.reference}" : ${dateErr.message}`);
-          prod.erreur = `Produit créé mais date non appliquée : ${dateErr.message}`;
+          prod.erreur          = `Produit créé mais date non appliquée : ${dateErr.message}`;
           prod.tables.ps_product = 'Écrit ✔ (date ✘)';
         }
       } else {
@@ -465,18 +519,18 @@ export const importerProduits = async (produitsTraites, onProgress) => {
 
     } catch (err) {
       transactionEnEchec = true;
-      prod.status = 'error';
-      prod.erreur = err.message;
-      prod.tables = { ps_product: 'ÉCHEC ✘', ps_product_lang: 'ÉCHEC ✘', ps_product_shop: 'ÉCHEC ✘' };
+      prod.status  = 'error';
+      prod.erreur  = err.message;
+      prod.tables  = { ps_product: 'ÉCHEC ✘', ps_product_lang: 'ÉCHEC ✘', ps_product_shop: 'ÉCHEC ✘' };
     }
     if (onProgress) onProgress(prod);
   }
 
   if (transactionEnEchec) {
-    for (let id of produitsCreesIds) await api.delete(`/products/${id}`);
+    for (let id of produitsCreesIds)   await api.delete(`/products/${id}`);
     for (let id of categoriesCreesIds) await api.delete(`/categories/${id}`);
-    for (let id of taxesCreesIds) await api.delete(`/tax_rule_groups/${id}`);
-    return { success: false, message: 'Transaction annulée avec succès. Aucune donnée partielle n\'a été conservée.' };
+    for (let id of taxesCreesIds)      await api.delete(`/tax_rule_groups/${id}`);
+    return { success: false, message: "Transaction annulée avec succès. Aucune donnée partielle n'a été conservée." };
   }
   return { success: true, message: 'Importation réussie ! Les produits, catégories et taxes ont été synchronisés.' };
 };

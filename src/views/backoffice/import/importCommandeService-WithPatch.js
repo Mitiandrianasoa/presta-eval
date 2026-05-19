@@ -2,7 +2,7 @@
  * Service d'importation des Commandes PrestaShop (Fichier 3)
  * Logique identique à ImportOrder.vue + gestion des erreurs CSV :
  *  1. Noms de colonnes non conformes
- *  2. Format de date différent de DD/MM/YYYY
+ *  2. Format de date différent de DD/MM/YYYY + validation jour/mois valides
  *  3. Montants négatifs (non applicable ici – pas de montant direct dans le CSV commande)
  *  4. Gestion PATCH-like des dates (date_add, date_upd, invoice_date, delivery_date)
  */
@@ -23,7 +23,6 @@ const DEFAULT_CONFIG = {
   CURRENCY_ID: '2', // Euro
   LANG_ID: '2', // Français
 };
-
 
 // ─── Colonnes attendues dans le fichier Commandes ────────────────────────────
 const COLONNES_REQUISES_COMMANDES = ['date', 'nom', 'email', 'pwd', 'adresse', 'achat', 'etat'];
@@ -46,13 +45,114 @@ export const validerColonnesCommandes = (colonnesDetectees) => {
 };
 
 /**
- * Vérifie qu'une date est au format DD/MM/YYYY.
+ * Vérifie qu'une date est valide (format DD/MM/YYYY ET date réelle).
  * @param {string} dateStr
  * @returns {boolean}
  */
 export const estDateValide = (dateStr) => {
   if (!dateStr) return true;
-  return /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr.trim());
+  
+  // Vérification du format regex
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr.trim())) {
+    return false;
+  }
+  
+  // Validation de la date réelle
+  const match = dateStr.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return false;
+  
+  const [, day, month, year] = match;
+  const jour = parseInt(day, 10);
+  const mois = parseInt(month, 10);
+  const annee = parseInt(year, 10);
+  
+  // Vérifier que le mois est entre 1 et 12
+  if (mois < 1 || mois > 12) return false;
+  
+  // Vérifier que le jour est valide pour le mois donné
+  const joursParMois = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  
+  // Gestion des années bissextiles pour février
+  let maxJours = joursParMois[mois - 1];
+  if (mois === 2) {
+    const estBissextile = (annee % 4 === 0 && annee % 100 !== 0) || (annee % 400 === 0);
+    if (estBissextile) maxJours = 29;
+  }
+  
+  return jour >= 1 && jour <= maxJours;
+};
+
+/**
+ * Nettoie et convertit un montant avec n'importe quel séparateur en nombre.
+ * @param {string|number} montantStr
+ * @returns {number}
+ */
+export const normaliserMontant = (montantStr) => {
+  if (montantStr === undefined || montantStr === null || montantStr === '') return 0;
+  
+  // Si c'est déjà un nombre, le retourner
+  if (typeof montantStr === 'number') return montantStr;
+  
+  let nettoye = montantStr.toString().trim();
+  
+  // Supprimer le symbole € si présent
+  nettoye = nettoye.replace(/[€$£¥]/g, '');
+  
+  // Détection du séparateur décimal
+  // Compter les occurrences de ',' et '.'
+  const virgules = (nettoye.match(/,/g) || []).length;
+  const points = (nettoye.match(/\./g) || []).length;
+  
+  let nombre;
+  
+  if (virgules > 0 && points === 0) {
+    // Format: 1 234,56 ou 1234,56
+    nettoye = nettoye.replace(/\s/g, '');
+    nombre = parseFloat(nettoye.replace(',', '.'));
+  } 
+  else if (points > 0 && virgules === 0) {
+    // Format: 1 234.56 ou 1234.56
+    nettoye = nettoye.replace(/\s/g, '');
+    nombre = parseFloat(nettoye);
+  }
+  else if (virgules > 0 && points > 0) {
+    // Ambigu - déterminer lequel est le séparateur décimal
+    // Si le dernier séparateur est une virgule, c'est probablement le séparateur décimal
+    const dernierCaractere = nettoye[nettoye.length - 1];
+    const avantDernier = nettoye[nettoye.length - 2];
+    
+    if (dernierCaractere === ',' || (avantDernier === ',' && dernierCaractere.match(/\d/))) {
+      // La virgule est le séparateur décimal
+      nettoye = nettoye.replace(/\s/g, '');
+      nettoye = nettoye.replace(/\./g, '');
+      nombre = parseFloat(nettoye.replace(',', '.'));
+    } else {
+      // Le point est le séparateur décimal
+      nettoye = nettoye.replace(/\s/g, '');
+      nettoye = nettoye.replace(/,/g, '');
+      nombre = parseFloat(nettoye);
+    }
+  }
+  else {
+    // Pas de séparateur décimal
+    nettoye = nettoye.replace(/\s/g, '');
+    nombre = parseInt(nettoye, 10);
+  }
+  
+  return isNaN(nombre) ? 0 : nombre;
+};
+
+/**
+ * Valide qu'un montant n'est pas négatif.
+ * @param {number} montant
+ * @param {string} champ
+ * @returns {string|null}
+ */
+export const validerMontantPositif = (montant, champ = 'montant') => {
+  if (montant < 0) {
+    return `${champ} négatif (${montant}) non autorisé`;
+  }
+  return null;
 };
 
 /**
@@ -72,6 +172,27 @@ export const convertirDateCsvEnSql = (dateStr, heure = '00:00:00') => {
   }
 
   const [, day, month, year] = match;
+  
+  // Validation supplémentaire de la date réelle
+  const jour = parseInt(day, 10);
+  const mois = parseInt(month, 10);
+  const annee = parseInt(year, 10);
+  
+  const joursParMois = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let maxJours = joursParMois[mois - 1];
+  if (mois === 2) {
+    const estBissextile = (annee % 4 === 0 && annee % 100 !== 0) || (annee % 400 === 0);
+    if (estBissextile) maxJours = 29;
+  }
+  
+  if (jour < 1 || jour > maxJours) {
+    throw new Error(`Date invalide : "${dateStr}" - le jour ${jour} n'existe pas pour le mois ${month}/${year}`);
+  }
+  
+  if (mois < 1 || mois > 12) {
+    throw new Error(`Date invalide : "${dateStr}" - mois invalide (${mois})`);
+  }
+  
   return `${year}-${month}-${day} ${heure}`;
 };
 
@@ -86,7 +207,22 @@ export const validerLigneCommande = (row, index) => {
   const ligne = `Ligne ${index + 1} (email: ${row.email || '?'})`;
 
   if (!estDateValide(row.date)) {
-    erreurs.push(`${ligne} : date "${row.date}" invalide (attendu DD/MM/YYYY)`);
+    erreurs.push(`${ligne} : date "${row.date}" invalide (format attendu DD/MM/YYYY avec jour/mois valides)`);
+  }
+
+  // Validation des prix dans le champ 'achat' (si présent)
+  if (row.achat && typeof row.achat === 'string') {
+    // Extraire les prix potentiels du champ achat
+    const prixExtraits = row.achat.match(/\d+[.,]\d+|\d+/g);
+    if (prixExtraits) {
+      for (const prix of prixExtraits) {
+        const montantNormalise = normaliserMontant(prix);
+        const erreurMontant = validerMontantPositif(montantNormalise, `Prix "${prix}"`);
+        if (erreurMontant) {
+          erreurs.push(`${ligne} : ${erreurMontant}`);
+        }
+      }
+    }
   }
 
   return erreurs;
@@ -278,7 +414,6 @@ export const calculerTotauxPanier = async (idCart) => {
     };
   }
 };
-
 
 export const obtenirIdProduit = async (reference) => {
   if (cacheProduits[reference]) return cacheProduits[reference];
