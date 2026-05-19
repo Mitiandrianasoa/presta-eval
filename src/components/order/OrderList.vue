@@ -75,6 +75,9 @@ onMounted(loadData);
             <button @click="goToCarts" class="btn btn-secondary">
               Paniers
             </button>
+            <router-link to="/admin/orders/invoices" class="btn btn-secondary">
+              Factures PDF
+            </router-link>
              <router-link to="/admin/payments" class="btn btn-secondary">
                Commandes payer
             </router-link>
