@@ -41,25 +41,48 @@
           <div 
             v-for="order in orders" 
             :key="order.id"
-            class="order-card"
-            @click="viewOrderDetail(order.id)"
+            class="order-item-container"
           >
-            <div class="order-left">
-              <div class="order-main-info">
-                <span class="order-id">#{{ order.id }}</span>
-                <span class="order-date">{{ formatDate(order.date_add) }}</span>
+            <div class="order-card" @click="viewOrderDetail(order.id)">
+              <div class="order-left">
+                <div class="order-main-info">
+                  <span class="order-id">#{{ order.id }}</span>
+                  <span class="order-date">{{ formatDate(order.date_add) }}</span>
+                </div>
+                <div class="order-payment-info">
+                  <span class="payment-method">{{ order.payment }}</span>
+                </div>
               </div>
-              <div class="order-payment-info">
-                <span class="payment-method">{{ order.payment }}</span>
+              
+              <div class="order-right">
+                <span class="order-status" :class="getStatusClass(order.current_state)">
+                  {{ getStatusLabel(order.current_state) }}
+                </span>
+                <span class="order-total">{{ formatPrice(order.total_paid) }}</span>
+                <span class="detail-arrow">→</span>
               </div>
             </div>
-            
-            <div class="order-right">
-              <span class="order-status" :class="getStatusClass(order.current_state)">
-                {{ getStatusLabel(order.current_state) }}
-              </span>
-              <span class="order-total">{{ formatPrice(order.total_paid) }}</span>
-              <span class="detail-arrow">→</span>
+            <!-- Panneau de duplication -->
+            <div v-if="duplicationState[order.id]" class="duplication-panel">
+              <div class="duplication-controls">
+                <label :for="'qty-' + order.id">Dupliquer :</label>
+                <input 
+                  type="number" 
+                  v-model.number="duplicationState[order.id].quantity" 
+                  min="1" 
+                  :id="'qty-' + order.id"
+                  @click.stop
+                />
+                <span>fois</span>
+              </div>
+              <button 
+                @click.stop="handleDuplicate(order.id)" 
+                :disabled="duplicationState[order.id].isLoading"
+                class="btn-duplicate"
+              >
+                <span v-if="duplicationState[order.id].isLoading" class="spinner-small"></span>
+                {{ duplicationState[order.id].isLoading ? 'En cours...' : 'Dupliquer' }}
+              </button>
             </div>
           </div>
         </div>
@@ -83,11 +106,32 @@ import FrontHeader from '../../../components/FrontHeader.vue';
 import api from '../../../api/api';
 import { useAuth } from '../../../services/useAuth';
 
+import { duplicateOrder } from '../../../services/duplication.service';
+
 const { getCustomerId } = useAuth();
 const router = useRouter();
 const orders = ref<any[]>([]);
 const loading = ref(false);
 const error = ref('');
+const duplicationState = ref<{ [key: string]: { quantity: number; isLoading: boolean } }>({});
+
+const handleDuplicate = async (orderId: string) => {
+  const state = duplicationState.value[orderId];
+  if (!state || state.isLoading) return;
+
+  state.isLoading = true;
+  try {
+    await duplicateOrder(orderId, state.quantity);
+    // Rafraîchir la liste des commandes pour voir les nouvelles
+    await loadOrders();
+  } catch (err) {
+    console.error(`Erreur lors de la duplication de la commande #${orderId}:`, err);
+    // Gérer l'affichage de l'erreur à l'utilisateur si nécessaire
+  } finally {
+    state.isLoading = false;
+  }
+};
+
 
 // const getCustomerId = (): string => {
 //   const user = localStorage.getItem('prestashop_user');
@@ -118,16 +162,23 @@ const loadOrders = async () => {
     const xmlDoc = parser.parseFromString(response.data, 'text/xml');
     const orderElements = xmlDoc.querySelectorAll('orders order');
     
-    orders.value = Array.from(orderElements).map(el => ({
-      id: el.querySelector('id')?.textContent?.trim() || '',
-      reference: el.querySelector('reference')?.textContent?.trim() || '',
-      total_paid: el.querySelector('total_paid')?.textContent?.trim() || '0',
-      total_products: el.querySelector('total_products_wt')?.textContent?.trim() || '0',
-      payment: el.querySelector('payment')?.textContent?.trim() || 'N/C',
-      current_state: el.querySelector('current_state')?.textContent?.trim() || '1',
-      date_add: el.querySelector('date_add')?.textContent?.trim() || '',
-      id_cart: el.querySelector('id_cart')?.textContent?.trim() || '',
-    }));
+    orders.value = Array.from(orderElements).map(el => {
+      const orderId = el.querySelector('id')?.textContent?.trim() || '';
+      // Initialiser l'état de duplication pour chaque commande
+      if (!duplicationState.value[orderId]) {
+        duplicationState.value[orderId] = { quantity: 1, isLoading: false };
+      }
+      return {
+        id: orderId,
+        reference: el.querySelector('reference')?.textContent?.trim() || '',
+        total_paid: el.querySelector('total_paid')?.textContent?.trim() || '0',
+        total_products: el.querySelector('total_products_wt')?.textContent?.trim() || '0',
+        payment: el.querySelector('payment')?.textContent?.trim() || 'N/C',
+        current_state: el.querySelector('current_state')?.textContent?.trim() || '1',
+        date_add: el.querySelector('date_add')?.textContent?.trim() || '',
+        id_cart: el.querySelector('id_cart')?.textContent?.trim() || '',
+      };
+    });
     console.log(`✅ ${customerId} :'ID CUSTOMER'`);
     console.log(`✅ ${orders.value.length} commande(s) trouvée(s)`);
     
@@ -154,7 +205,7 @@ const getStatusLabel = (stateId: string): string => {
     '7': 'Remboursée',
     '8': 'Erreur',
     '13': 'En attente',
-    '11': 'status-delivered-and-paid',
+    '11': 'Payed',
   };
   return statuses[stateId] || `Statut ${stateId}`;
 };
@@ -333,30 +384,94 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
-/* Orders List - CARDS COMPACTES */
 .orders-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem; /* Espace entre les cartes */
 }
 
-.order-card {
+.order-item-container {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.order-item-container:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+}
+
+.order-card {
   padding: 1rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  transition: all 0.2s ease;
   gap: 1rem;
 }
+.order-card:hover .detail-arrow {
+  transform: translateX(3px);
+}
 
-.order-card:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
-  transform: translateX(2px);
+/* Panneau de duplication */
+.duplication-panel {
+  border-top: 1px solid #f1f5f9;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.duplication-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.duplication-controls input[type="number"] {
+  width: 50px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  text-align: center;
+  font-family: inherit;
+}
+
+.btn-duplicate {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-duplicate:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-duplicate:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .order-card:active {

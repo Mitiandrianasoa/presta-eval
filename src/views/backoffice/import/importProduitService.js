@@ -377,6 +377,7 @@ export const importerProduits = async (produitsTraites, onProgress) => {
       prod.tables = { ps_product: 'Annulé', ps_product_lang: 'Annulé', ps_product_shop: 'Annulé' };
       continue;
     }
+    
     try {
       const idCategoryDefault = await obtenirOuCreerCategorie(prod.categorie, cacheCategories, categoriesCreesIds);
       const idTaxRulesGroup = await obtenirOuCreerGroupeTaxe(

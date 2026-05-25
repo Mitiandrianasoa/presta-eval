@@ -232,36 +232,111 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
     <!-- Rapport Photos                                                   -->
     <!-- ═══════════════════════════════════════════════════════════════ -->
-    <section v-if="photosExtraites.length" class="report-section">
-      <h3>④ Photos à importer <small>({{ photosSelectionnees.size }} / {{ photosExtraites.length }} cochées)</small></h3>
+    <!-- <section v-if="photosTraitees.length" class="report-section">
+      <h3>④ Photos</h3>
+      <div v-if="totalPhotos > 0" class="progress-section">
+        <div class="progress-bar">
+          <div
+            class="progress-fill"
+            :style="{ width: (photosTraitees.filter(p => p.status !== 'pending').length / totalPhotos * 100) + '%' }"
+          ></div>
+        </div>
+        <p class="progress-text">
+          {{ photosTraitees.filter(p => p.status !== 'pending').length }} / {{ totalPhotos }} photos traitées
+        </p>
+      </div>
       <table class="report-table">
         <thead>
           <tr>
-            <th><input type="checkbox" @change="toggleSelectAllPhotos" :checked="toutesLesPhotosSontSelectionnees" /></th>
             <th>Fichier</th>
-            <th>Référence Produit</th>
+            <th>Référence</th>
+            <th>ID Produit</th>
+            <th>ID Image</th>
             <th>Taille</th>
-            <th>Statut Import</th>
+            <th>État</th>
+            <th>Importer</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="photo in photosExtraites" :key="photo.filename" :class="photo.status">
-            <td class="center">
-              <input
-                type="checkbox"
-                :checked="photosSelectionnees.has(photo.filename)"
-                @change="togglePhotoSelection(photo.filename)"
-              />
-            </td>
+          <tr v-for="photo in photosTraitees" :key="photo.filename">
             <td>{{ photo.filename }}</td>
             <td>{{ photo.reference }}</td>
-            <td>{{ photo.size }}</td>
+            <td class="center">{{ photo.id_product || '-' }}</td>
+            <td class="center">{{ photo.id_image || '-' }}</td>
+            <td class="center">{{ photo.size || '-' }}</td>
             <td>
-              <span v-if="photo.status === 'success'" class="txt-success">✓ Importé (ID: {{ photo.id_image }})</span>
-              <span v-else-if="photo.status === 'error'" class="txt-error">✗ Erreur: {{ photo.erreur }}</span>
-              <span v-else-if="photo.status === 'not_found'" class="txt-warning">Produit non trouvé</span>
-              <span v-else-if="photo.status === 'pending'" class="txt-pending">En attente...</span>
-               <span v-else-if="photo.status === 'skipped'" class="txt-skip">Ignoré (décoché)</span>
+                <input type="checkbox" name="yes" id="pic">
+            </td>
+            <td>
+              <button
+                v-if="photo.status === 'not_found'"
+                @click="importPhoto(photo)"
+                class="btn btn-primary btn-sm"
+              >
+                Importer
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section> -->
+     <section v-if="photosTraitees.length" class="report-section">
+      <h3>③ Commandes</h3>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Email</th>
+            <th>Date</th>
+            <th>État</th>
+            <th>ID Client</th>
+            <th>ID Adresse</th>
+            <th>ID Panier</th>
+            <th>ID Commande</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+            <tbody>
+          <tr v-for="photo in photosTraitees" :key="photo.filename">
+            <td>{{ photo.filename }}</td>
+            <td>{{ photo.reference }}</td>
+            <td class="center">{{ photo.id_product || '-' }}</td>
+            <td class="center">{{ photo.id_image || '-' }}</td>
+            <td class="center">{{ photo.size || '-' }}</td>
+            <td>
+                <input type="checkbox" name="yes" id="pic">
+            </td>
+            <td>
+              <button
+                v-if="photo.status === 'not_found'"
+                @click="importPhoto(photo)"
+                class="btn btn-primary btn-sm"
+              >
+                Importer
+              </button>
+            </td>
+          </tr>
+        </tbody>
+        <tbody>
+          <tr v-for="cmd in commandesTraitees" :key="`${cmd.email}_${cmd.date}`" :class="cmd.status">
+            <td>{{ cmd.nom }}</td>
+            <td>{{ cmd.email }}</td>
+            <td>{{ cmd.date }}</td>
+            <td>
+              <span v-if="cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté')" class="badge-paid">Payé</span>
+              <span v-else class="badge-abandoned">Abandonné</span>
+            </td>
+            <td class="center">{{ cmd.id_customer || '-' }}</td>
+            <td class="center">{{ cmd.id_address || '-' }}</td>
+            <td class="center">{{ cmd.id_cart || '-' }}</td>
+            <td class="center">{{ cmd.id_order || '-' }}</td>
+            <td>
+              <span v-if="cmd.status === 'pending'" class="txt-pending">En attente…</span>
+              <span v-if="cmd.status === 'success'" class="txt-success">
+                ✔ {{ cmd.etat && cmd.etat.toLowerCase().includes('paiement accepté') ? 'Commande créée' : 'Panier créé' }}
+              </span>
+              <span v-if="cmd.status === 'rolled_back'" class="txt-rollback">↺ Annulé</span>
+              <span v-if="cmd.status === 'error'" class="txt-error">✘ {{ cmd.erreur }}</span>
             </td>
           </tr>
         </tbody>
@@ -283,7 +358,7 @@
 </template>
 
 <script setup>
-import { ref, computed, applySelectModel } from 'vue';
+import { ref, computed } from 'vue';
 import Papa from 'papaparse';
 import rollbackService from '@/services/rollback.js';
 
@@ -309,7 +384,6 @@ import {
 
 import {
   validerFichierZip,
-  extrairePhotosDuZip,
   importerPhotos,
 } from './importPhotoService.js';
 
@@ -346,48 +420,11 @@ async function handleRollback() {
   }
 }
 
-async function changeStatusImporter(reference, checked){
-  if(checked){
-    photosTraiteesNonImporter.value.add(reference);
-  } else {
-    photosTraiteesNonImporter.value.delete(reference);
-  }
-  console.log('Photos à ne pas importer :', Array.from(photosTraiteesNonImporter.value));
-}
-
-//PHOTOS  ne pas importer
-const photosTraiteesNonImporter      = ref(new Set());
-
-// ─── État des photos ────────────────────────────────────────────────────────
-const photosExtraites = ref([]); // Photos lues depuis le ZIP
-const photosSelectionnees = ref(new Set()); // Noms des fichiers cochés pour l'import
-const toutesLesPhotosSontSelectionnees = computed(() =>
-  photosExtraites.value.length > 0 && photosSelectionnees.value.size === photosExtraites.value.length
-);
-
-const togglePhotoSelection = (filename) => {
-  if (photosSelectionnees.value.has(filename)) {
-    photosSelectionnees.value.delete(filename);
-  } else {
-    photosSelectionnees.value.add(filename);
-  }
-};
-
-const toggleSelectAllPhotos = (event) => {
-  if (event.target.checked) {
-    photosExtraites.value.forEach(p => photosSelectionnees.value.add(p.filename));
-  } else {
-    photosSelectionnees.value.clear();
-  }
-};
-
-
 // ─── État des fichiers ────────────────────────────────────────────────────────
 const fichierProduits     = ref(null);
 const fichierDeclinaisons = ref(null);
 const fichierCommandes    = ref(null);
 const fichierPhotos       = ref(null);
-const fichierNonImporter = ref([]);
 
 // ─── Données parsées (tableaux réactifs) ──────────────────────────────────────
 const csvProduits     = ref([]);
@@ -398,7 +435,7 @@ const csvCommandes    = ref([]);
 const produitsTraites     = ref([]);
 const declinaisonsTraitees = ref([]);
 const commandesTraitees   = ref([]);
-// const photosExtraites      = ref([]);
+const photosTraitees      = ref([]);
 const totalPhotos         = ref(0);
 
 // ─── Erreurs de validation inline ─────────────────────────────────────────────
@@ -421,7 +458,6 @@ const etapes = ref([
   { label: 'Photos',               etat: 'idle' },
 ]);
 const setEtape = (index, etat) => { etapes.value[index].etat = etat; };
-// const StatusEtatImport = (index, 'true');
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 const peutImporter = computed(() =>
@@ -505,20 +541,13 @@ const onCommandeChange = (event) => {
   );
 };
 
-const onPhotoChange = async (event) => {
+const onPhotoChange = (event) => {
   const file = event.target.files[0];
   if (!file) return;
   erreursPhotos.value = '';
-  photosExtraites.value = [];
-  photosSelectionnees.value.clear();
-
   try {
     validerFichierZip(file);
     fichierPhotos.value = file;
-    // Extraire la liste des photos sans les uploader
-    photosExtraites.value = await extrairePhotosDuZip(file);
-    // Par défaut, toutes les photos extraites sont sélectionnées
-    photosExtraites.value.forEach(p => photosSelectionnees.value.add(p.filename));
   } catch (e) {
     erreursPhotos.value = e.message;
     fichierPhotos.value = null;
@@ -643,33 +672,23 @@ const lancerImportation = async () => {
   }
 
   // ── ÉTAPE 4 : Photos ─────────────────────────────────────────────────────────
-  if (!echecGlobal && fichierPhotos.value && photosSelectionnees.value.size > 0 && !erreursPhotos.value) {
+  if (!echecGlobal && fichierPhotos.value && !erreursPhotos.value) {
     setEtape(3, 'active');
     try {
-      // Filtrer les photos à importer en fonction de la sélection
-      const photosAImporter = photosExtraites.value.filter(p => photosSelectionnees.value.has(p.filename));
-
       const result = await importerPhotos(
         fichierPhotos.value,
-        photosAImporter,
-        (updatedPhotos) => {
-          // Mettre à jour le statut dans la liste d'origine
-          updatedPhotos.forEach(p => {
-            const index = photosExtraites.value.findIndex(orig => orig.filename === p.filename);
-            if (index !== -1) {
-              photosExtraites.value[index] = { ...photosExtraites.value[index], ...p };
-            }
-          });
-        }
+        (initial) => { photosTraitees.value = initial; },
+        (updated)  => { photosTraitees.value = updated; },
+        (total)    => { totalPhotos.value = total; }
       );
-
+      photosTraitees.value = result.photosTraitees;
       messages.push(`Photos : ${result.message}`);
       if (result.success) {
         setEtape(3, 'done');
       } else {
         setEtape(3, 'error');
-        // Pas de rollback pour les photos, mais on peut marquer l'étape comme échouée
-        messageEchec += `\n${result.message}`;
+        echecGlobal = true;
+        messageEchec = `Échec Étape 4 (Photos) — import stoppé.\n${result.message}`;
       }
     } catch (e) {
       setEtape(3, 'error');

@@ -61,7 +61,42 @@ export const validerFichierZip = (file) => {
   }
 };
 
+/**
+ * Extrait les informations des images d'un fichier ZIP sans les uploader.
+ * @param {File} zipFile
+ * @returns {Promise<Array<{filename: string, reference: string, size: string, status: string}>>}
+ */
+export const extrairePhotosDuZip = async (zipFile) => {
+  validerFichierZip(zipFile);
+
+  const zip = new JSZip();
+  const zipContent = await zip.loadAsync(zipFile);
+
+  const photos = [];
+  for (const [filename, zipEntry] of Object.entries(zipContent.files)) {
+    if (zipEntry.dir || filename.startsWith('__MACOSX') || filename.startsWith('.')) continue;
+
+    const nomFichier = filename.split('/').pop();
+    if (nomFichier && estImage(nomFichier)) {
+      const reference = extraireReference(nomFichier);
+      photos.push({
+        filename: nomFichier,
+        reference: reference,
+        size: formatFileSize(zipEntry._data?.uncompressedSize || 0),
+        status: 'pending', // Statut initial avant import
+      });
+    }
+  }
+
+  if (photos.length === 0) {
+    throw new Error('Aucune image valide (.jpg, .png, etc.) trouvée dans le fichier ZIP.');
+  }
+
+  return photos;
+};
+
 // ─── Logique métier (identique à ImportPhoto.vue) ────────────────────────────
+
 
 /**
  * Récupère l'ID PrestaShop d'un produit par sa référence.
@@ -112,76 +147,69 @@ export const uploaderImage = async (idProduct, imageBlob, filename) => {
 };
 
 /**
- * Lance l'importation des photos depuis un ZIP.
- * @param {File} zipFile - Fichier ZIP sélectionné
- * @param {Function} onPhotoInitialized - Appelé avec le tableau initial des entrées (status: 'pending')
- * @param {Function} onPhotoUpdated    - Appelé après chaque photo traitée
- * @param {Function} onTotalKnown      - Appelé avec le nombre total de photos trouvées
- * @returns {{ success: boolean, message: string }}
+ * Lance l'importation des photos sélectionnées depuis un ZIP.
+ * @param {File} zipFile - Fichier ZIP contenant les images.
+ * @param {Array<Object>} photosAImporter - Tableau des objets photos à importer (celles qui ont été cochées).
+ * @param {Function} onPhotoProcessed - Callback appelé après chaque photo traitée pour mettre à jour l'UI.
+ * @returns {Promise<{ success: boolean, message: string, photosTraitees: Array<Object> }>}
  */
 export const importerPhotos = async (
   zipFile,
-  onPhotoInitialized,
-  onPhotoUpdated,
-  onTotalKnown
+  photosAImporter,
+  onPhotoProcessed
 ) => {
-  // Validation du ZIP
-  validerFichierZip(zipFile);
+  if (!zipFile || photosAImporter.length === 0) {
+    return {
+      success: true,
+      message: 'Aucune photo sélectionnée pour importation.',
+      photosTraitees: [],
+    };
+  }
 
   // Extraction du ZIP
   const zip = new JSZip();
   const zipContent = await zip.loadAsync(zipFile);
 
-  // Filtrer les images
-  const fichiersImages = [];
+  // Créer une map pour un accès rapide aux entrées du ZIP
+  const zipEntries = {};
   for (const [filename, zipEntry] of Object.entries(zipContent.files)) {
-    if (zipEntry.dir || filename.startsWith('__MACOSX') || filename.startsWith('.')) continue;
-    const nomFichier = filename.split('/').pop();
+     const nomFichier = filename.split('/').pop();
     if (nomFichier && estImage(nomFichier)) {
-      const reference = extraireReference(nomFichier);
-      fichiersImages.push({ filename: nomFichier, fullPath: filename, reference, zipEntry });
+      zipEntries[nomFichier] = zipEntry;
     }
   }
 
-  if (fichiersImages.length === 0) {
-    throw new Error('Aucune image trouvée dans le ZIP.');
-  }
-
-  if (onTotalKnown) onTotalKnown(fichiersImages.length);
-
-  // Initialiser la liste de suivi
-  const photosTraitees = fichiersImages.map(f => ({
-    filename: f.filename,
-    reference: f.reference,
-    id_product: null,
-    id_image: null,
-    size: formatFileSize(f.zipEntry._data?.uncompressedSize || 0),
-    status: 'pending',
-    erreur: '',
-  }));
-
-  if (onPhotoInitialized) onPhotoInitialized([...photosTraitees]);
-
-  // Traiter chaque image
+  // Traiter chaque image à importer
   let successCount = 0;
   let notFoundCount = 0;
   let errorCount = 0;
+  const photosResultats = [];
 
-  for (let i = 0; i < fichiersImages.length; i++) {
-    const fichier = fichiersImages[i];
-    const photoEntry = photosTraitees[i];
+  for (const photo of photosAImporter) {
+    const photoEntry = { ...photo }; // Copie pour ne pas muter l'original directement
+    const zipEntry = zipEntries[photo.filename];
+
+    if (!zipEntry) {
+      photoEntry.status = 'error';
+      photoEntry.erreur = 'Fichier non trouvé dans le ZIP.';
+      errorCount++;
+      console.error(`❌ Fichier ${photo.filename} non trouvé dans le ZIP.`);
+      photosResultats.push(photoEntry);
+      if (onPhotoProcessed) onPhotoProcessed(photosResultats);
+      continue;
+    }
 
     try {
-      const idProduct = await obtenirIdProduit(fichier.reference);
+      const idProduct = await obtenirIdProduit(photo.reference);
       if (!idProduct) {
         photoEntry.status = 'not_found';
-        photoEntry.erreur = `Produit "${fichier.reference}" non trouvé dans PrestaShop`;
+        photoEntry.erreur = `Produit non trouvé`;
         notFoundCount++;
-        console.warn(`⚠️ ${photoEntry.erreur}`);
+        console.warn(`⚠️ Produit "${photo.reference}" non trouvé pour l'image ${photo.filename}`);
       } else {
         photoEntry.id_product = idProduct;
-        const imageBlob = await fichier.zipEntry.async('blob');
-        const imageId = await uploaderImage(idProduct, imageBlob, fichier.filename);
+        const imageBlob = await zipEntry.async('blob');
+        const imageId = await uploaderImage(idProduct, imageBlob, photo.filename);
         photoEntry.id_image = imageId;
         photoEntry.status = 'success';
         successCount++;
@@ -190,21 +218,25 @@ export const importerPhotos = async (
       photoEntry.status = 'error';
       photoEntry.erreur = error.message || 'Erreur inconnue';
       errorCount++;
-      console.error(`❌ Erreur pour ${fichier.filename}:`, error);
+      console.error(`❌ Erreur pour ${photo.filename}:`, error);
     }
-
-    if (onPhotoUpdated) onPhotoUpdated([...photosTraitees], i);
+    
+    photosResultats.push(photoEntry);
+    if (onPhotoProcessed) onPhotoProcessed(photosResultats);
   }
+
+  // Marquer les photos non sélectionnées comme "skipped"
+  // Cette logique est maintenant gérée dans le composant Vue, cette fonction ne voit que les photos à importer.
 
   // Résumé
   const summary = [];
   if (successCount > 0) summary.push(`${successCount} uploadées`);
-  if (notFoundCount > 0) summary.push(`${notFoundCount} références non trouvées`);
+  if (notFoundCount > 0) summary.push(`${notFoundCount} produits non trouvés`);
   if (errorCount > 0) summary.push(`${errorCount} erreurs`);
 
   return {
     success: errorCount === 0,
-    message: `✅ Importation terminée : ${summary.join(', ')}.`,
-    photosTraitees,
+    message: summary.length > 0 ? `Importation terminée : ${summary.join(', ')}.` : 'Aucune action effectuée.',
+    photosTraitees: photosResultats,
   };
 };
