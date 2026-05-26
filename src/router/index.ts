@@ -12,6 +12,8 @@ import OrderFrontView from '../views/frontoffice/order/OrderFrontView.vue';
 import CheckoutView from '../views/frontoffice/order/CheckoutView.vue';
 import OrderConfirmView from '../views/frontoffice/order/OrderConfirmView.vue';
 import OrderDetailView from '../views/frontoffice/order/OrderDetailView.vue';
+// import StockUpdate from '@/views/frontoffice/stock/formStock.vue';
+import StockReduction from '../views/frontoffice/stock/StockReduction.vue';
 
 // Backoffice
 import CatalogView from '../views/backoffice/catalog/CatalogView.vue';
@@ -31,6 +33,7 @@ import ImportOrder from '@/views/backoffice/import/ImportOrder.vue';
 import ImportPhoto from '@/views/backoffice/import/ImportPhoto.vue';
 import StockMvt from '@/views/backoffice/stock/StockMvt.vue';
 import StockList from '@/components/stock/StockList.vue'; 
+import ProductList from '@/components/product/productList.vue';
 
 const routes = [
   // ── Frontoffice Routes ─────────────────────────────────────────────────────
@@ -41,7 +44,11 @@ const routes = [
     name: 'user-picker',
     component: UserPickerView,
   },
-
+{
+    path: '/update-stock',
+    name: 'update-stock',
+    component: StockReduction,
+  },
   // Boutique principale (ancienne HomeView)
   {
     path: '/home',
@@ -106,6 +113,11 @@ const routes = [
     component: DashboardView,
   },
   {
+    path: '/admin/products',
+    name: 'admin-products',
+    component: ProductList,
+  },
+  {
     path: '/admin/dashboard',
     name: 'admin-dashboard',
     component: DashboardView,
@@ -140,6 +152,11 @@ const routes = [
   name: 'Stock',
   component: StockList,
 },
+  {
+    path: '/stock-reduction',
+    name: 'StockReduction',
+    component: StockReduction,
+  },
   //IMPORT 
    {
     path: '/admin/import',
@@ -194,7 +211,9 @@ const routes = [
   }
 ];
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+export default router;

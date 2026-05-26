@@ -43,11 +43,12 @@ export const useStockStore = defineStore('stock', {
       this.error = null;
 
       try {
-        const [sRes, pRes, cRes, ovRes] = await Promise.all([
+        const [sRes, pRes, cRes, ovRes, Cat] = await Promise.all([
           api.get('/stock_availables?output_format=XML&display=full&limit=5000'),
           api.get('/products?output_format=XML&display=[id,name,price]&limit=5000'),
           api.get('/combinations?output_format=XML&display=full&limit=5000'),
           api.get('/product_option_values?output_format=XML&display=full&limit=5000'),
+          api.get('/categories?output_format=XML&display=full'),
         ]);
 
         // ─── Produits ───────────────────────────────────────
@@ -73,6 +74,18 @@ export const useStockStore = defineStore('stock', {
             const id = text(el, 'id');
             const name = el.querySelector('name language')?.textContent?.trim() || '';
             optionValueMap[id] = name;
+          });
+
+
+         // ─── Categories  ──────────────────────────────
+        const ListCategory: Record<string, string> = {};
+
+        parse(Cat.data)
+          .querySelectorAll('categories')
+          .forEach(el => {
+            const id = text(el, 'id');
+            const name = el.querySelector('name language')?.textContent?.trim() || '';
+            ListCategory[id] = name;
           });
 
         // ─── Déclinaisons ───────────────────────────────────
@@ -111,12 +124,76 @@ export const useStockStore = defineStore('stock', {
           };
         });
 
+        // Assigner les catégories aux produits dans le stock
+        const productCategoryMap: Record<string, string> = {};
+        const productsWithCatRes = await api.get('/products?output_format=XML&display=[id,id_category_default]');
+        parse(productsWithCatRes.data)
+          .querySelectorAll('product')
+          .forEach(el => {
+            const productId = text(el, 'id');
+            const categoryId = text(el, 'id_category_default');
+            if (productId && categoryId) {
+              productCategoryMap[productId] = categoryId;
+            }
+          });
+        
+        this.stocks.forEach(stock => {
+          (stock as any).id_category = productCategoryMap[stock.id_product];
+        });
+
+
       } catch (e: any) {
         console.error(e);
         this.error = `Erreur chargement : ${e.message}`;
       } finally {
         this.loading = false;
       }
+    },
+
+    // =====================================================
+    // REDUCE STOCK FOR CATEGORY
+    // =====================================================
+    async reduceStockForCategory(categoryId: number, reductionValue: number): Promise<{ total: number; realised: number }> {
+      if (this.stocks.length === 0) {
+        await this.fetchAll();
+      }
+
+      const productsInCategory = this.stocks.filter(s => (s as any).id_category === String(categoryId));
+
+      if (productsInCategory.length === 0) {
+        // On attend un peu et on réessaye au cas où les catégories ne seraient pas encore chargées
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await this.fetchAll();
+        const refreshedProducts = this.stocks.filter(s => (s as any).id_category === String(categoryId));
+        if (refreshedProducts.length === 0) {
+          throw new Error('Aucun produit trouvé dans cette catégorie après rafraîchissement.');
+        }
+        return this.reduceStockForCategory(categoryId, reductionValue); // On relance la fonction
+      }
+
+      let totalReduction = 0;
+      let realisedReduction = 0;
+
+      console.log(`Réduction de ${reductionValue} pour ${productsInCategory.length} produits dans la catégorie ${categoryId}`);
+
+      for (const stock of productsInCategory) {
+        const oldQuantity = stock.quantity;
+        const newQuantity = Math.max(0, oldQuantity - reductionValue);
+        const actualReduction = oldQuantity - newQuantity;
+
+        totalReduction += reductionValue;
+        realisedReduction += actualReduction;
+
+        if (actualReduction > 0) {
+          console.log(`Produit #${stock.id_product}: ${oldQuantity} -> ${newQuantity}`);
+          // On utilise l'action existante qui gère le mouvement et la mise à jour
+          await this.updateQuantity(stock.id, newQuantity);
+        } else {
+          console.log(`Produit #${stock.id_product}: stock déjà à 0, pas de changement.`);
+        }
+      }
+
+      return { total: totalReduction, realised: realisedReduction };
     },
 
     // =====================================================
@@ -227,6 +304,74 @@ export const useStockStore = defineStore('stock', {
     // =====================================================
     // UPDATE QUANTITY
     // =====================================================
+    async updateQuantityForCat(id: string, quantity: number, idcat: number, idproduct: number) {
+      try {
+
+        const stock = this.stocks.find(s => s.id === id);
+        if (!stock) throw new Error(`Stock ${id} introuvable`);
+
+        const oldQuantity = stock.quantity;
+        if (oldQuantity === quantity) return;
+
+        await this.createStockMovement({
+          stock,
+          oldQuantity,
+          newQuantity: quantity,
+          employeeId: 1,
+        });
+
+        // ─── Récupérer les données complètes du stock ───────
+        let dependsOnStock = '0';
+        let idWarehouse = '0';
+        let outOfStock = '0';
+        let location = '';
+
+        try {
+          this.fetchAll();
+          const stockRes = await api.get(
+            `/stock_availables/${stock.id}?output_format=XML&display=full`
+          );
+          const stockDoc = parse(stockRes.data);
+          dependsOnStock = stockDoc.querySelector('stock_available depends_on_stock')?.textContent?.trim() || '0';
+          idWarehouse    = stockDoc.querySelector('stock_available id_warehouse')?.textContent?.trim() || '0';
+          outOfStock     = stockDoc.querySelector('stock_available out_of_stock')?.textContent?.trim() || '0';
+          location       = stockDoc.querySelector('stock_available location')?.textContent?.trim() || '';
+        } catch (e) {
+          console.warn('⚠️ Impossible de récupérer les détails complets du stock');
+        }
+
+        // ─── Mettre à jour stock_available ─────────────────
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_available>
+    <id><![CDATA[${stock.id}]]></id>
+    <id_product><![CDATA[${stock.id_product}]]></id_product>
+    <id_product_attribute><![CDATA[${stock.id_product_attribute || 0}]]></id_product_attribute>
+    <id_warehouse><![CDATA[${idWarehouse}]]></id_warehouse>
+    <id_shop><![CDATA[1]]></id_shop>
+    <id_shop_group><![CDATA[0]]></id_shop_group>
+    <quantity><![CDATA[${quantity}]]></quantity>
+    <depends_on_stock><![CDATA[${dependsOnStock}]]></depends_on_stock>
+    <out_of_stock><![CDATA[${outOfStock}]]></out_of_stock>
+    <location><![CDATA[${location}]]></location>
+  </stock_available>
+</prestashop>`;
+
+        console.log('📤 Mise à jour stock:', xml.substring(0, 300) + '...');
+
+        await api.put(`/stock_availables/${id}`, xml, {
+          headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+        });
+
+        stock.quantity = quantity;
+        console.log(`✅ Stock ${id} mis à jour: ${oldQuantity} → ${quantity}`);
+
+      } catch (error: any) {
+        console.error('updateQuantity error:', error.response?.data || error);
+        this.error = `Erreur mise à jour : ${error.response?.status || error.message}`;
+        throw error;
+      }
+    },
 
     async updateQuantity(id: string, quantity: number) {
       try {
