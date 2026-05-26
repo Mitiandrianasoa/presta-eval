@@ -152,92 +152,91 @@ const cacheClients = {};
 const cacheProduits = {};
 
 export const parserAchat = (achatStr) => {
-  const items = [];
-  
+  const itemsMap = new Map(); // Utiliser une Map pour regrouper les produits
+
   if (!achatStr || typeof achatStr !== 'string') {
     console.warn('⚠️ achatStr invalide:', achatStr);
-    return items;
+    return [];
   }
-  
+
   console.log('🔍 Parsing achat brut:', achatStr);
-  
+
   try {
     // Étape 1: Supprimer les crochets extérieurs
     let clean = achatStr.replace(/^\s*\[|\]\s*$/g, '').trim();
-    
     console.log('📝 Après suppression crochets:', clean);
-    
+
     // Étape 2: Trouver tous les tuples (parenthèses)
-    // Utiliser une regex qui gère les guillemets
     const regex = /\(([^)]+)\)/g;
     let match;
-    
+
     while ((match = regex.exec(clean)) !== null) {
       let content = match[1]; // Contenu entre parenthèses
-      
       console.log('🔍 Tuple trouvé:', content);
-      
-      // Étape 3: Nettoyer les guillemets (simples et doubles)
+
+      // Étape 3: Nettoyer les guillemets et splitter
       content = content.replace(/"/g, '').trim();
-      
-      // Étape 4: Splitter par point-virgule
       const parts = content.split(';');
-      
       console.log('📝 Parties après split:', parts);
-      
+
       if (parts.length >= 2) {
         const reference = parts[0].trim();
-        // const quantite = parseInt(parts[1].trim()) || 1;
         const quantite = parseInt(parts[1].trim());
 
         if (isNaN(quantite) || quantite <= 0) {
           console.warn(`⚠️ Quantité invalide pour ${reference}:`, parts[1]);
           continue;
         }
+        
         const karazany = parts[2] ? parts[2].trim() : '';
         
         if (reference) {
-          const item = {
-            reference,
-            quantite,
-            karazany
-          };
-          
-          console.log('✅ Item parsé:', item);
-          items.push(item);
+          // Créer une clé unique pour le produit (référence + déclinaison)
+          const itemKey = `${reference}#${karazany}`;
+
+          // Si le produit existe déjà, on ajoute la quantité
+          if (itemsMap.has(itemKey)) {
+            const existingItem = itemsMap.get(itemKey);
+            existingItem.quantite += quantite;
+            console.log(`🔄 Quantité mise à jour pour ${itemKey}:`, existingItem);
+          } else {
+            // Sinon, on l'ajoute à la Map
+            const item = { reference, quantite, karazany };
+            itemsMap.set(itemKey, item);
+            console.log(`✅ Item ajouté:`, item);
+          }
         }
       }
     }
-    
-    // Si aucun item trouvé, essayer un parsing alternatif
-    if (items.length === 0) {
+
+    // Tentative de parsing alternatif si le premier a échoué
+    if (itemsMap.size === 0) {
       console.warn('⚠️ Parsing standard échoué, tentative alternative...');
-      
-      // Remplacer les guillemets et essayer sans regex
       let altClean = achatStr.replace(/["\[\]]/g, '').trim();
-      console.log('📝 Nettoyage alternatif:', altClean);
-      
-      // Chercher les motifs: reference;quantite;karazany
       const altRegex = /([A-Za-z0-9_]+);(\d+);?([^,)]*)/g;
       let altMatch;
-      
+
       while ((altMatch = altRegex.exec(altClean)) !== null) {
-        const item = {
-          reference: altMatch[1].trim(),
-          quantite: parseInt(altMatch[2]) || 1,
-          karazany: altMatch[3] ? altMatch[3].trim() : ''
-        };
-        
-        console.log('✅ Item alternatif parsé:', item);
-        items.push(item);
+        const reference = altMatch[1].trim();
+        const quantite = parseInt(altMatch[2]) || 1;
+        const karazany = altMatch[3] ? altMatch[3].trim() : '';
+        const itemKey = `${reference}#${karazany}`;
+
+        if (itemsMap.has(itemKey)) {
+          itemsMap.get(itemKey).quantite += quantite;
+        } else {
+          itemsMap.set(itemKey, { reference, quantite, karazany });
+        }
+        console.log('✅ Item alternatif parsé/regroupé:', itemsMap.get(itemKey));
       }
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur parsing achat:', error);
   }
-  
-  console.log(`📦 Total items parsés: ${items.length}`, items);
+
+  const items = Array.from(itemsMap.values());
+  console.log(`📦 Total items parsés et regroupés: ${items.length}`, items);
   return items;
 };
 
